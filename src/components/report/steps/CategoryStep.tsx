@@ -25,14 +25,14 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  "women-child": "from-[#EC4899] to-[#EC4899]/80",
-  "financial-fraud": "from-[#FBBF24] to-[#FBBF24]/80",
-  "social-media": "from-[#8B5CF6] to-[#8B5CF6]/80",
-  hacking: "from-[#EF4444] to-[#EF4444]/80",
-  crypto: "from-[#F97316] to-[#F97316]/80",
-  trafficking: "from-[#06B6D4] to-[#06B6D4]/80",
-  gambling: "from-[#10B981] to-[#10B981]/80",
-  other: "from-[#6B7280] to-[#6B7280]/80",
+  "women-child": "from-pink-500 to-pink-400",
+  "financial-fraud": "from-amber-500 to-amber-400",
+  "social-media": "from-violet-500 to-violet-400",
+  hacking: "from-red-500 to-red-400",
+  crypto: "from-orange-500 to-orange-400",
+  trafficking: "from-cyan-500 to-cyan-400",
+  gambling: "from-emerald-500 to-emerald-400",
+  other: "from-gray-500 to-gray-400",
 };
 
 interface CategoryStepProps {
@@ -53,10 +53,8 @@ export function CategoryStep({ data, onSelect, onNext }: CategoryStepProps) {
     const catHasSubs = cat && "subcategories" in cat;
 
     if (catHasSubs) {
-      // Just select — show subcategories, don't advance
       onSelect({ category: catId, subcategory: "" });
     } else {
-      // No subcategories — advance immediately
       onNext({ category: catId, subcategory: "" });
     }
   };
@@ -65,11 +63,11 @@ export function CategoryStep({ data, onSelect, onNext }: CategoryStepProps) {
     <div>
       <h2
         tabIndex={-1}
-        className="text-2xl sm:text-3xl font-heading mb-2 outline-none"
+        className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 outline-none"
       >
         What happened?
       </h2>
-      <p className="text-[#8A8A95] mb-8">
+      <p className="text-muted-foreground mb-8">
         Select the type of cybercrime you want to report.
       </p>
 
@@ -77,7 +75,7 @@ export function CategoryStep({ data, onSelect, onNext }: CategoryStepProps) {
         {CRIME_CATEGORIES.map((cat) => {
           const Icon = CATEGORY_ICONS[cat.id] || HelpCircle;
           const color =
-            CATEGORY_COLORS[cat.id] || "from-[#6B7280] to-[#6B7280]/80";
+            CATEGORY_COLORS[cat.id] || "from-gray-500 to-gray-400";
           const isSelected = data.category === cat.id;
 
           return (
@@ -86,8 +84,8 @@ export function CategoryStep({ data, onSelect, onNext }: CategoryStepProps) {
               onClick={() => handleCategoryClick(cat.id)}
               className={`flex items-center gap-4 p-4 rounded-xl border text-left transition-all ${
                 isSelected
-                  ? "border-[#4F8EFF] bg-[#4F8EFF]/10"
-                  : "border-[#1E1E26] bg-[#0D0D12] hover:border-[#4F8EFF]/30"
+                  ? "border-primary bg-primary/5"
+                  : "border-border bg-card hover:border-primary/30"
               }`}
             >
               <div
@@ -97,11 +95,11 @@ export function CategoryStep({ data, onSelect, onNext }: CategoryStepProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-sm">{cat.label}</div>
-                <div className="text-xs text-[#555] truncate">
+                <div className="text-xs text-muted-foreground truncate">
                   {cat.description}
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-[#555] shrink-0" />
+              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
             </button>
           );
         })}
@@ -109,7 +107,7 @@ export function CategoryStep({ data, onSelect, onNext }: CategoryStepProps) {
 
       {/* Subcategory selection */}
       {hasSubcategories && (
-        <div className="mt-6 p-4 bg-[#0D0D12] border border-[#1E1E26] rounded-xl">
+        <div className="mt-6 p-4 bg-card border border-border rounded-xl">
           <div className="text-sm font-medium mb-3">
             Select sub-category:
           </div>
@@ -122,8 +120,8 @@ export function CategoryStep({ data, onSelect, onNext }: CategoryStepProps) {
                 }
                 className={`px-3 py-1.5 rounded-lg text-sm transition-all ${
                   data.subcategory === sub
-                    ? "bg-[#4F8EFF] text-white"
-                    : "bg-[#13131A] text-[#8A8A95] hover:bg-[#1E1E26]"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-accent"
                 }`}
               >
                 {sub}

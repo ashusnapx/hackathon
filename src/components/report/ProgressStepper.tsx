@@ -23,10 +23,9 @@ export function ProgressStepper({
     <div className="w-full max-w-2xl mx-auto mb-8">
       {/* Desktop stepper */}
       <div className="hidden sm:flex items-center justify-between relative">
-        {/* Connection line */}
-        <div className="absolute top-5 left-[10%] right-[10%] h-[2px] bg-[#1E1E26]" />
+        <div className="absolute top-5 left-[10%] right-[10%] h-[2px] bg-border" />
         <div
-          className="absolute top-5 left-[10%] h-[2px] bg-[#4F8EFF] transition-all duration-500"
+          className="absolute top-5 left-[10%] h-[2px] bg-primary transition-all duration-500"
           style={{
             width: `${((currentStep - 1) / (STEPS.length - 1)) * 80}%`,
           }}
@@ -35,7 +34,6 @@ export function ProgressStepper({
         {STEPS.map((step) => {
           const isCompleted = completedSteps.includes(step.id);
           const isCurrent = currentStep === step.id;
-          const isUpcoming = !isCompleted && !isCurrent;
 
           return (
             <div
@@ -45,10 +43,10 @@ export function ProgressStepper({
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 ${
                   isCompleted
-                    ? "bg-[#4F8EFF] text-white"
+                    ? "bg-primary text-primary-foreground"
                     : isCurrent
-                    ? "bg-[#4F8EFF]/20 text-[#4F8EFF] border-2 border-[#4F8EFF]"
-                    : "bg-[#13131A] text-[#555] border border-[#1E1E26]"
+                    ? "bg-primary/10 text-primary border-2 border-primary"
+                    : "bg-card text-muted-foreground border border-border"
                 }`}
               >
                 {isCompleted ? (
@@ -60,10 +58,10 @@ export function ProgressStepper({
               <span
                 className={`text-xs mt-2 font-medium ${
                   isCurrent
-                    ? "text-[#4F8EFF]"
+                    ? "text-primary"
                     : isCompleted
                     ? "text-foreground"
-                    : "text-[#555]"
+                    : "text-muted-foreground"
                 }`}
               >
                 {step.label}
@@ -76,16 +74,16 @@ export function ProgressStepper({
       {/* Mobile stepper */}
       <div className="sm:hidden">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-[#4F8EFF]">
+          <span className="text-sm font-medium text-primary">
             Step {currentStep} of {STEPS.length}
           </span>
-          <span className="text-sm text-[#555]">
+          <span className="text-sm text-muted-foreground">
             {STEPS[currentStep - 1].label}
           </span>
         </div>
-        <div className="h-1.5 bg-[#13131A] rounded-full overflow-hidden">
+        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
           <div
-            className="h-full bg-[#4F8EFF] rounded-full transition-all duration-500"
+            className="h-full bg-primary rounded-full transition-all duration-500"
             style={{
               width: `${(currentStep / STEPS.length) * 100}%`,
             }}

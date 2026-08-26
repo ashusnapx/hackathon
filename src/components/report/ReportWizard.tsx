@@ -7,7 +7,8 @@ import { IncidentStep } from "./steps/IncidentStep";
 import { EvidenceStep } from "./steps/EvidenceStep";
 import { DetailsStep } from "./steps/DetailsStep";
 import { ReviewStep } from "./steps/ReviewStep";
-import { Shield, ArrowLeft } from "lucide-react";
+import { Logo } from "@/components/Logo";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 const STORAGE_KEY = "cybercomplaint-draft";
@@ -54,7 +55,6 @@ export function ReportWizard() {
   const [data, setData] = useState<ReportData>(INITIAL_DATA);
   const [savedAt, setSavedAt] = useState<string | null>(null);
 
-  // Load saved data on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -70,7 +70,6 @@ export function ReportWizard() {
     }
   }, []);
 
-  // Auto-save on every change
   useEffect(() => {
     const timeout = setTimeout(() => {
       localStorage.setItem(
@@ -114,12 +113,6 @@ export function ReportWizard() {
 
   const handleBack = useCallback(() => {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
-  }, []);
-
-  const stepHeadingRef = useCallback((node: HTMLHeadingElement | null) => {
-    if (node) {
-      node.focus();
-    }
   }, []);
 
   const renderStep = () => {
@@ -177,28 +170,26 @@ export function ReportWizard() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#06060A]/80 backdrop-blur-xl border-b border-[#1E1E26]">
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link
             href="/"
-            className="flex items-center gap-2.5 text-[#8A8A95] hover:text-foreground transition-colors"
+            className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <div className="w-7 h-7 rounded-lg bg-[#4F8EFF]/10 flex items-center justify-center">
-              <Shield className="w-3.5 h-3.5 text-[#4F8EFF]" />
-            </div>
-            <span className="text-sm font-medium hidden sm:inline">
-              CyberComplaint
-            </span>
+            <Logo size="sm" />
           </Link>
 
-          {/* Auto-save indicator */}
-          <div className="text-xs text-[#555]">
+          <div className="text-xs text-muted-foreground">
             {savedAt && (
               <span>
-                Saved {new Date(savedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                Saved{" "}
+                {new Date(savedAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </span>
             )}
           </div>

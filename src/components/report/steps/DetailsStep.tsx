@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Kavach } from "@/components/Kavach";
 
 interface DetailsStepProps {
   data: {
@@ -76,21 +77,26 @@ export function DetailsStep({ data, onNext, onBack }: DetailsStepProps) {
 
   return (
     <div>
-      <h2
-        tabIndex={-1}
-        className="text-2xl sm:text-3xl font-heading mb-2 outline-none"
-      >
-        Your details
-      </h2>
-      <p className="text-[#8A8A95] mb-8">
-        We need your contact info to file the complaint. Your data stays in
-        your browser.
-      </p>
+      <div className="flex items-start gap-4 mb-6">
+        <Kavach mood="happy" size="sm" />
+        <div>
+          <h2
+            tabIndex={-1}
+            className="text-2xl sm:text-3xl font-bold tracking-tight mb-1 outline-none"
+          >
+            Your details
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            We need your contact info to file the complaint. Your data stays
+            in your browser.
+          </p>
+        </div>
+      </div>
 
       <div className="space-y-5">
         {/* Name */}
         <div>
-          <label className="block text-sm text-[#8A8A95] mb-1.5">
+          <label className="block text-sm text-muted-foreground mb-1.5">
             Full name *
           </label>
           <input
@@ -98,18 +104,18 @@ export function DetailsStep({ data, onNext, onBack }: DetailsStepProps) {
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="As per your ID"
-            className={`w-full h-12 px-4 bg-[#13131A] border rounded-xl text-foreground text-sm placeholder-[#555] focus:outline-none focus:border-[#4F8EFF] focus:ring-1 focus:ring-[#4F8EFF] transition-colors ${
-              errors.name ? "border-[#FF4D4D]" : "border-[#1E1E26]"
+            className={`w-full h-12 px-4 bg-card border rounded-xl text-foreground text-sm placeholder-muted-foreground/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors ${
+              errors.name ? "border-destructive" : "border-border"
             }`}
           />
           {errors.name && (
-            <p className="text-xs text-[#EF4444] mt-1">{errors.name}</p>
+            <p className="text-xs text-destructive mt-1">{errors.name}</p>
           )}
         </div>
 
         {/* Email */}
         <div>
-          <label className="block text-sm text-[#8A8A95] mb-1.5">
+          <label className="block text-sm text-muted-foreground mb-1.5">
             Email address *
           </label>
           <input
@@ -117,22 +123,22 @@ export function DetailsStep({ data, onNext, onBack }: DetailsStepProps) {
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             placeholder="you@example.com"
-            className={`w-full h-12 px-4 bg-[#13131A] border rounded-xl text-foreground text-sm placeholder-[#555] focus:outline-none focus:border-[#4F8EFF] focus:ring-1 focus:ring-[#4F8EFF] transition-colors ${
-              errors.email ? "border-[#FF4D4D]" : "border-[#1E1E26]"
+            className={`w-full h-12 px-4 bg-card border rounded-xl text-foreground text-sm placeholder-muted-foreground/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors ${
+              errors.email ? "border-destructive" : "border-border"
             }`}
           />
           {errors.email && (
-            <p className="text-xs text-[#EF4444] mt-1">{errors.email}</p>
+            <p className="text-xs text-destructive mt-1">{errors.email}</p>
           )}
         </div>
 
         {/* Phone */}
         <div>
-          <label className="block text-sm text-[#8A8A95] mb-1.5">
+          <label className="block text-sm text-muted-foreground mb-1.5">
             Phone number *
           </label>
           <div className="flex gap-2">
-            <div className="w-20 h-12 px-3 bg-[#13131A] border border-[#1E1E26] rounded-xl text-foreground text-sm flex items-center justify-center">
+            <div className="w-20 h-12 px-3 bg-muted border border-border rounded-xl text-foreground text-sm flex items-center justify-center">
               +91
             </div>
             <input
@@ -143,26 +149,26 @@ export function DetailsStep({ data, onNext, onBack }: DetailsStepProps) {
               }
               placeholder="10-digit mobile number"
               maxLength={10}
-              className={`flex-1 h-12 px-4 bg-[#13131A] border rounded-xl text-foreground text-sm placeholder-[#555] focus:outline-none focus:border-[#4F8EFF] focus:ring-1 focus:ring-[#4F8EFF] transition-colors ${
-                errors.phone ? "border-[#FF4D4D]" : "border-[#1E1E26]"
+              className={`flex-1 h-12 px-4 bg-card border rounded-xl text-foreground text-sm placeholder-muted-foreground/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors ${
+                errors.phone ? "border-destructive" : "border-border"
               }`}
             />
           </div>
           {errors.phone && (
-            <p className="text-xs text-[#EF4444] mt-1">{errors.phone}</p>
+            <p className="text-xs text-destructive mt-1">{errors.phone}</p>
           )}
         </div>
 
         {/* State */}
         <div>
-          <label className="block text-sm text-[#8A8A95] mb-1.5">
+          <label className="block text-sm text-muted-foreground mb-1.5">
             State *
           </label>
           <select
             value={form.state}
             onChange={(e) => setForm({ ...form, state: e.target.value })}
-            className={`w-full h-12 px-4 bg-[#13131A] border rounded-xl text-foreground text-sm focus:outline-none focus:border-[#4F8EFF] focus:ring-1 focus:ring-[#4F8EFF] transition-colors ${
-              errors.state ? "border-[#FF4D4D]" : "border-[#1E1E26]"
+            className={`w-full h-12 px-4 bg-card border rounded-xl text-foreground text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors ${
+              errors.state ? "border-destructive" : "border-border"
             }`}
           >
             <option value="">Select state</option>
@@ -173,13 +179,13 @@ export function DetailsStep({ data, onNext, onBack }: DetailsStepProps) {
             ))}
           </select>
           {errors.state && (
-            <p className="text-xs text-[#EF4444] mt-1">{errors.state}</p>
+            <p className="text-xs text-destructive mt-1">{errors.state}</p>
           )}
         </div>
 
         {/* District */}
         <div>
-          <label className="block text-sm text-[#8A8A95] mb-1.5">
+          <label className="block text-sm text-muted-foreground mb-1.5">
             District *
           </label>
           <input
@@ -187,18 +193,18 @@ export function DetailsStep({ data, onNext, onBack }: DetailsStepProps) {
             value={form.district}
             onChange={(e) => setForm({ ...form, district: e.target.value })}
             placeholder="Your district"
-            className={`w-full h-12 px-4 bg-[#13131A] border rounded-xl text-foreground text-sm placeholder-[#555] focus:outline-none focus:border-[#4F8EFF] focus:ring-1 focus:ring-[#4F8EFF] transition-colors ${
-              errors.district ? "border-[#FF4D4D]" : "border-[#1E1E26]"
+            className={`w-full h-12 px-4 bg-card border rounded-xl text-foreground text-sm placeholder-muted-foreground/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors ${
+              errors.district ? "border-destructive" : "border-border"
             }`}
           />
           {errors.district && (
-            <p className="text-xs text-[#EF4444] mt-1">{errors.district}</p>
+            <p className="text-xs text-destructive mt-1">{errors.district}</p>
           )}
         </div>
 
         {/* Privacy note */}
-        <div className="p-3 bg-[#13131A] border border-[#1E1E26] rounded-xl">
-          <p className="text-xs text-[#8A8A95]">
+        <div className="p-3 bg-muted border border-border rounded-xl">
+          <p className="text-xs text-muted-foreground">
             Your details are saved locally in your browser. They are only
             transmitted when you submit to the official portal. We never
             store your personal data on our servers.
@@ -210,13 +216,13 @@ export function DetailsStep({ data, onNext, onBack }: DetailsStepProps) {
       <div className="flex items-center justify-between mt-8">
         <button
           onClick={onBack}
-          className="px-6 py-3 text-sm text-[#8A8A95] hover:text-foreground transition-colors"
+          className="px-6 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           Back
         </button>
         <button
           onClick={handleSubmit}
-          className="px-8 py-3 bg-[#4F8EFF] hover:bg-[#3D7AE6] text-white rounded-xl text-sm font-medium transition-colors"
+          className="px-8 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-medium transition-colors"
         >
           Continue
         </button>
