@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 
 export function Hero() {
   return (
-    <section className="relative min-h-[100dvh] flex items-center overflow-hidden">
+    <section className="relative min-h-[100dvh] flex items-center">
       {/* Background - subtle gradient mesh */}
       <div className="absolute inset-0 grid-bg" />
       <div className="absolute top-20 right-1/4 w-[500px] h-[500px] bg-blue-50 rounded-full blur-[100px] opacity-60" />
