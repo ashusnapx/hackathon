@@ -4,50 +4,44 @@ import { CRIME_CATEGORIES } from "./constants";
 
 const BNS_SECTIONS: Record<string, { section: string; description: string }[]> = {
   "financial-fraud": [
-    { section: "BNS §318", description: "Cheating (formerly IPC §420)" },
-    { section: "BNS §316", description: "Criminal breach of trust (formerly IPC §406)" },
-    { section: "BNS §61", description: "Criminal conspiracy (formerly IPC §120B)" },
+    { section: "BNS §318", description: "Cheating" },
+    { section: "BNS §316", description: "Criminal breach of trust" },
+    { section: "BNS §61", description: "Criminal conspiracy" },
     { section: "IT Act §66D", description: "Cheating by impersonation using computer resource" },
     { section: "IT Act §66C", description: "Identity theft" },
   ],
   "social-media": [
-    { section: "BNS §356", description: "Defamation (formerly IPC §499)" },
-    { section: "BNS §351", description: "Criminal intimidation (formerly IPC §506)" },
-    { section: "BNS §63", description: "Stalking (formerly IPC §354D)" },
-    { section: "IT Act §66A", description: "Sending offensive messages (struck down but relevant)" },
+    { section: "BNS §356", description: "Defamation" },
+    { section: "BNS §351", description: "Criminal intimidation" },
+    { section: "BNS §63", description: "Stalking" },
     { section: "IT Act §67", description: "Publishing obscene material" },
   ],
   "women-child": [
-    { section: "BNS §63", description: "Rape (formerly IPC §376)" },
-    { section: "BNS §67", description: "Sexual harassment (formerly IPC §354A)" },
+    { section: "BNS §63", description: "Rape" },
+    { section: "BNS §67", description: "Sexual harassment" },
     { section: "BNS §74", description: "Assault on woman with intent to outrage modesty" },
     { section: "IT Act §67A", description: "Publishing sexual explicit material" },
     { section: "POCSO Act", description: "Protection of Children from Sexual Offences" },
   ],
   hacking: [
     { section: "IT Act §66", description: "Computer-related offences" },
-    { section: "IT Act §66A", description: "Sending offensive messages" },
     { section: "IT Act §66F", description: "Cyber terrorism" },
-    { section: "BNS §223", description: "Criminal misconduct (formerly IPC §405)" },
   ],
   crypto: [
-    { section: "BNS §318", description: "Cheating (formerly IPC §420)" },
+    { section: "BNS §318", description: "Cheating" },
     { section: "IT Act §66D", description: "Cheating by impersonation" },
-    { section: "BNS §61", description: "Criminal conspiracy" },
     { section: "PMLA §3", description: "Money laundering (if applicable)" },
   ],
   trafficking: [
-    { section: "BNS §143", description: "Human trafficking (formerly IPC §370)" },
+    { section: "BNS §143", description: "Human trafficking" },
     { section: "BNS §144", description: "Trafficking of minor" },
-    { section: "IT Act §67", description: "Publishing obscene material" },
   ],
   gambling: [
-    { section: "BNS §223", description: "Public gambling (formerly IPC §3)" },
-    { section: "IT Act §66A", description: "Online gambling regulation" },
-    { section: "State Gambling Acts", description: "Applicable state-specific laws" },
+    { section: "BNS §223", description: "Public gambling" },
+    { section: "State Gambling Acts", description: "Applicable state laws" },
   ],
   other: [
-    { section: "BNS §318", description: "Cheating (formerly IPC §420)" },
+    { section: "BNS §318", description: "Cheating" },
     { section: "IT Act §43", description: "Penalty for damage to computer system" },
     { section: "IT Act §66", description: "Computer-related offences" },
   ],
@@ -64,10 +58,9 @@ const CRIME_LABELS: Record<string, string> = {
   other: "Any Other Cyber Crime",
 };
 
-function formatDate(dateStr: string): string {
-  if (!dateStr) return "Not specified";
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("en-IN", {
+function fmtDate(d: string) {
+  if (!d) return "___/___/______";
+  return new Date(d).toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "long",
     year: "numeric",
@@ -76,220 +69,354 @@ function formatDate(dateStr: string): string {
 
 export function generatePDF(data: ReportData, trackingId: string) {
   const doc = new jsPDF("p", "mm", "a4");
-  const pageW = 210;
-  const margin = 20;
-  const contentW = pageW - 2 * margin;
-  let y = 20;
+  const W = 210;
+  const H = 297;
+  const ML = 25;
+  const MR = 25;
+  const CW = W - ML - MR;
+  let y = 0;
 
-  const addLine = () => {
-    doc.setDrawColor(200);
-    doc.line(margin, y, pageW - margin, y);
-    y += 4;
+  const line = (yy: number) => {
+    doc.setDrawColor(180);
+    doc.setLineWidth(0.3);
+    doc.line(ML, yy, W - MR, yy);
   };
 
-  const checkPage = (needed: number) => {
-    if (y + needed > 270) {
+  const checkPage = (need: number) => {
+    if (y + need > H - 20) {
       doc.addPage();
-      y = 20;
+      y = 25;
     }
   };
 
-  // ── Header ──
-  doc.setFontSize(10);
-  doc.setTextColor(100);
-  doc.text("INDEPENDENT CYBERCRIME COMPLAINT", margin, y);
-  doc.text(`Generated: ${new Date().toLocaleDateString("en-IN")}`, pageW - margin, y, { align: "right" });
-  y += 8;
+  // ── TOP BORDER ──
+  doc.setDrawColor(37, 99, 235);
+  doc.setLineWidth(0.8);
+  doc.line(15, 12, W - 15, 12);
+  doc.setLineWidth(0.3);
+  doc.line(15, 14, W - 15, 14);
 
-  doc.setFontSize(18);
-  doc.setTextColor(37, 99, 235);
-  doc.text("CYBERCOMPLAINT", margin, y);
-  y += 7;
+  y = 22;
 
-  doc.setFontSize(10);
-  doc.setTextColor(100);
-  doc.text("Guided Cybercrime Complaint — Prepare Before Filing on NCRP", margin, y);
-  y += 8;
-
-  addLine();
-
-  // ── Tracking ID ──
-  doc.setFontSize(12);
-  doc.setTextColor(22, 163, 74);
-  doc.text(`Tracking ID: ${trackingId}`, margin, y);
-  y += 8;
-
-  // ── Complainant Details ──
-  doc.setFontSize(13);
-  doc.setTextColor(30);
-  doc.text("1. COMPLAINANT DETAILS", margin, y);
-  y += 7;
-
-  doc.setFontSize(10);
-  doc.setTextColor(60);
-  const details: [string, string][] = [
-    ["Full Name", data.name || "—"],
-    ["Email", data.email || "—"],
-    ["Phone", data.phone ? `+91 ${data.phone}` : "—"],
-    ["State", data.state || "—"],
-    ["District", data.district || "—"],
-  ];
-
-  details.forEach(([label, value]) => {
-    doc.setFont("helvetica", "bold");
-    doc.text(`${label}:`, margin, y);
-    doc.setFont("helvetica", "normal");
-    doc.text(value, margin + 35, y);
-    y += 6;
-  });
+  // ── HEADER ──
+  doc.setFontSize(8);
+  doc.setTextColor(120);
+  doc.text("CONFIDENTIAL — CYBERCRIME COMPLAINT APPLICATION", ML, y);
+  doc.text(`Ref: CC-${trackingId}`, W - MR, y, { align: "right" });
   y += 4;
+  doc.text(`Date of Generation: ${new Date().toLocaleDateString("en-IN")}`, ML, y);
+  y += 8;
 
-  // ── Incident Details ──
-  checkPage(40);
-  doc.setFontSize(13);
+  // ── TITLE ──
+  doc.setFontSize(16);
   doc.setTextColor(30);
-  doc.text("2. INCIDENT DETAILS", margin, y);
+  doc.text("APPLICATION FOR CYBERCRIME COMPLAINT", W / 2, y, { align: "center" });
+  y += 6;
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  doc.text("Under the Bharatiya Nyaya Sanhita, 2023 and Information Technology Act, 2000", W / 2, y, { align: "center" });
+  y += 10;
+
+  line(y);
+  y += 8;
+
+  // ── TO ──
+  doc.setFontSize(10);
+  doc.setTextColor(30);
+  doc.setFont("helvetica", "bold");
+  doc.text("To,", ML, y);
+  y += 6;
+  doc.setFont("helvetica", "normal");
+  doc.text("The Station House Officer (SHO),", ML, y);
+  y += 5;
+  doc.text("________________________________ Police Station,", ML, y);
+  y += 5;
+  doc.text("________________________________ District,", ML, y);
+  y += 5;
+  doc.text("________________________________ State.", ML, y);
+  y += 10;
+
+  // ── FROM ──
+  doc.setFont("helvetica", "bold");
+  doc.text("From,", ML, y);
+  y += 6;
+  doc.setFont("helvetica", "normal");
+  doc.text(`${data.name || "____________________________"}`, ML, y);
+  y += 5;
+  doc.text(`${data.district || "____________"}, ${data.state || "____________"}`, ML, y);
+  y += 5;
+  doc.text(`Phone: ${data.phone ? `+91 ${data.phone}` : "___________________"}`, ML, y);
+  y += 5;
+  doc.text(`Email: ${data.email || "____________________________"}`, ML, y);
+  y += 10;
+
+  // ── SUBJECT ──
+  line(y);
+  y += 6;
+  doc.setFont("helvetica", "bold");
+  doc.text("SUBJECT:", ML, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(
+    `Complaint regarding ${CRIME_LABELS[data.category] || "cybercrime"} — ${data.subcategory || ""}`.trim(),
+    ML + 18,
+    y
+  );
+  y += 5;
+  doc.text(`Tracking ID: CC-${trackingId}`, ML + 18, y);
+  y += 10;
+
+  // ── RESPECTED SIR/MADAM ──
+  doc.setFont("helvetica", "normal");
+  const salutation = "Respected Sir/Madam,";
+  doc.text(salutation, ML, y);
+  y += 7;
+
+  const introLines = doc.splitTextToSize(
+    `I, ${data.name || "the undersigned"}, son/daughter of ________________, residing at ${data.district || "____________"}, ${data.state || "____________"}, do hereby solemnly affirm and state as follows:`,
+    CW
+  );
+  doc.text(introLines, ML, y);
+  y += introLines.length * 5 + 8;
+
+  // ── SECTION A: INCIDENT ──
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("A. DETAILS OF THE INCIDENT", ML, y);
   y += 7;
 
   doc.setFontSize(10);
-  doc.setTextColor(60);
-  const cat = CRIME_CATEGORIES.find((c) => c.id === data.category);
-  const incDetails: [string, string][] = [
-    ["Crime Category", CRIME_LABELS[data.category] || data.category],
-    ["Sub-Category", data.subcategory || "—"],
-    ["Date of Incident", formatDate(data.date)],
-    ["Time of Incident", data.time || "Not specified"],
-    ["Location/Platform", data.location || "Not specified"],
-    ["Financial Loss", data.lostMoney ? `₹${Number(data.amount).toLocaleString("en-IN")}` : "No financial loss"],
+  doc.setFont("helvetica", "normal");
+  const incidentFields: [string, string][] = [
+    ["1. Date of Incident", fmtDate(data.date)],
+    ["2. Time of Incident", data.time || "___:___ AM/PM"],
+    ["3. Place/Platform", data.location || "________________________________"],
+    ["4. Crime Category", CRIME_LABELS[data.category] || data.category],
+    ["5. Sub-Category", data.subcategory || "________________________________"],
   ];
 
-  incDetails.forEach(([label, value]) => {
+  incidentFields.forEach(([label, val]) => {
     doc.setFont("helvetica", "bold");
-    doc.text(`${label}:`, margin, y);
+    doc.text(label + ":", ML + 2, y);
     doc.setFont("helvetica", "normal");
-    doc.text(value, margin + 35, y);
+    doc.text(val, ML + 50, y);
     y += 6;
   });
 
-  y += 2;
-  doc.setFont("helvetica", "bold");
-  doc.text("Description of Incident:", margin, y);
-  y += 5;
-  doc.setFont("helvetica", "normal");
-  const descLines = doc.splitTextToSize(data.description || "—", contentW);
-  doc.text(descLines, margin, y);
-  y += descLines.length * 5 + 4;
+  if (data.lostMoney) {
+    doc.setFont("helvetica", "bold");
+    doc.text("6. Amount Lost (INR):", ML + 2, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      `Rs. ${Number(data.amount).toLocaleString("en-IN")}/- (${amountWords(Number(data.amount))})`,
+      ML + 50,
+      y
+    );
+    y += 6;
+  }
 
-  // ── Applicable Laws ──
-  checkPage(50);
-  doc.setFontSize(13);
-  doc.setTextColor(30);
-  doc.text("3. APPLICABLE LAWS & SECTIONS", margin, y);
+  y += 3;
+
+  // ── SECTION B: DESCRIPTION ──
+  checkPage(40);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("B. NARRATIVE OF THE INCIDENT", ML, y);
+  y += 7;
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  const descLines = doc.splitTextToSize(
+    data.description || "________________________________________________________________________",
+    CW
+  );
+  doc.text(descLines, ML, y);
+  y += descLines.length * 5 + 8;
+
+  // ── SECTION C: APPLICABLE LAWS ──
+  checkPage(40);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("C. APPLICABLE LAWS AND SECTIONS", ML, y);
   y += 7;
 
   doc.setFontSize(9);
-  doc.setTextColor(100);
-  doc.text("The following sections may apply based on the crime category:", margin, y);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(80);
+  doc.text("The following provisions of law are attracted in the present case:", ML, y);
   y += 6;
 
   const sections = BNS_SECTIONS[data.category] || BNS_SECTIONS.other;
 
-  doc.setFontSize(10);
-  doc.setTextColor(60);
-  sections.forEach(({ section, description }) => {
-    checkPage(10);
-    doc.setFont("helvetica", "bold");
-    doc.text(section, margin + 2, y);
-    doc.setFont("helvetica", "normal");
-    doc.text(`— ${description}`, margin + 35, y);
-    y += 6;
-  });
-  y += 4;
-
-  // ── Evidence ──
-  checkPage(30);
-  doc.setFontSize(13);
+  // Table header
+  doc.setFillColor(245, 245, 245);
+  doc.rect(ML, y, CW, 7, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
   doc.setTextColor(30);
-  doc.text("4. EVIDENCE & DOCUMENTS", margin, y);
+  doc.text("Section", ML + 2, y + 5);
+  doc.text("Description", ML + 30, y + 5);
+  y += 7;
+
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(50);
+  sections.forEach(({ section, description }) => {
+    checkPage(8);
+    doc.text(section, ML + 2, y + 4);
+    const descLines = doc.splitTextToSize(description, CW - 30);
+    doc.text(descLines[0], ML + 30, y + 4);
+    y += 7;
+  });
+  y += 6;
+
+  // ── SECTION D: EVIDENCE ──
+  checkPage(25);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(30);
+  doc.text("D. EVIDENCE AND DOCUMENTS", ML, y);
   y += 7;
 
   doc.setFontSize(10);
-  doc.setTextColor(60);
+  doc.setFont("helvetica", "normal");
   if (data.files.length > 0) {
-    doc.text(`${data.files.length} file(s) attached:`, margin, y);
-    y += 5;
-    data.files.forEach((f) => {
-      doc.text(`• ${f.name} (${(f.size / 1024).toFixed(1)} KB)`, margin + 4, y);
+    doc.text(`The following ${data.files.length} document(s) are enclosed herewith:`, ML, y);
+    y += 6;
+    data.files.forEach((f, i) => {
+      doc.text(`${i + 1}. ${f.name} (${(f.size / 1024).toFixed(1)} KB)`, ML + 4, y);
       y += 5;
     });
   } else {
-    doc.text("No files attached. Attach evidence before filing.", margin, y);
+    doc.text("Documents to be attached separately.", ML, y);
     y += 5;
   }
 
   if (data.notes) {
     y += 2;
     doc.setFont("helvetica", "bold");
-    doc.text("Additional Notes:", margin, y);
+    doc.text("Additional Notes:", ML, y);
     y += 5;
     doc.setFont("helvetica", "normal");
-    const noteLines = doc.splitTextToSize(data.notes, contentW);
-    doc.text(noteLines, margin, y);
+    const noteLines = doc.splitTextToSize(data.notes, CW);
+    doc.text(noteLines, ML, y);
     y += noteLines.length * 5 + 4;
   }
   y += 4;
 
-  // ── Legal Declaration ──
-  checkPage(40);
-  doc.setFontSize(13);
-  doc.setTextColor(30);
-  doc.text("5. LEGAL DECLARATION", margin, y);
+  // ── SECTION E: PRAYER ──
+  checkPage(50);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("E. PRAYER / RELIEF SOUGHT", ML, y);
   y += 7;
 
-  doc.setFontSize(9);
-  doc.setTextColor(60);
-  const declaration = [
-    "I hereby declare that the information provided above is true and accurate to the best of my knowledge and belief.",
-    "I understand that filing a false complaint is punishable under Section 217 of the Bharatiya Nyaya Sanhita (BNS), 2023",
-    "(formerly Section 182 of the Indian Penal Code) which provides for imprisonment up to 6 months, or fine, or both.",
-    "",
-    "I further understand that this is a preparatory document and does not constitute a formal FIR or complaint.",
-    "To file a formal complaint, I must:",
-    "  (a) Visit https://www.cybercrime.gov.in and submit using the Tracking ID above, OR",
-    "  (b) Visit the nearest Cyber Crime Police Station with this document and evidence, OR",
-    "  (c) Call 1930 (National Cyber Crime Helpline) for immediate assistance.",
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  const prayers = [
+    "That the above complaint may be registered and investigated in accordance with law.",
+    "That the accused may be traced and prosecuted under the applicable provisions of BNS and IT Act.",
+    data.lostMoney
+      ? "That urgent action may be taken to freeze the fraudulent accounts and recover the lost amount under the provisions of Section 43A of the IT Act and relevant banking regulations."
+      : "That necessary action may be taken as per law.",
+    "That the complainant may be informed of the progress of investigation from time to time.",
   ];
 
-  declaration.forEach((line) => {
-    checkPage(6);
-    const lines = doc.splitTextToSize(line, contentW);
-    doc.text(lines, margin, y);
-    y += lines.length * 4.5 + 1;
+  prayers.forEach((p, i) => {
+    checkPage(8);
+    const pLines = doc.splitTextToSize(`${i + 1}. ${p}`, CW);
+    doc.text(pLines, ML, y);
+    y += pLines.length * 5 + 3;
   });
   y += 6;
 
-  // ── Signature ──
-  checkPage(25);
-  addLine();
-  doc.setFontSize(10);
-  doc.setTextColor(60);
-  doc.text("Complainant Signature:", margin, y + 10);
-  doc.text("_________________________", margin, y + 18);
-  doc.text(`Date: ${new Date().toLocaleDateString("en-IN")}`, pageW - margin, y + 18, { align: "right" });
-  y += 28;
+  // ── DECLARATION ──
+  checkPage(35);
+  line(y);
+  y += 6;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("DECLARATION", ML, y);
+  y += 7;
 
-  // ── Footer ──
-  addLine();
-  doc.setFontSize(8);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  const decl = doc.splitTextToSize(
+    "I hereby declare that the contents of this application are true and correct to the best of my knowledge and belief. I am aware that making a false complaint is an offence punishable under Section 217 of the Bharatiya Nyaya Sanhita, 2023 (formerly Section 182 of the Indian Penal Code), which entails imprisonment up to six months, or fine up to Rs. 1,000, or both.",
+    CW
+  );
+  doc.text(decl, ML, y);
+  y += decl.length * 5 + 12;
+
+  // ── SIGNATURE BLOCK ──
+  checkPage(35);
+
+  // Left: Complainant
+  doc.setFont("helvetica", "bold");
+  doc.text("Complainant", ML, y);
+  y += 20;
+  line(y);
+  y += 4;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text(`Name: ${data.name || ""}`, ML, y);
+  y += 5;
+  doc.text(`Date: ___/___/______`, ML, y);
+  y += 10;
+
+  // Right: Police Station
+  const rx = W / 2 + 10;
+  let ry = y - 30;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("For Office Use Only", rx, ry);
+  ry += 8;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text("FIR No.: _______________", rx, ry);
+  ry += 5;
+  doc.text("Date of Registration: ___/___/______", rx, ry);
+  ry += 5;
+  doc.text("Investigating Officer: _______________", rx, ry);
+  ry += 5;
+  doc.text("Station Stamp & Seal:", rx, ry);
+  ry += 20;
+  line(ry);
+  ry += 4;
+  doc.text("SHO Signature: _______________", rx, ry);
+
+  // ── BOTTOM BORDER ──
+  doc.setDrawColor(37, 99, 235);
+  doc.setLineWidth(0.8);
+  doc.line(15, H - 12, W - 15, H - 12);
+  doc.setLineWidth(0.3);
+  doc.line(15, H - 14, W - 15, H - 14);
+
+  // ── FOOTER ──
+  doc.setFontSize(7);
   doc.setTextColor(150);
   doc.text(
-    "This document was generated by CyberComplaint (cybercomplaint.in) — an independent tool not affiliated with any government body.",
-    margin,
-    y
+    "Generated by CyberComplaint — An independent tool not affiliated with any government body. | cybercrime.gov.in | 1930",
+    W / 2,
+    H - 8,
+    { align: "center" }
   );
-  y += 4;
-  doc.text("Official portal: https://www.cybercrime.gov.in | Helpline: 1930", margin, y);
 
-  // ── Save ──
-  doc.save(`CyberComplaint-${trackingId}.pdf`);
+  doc.save(`CyberComplaint-Application-${trackingId}.pdf`);
+}
+
+function amountWords(n: number): string {
+  if (n === 0) return "Zero";
+  const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+    "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+  const convert = (num: number): string => {
+    if (num < 20) return ones[num];
+    if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? " " + ones[num % 10] : "");
+    if (num < 1000) return ones[Math.floor(num / 100)] + " Hundred" + (num % 100 ? " and " + convert(num % 100) : "");
+    if (num < 100000) return convert(Math.floor(num / 1000)) + " Thousand" + (num % 1000 ? " " + convert(num % 1000) : "");
+    if (num < 10000000) return convert(Math.floor(num / 100000)) + " Lakh" + (num % 100000 ? " " + convert(num % 100000) : "");
+    return convert(Math.floor(num / 10000000)) + " Crore" + (num % 10000000 ? " " + convert(num % 10000000) : "");
+  };
+
+  return convert(n) + " Only";
 }
