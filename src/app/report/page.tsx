@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useReportData } from "@/lib/use-report-data";
 import { Kavach } from "@/components/Kavach";
@@ -11,11 +10,7 @@ export default function ReportPage() {
   const router = useRouter();
   const { data } = useReportData();
 
-  useEffect(() => {
-    if (data.category) {
-      router.replace("/report/category");
-    }
-  }, [data.category, router]);
+  const hasDraft = !!data.category;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[70dvh] text-center">
@@ -33,7 +28,7 @@ export default function ReportPage() {
         transition={{ delay: 0.2 }}
         className="text-3xl sm:text-4xl font-bold tracking-tight mt-6 mb-3"
       >
-        Let&apos;s file your complaint
+        {hasDraft ? "Continue your complaint" : "Let's file your complaint"}
       </motion.h1>
 
       <motion.p
@@ -42,8 +37,9 @@ export default function ReportPage() {
         transition={{ delay: 0.3 }}
         className="text-muted-foreground max-w-md mb-8"
       >
-        Kavach will guide you through each step. Your progress auto-saves,
-        so you can close the browser and come back anytime.
+        {hasDraft
+          ? "You have a draft saved. Pick up where you left off."
+          : "Kavach will guide you through each step. Your progress auto-saves, so you can close the browser and come back anytime."}
       </motion.p>
 
       <motion.div
@@ -73,7 +69,7 @@ export default function ReportPage() {
         onClick={() => router.push("/report/category")}
         className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 rounded-xl text-lg font-medium transition-all shadow-lg shadow-primary/20 group flex items-center gap-2"
       >
-        Start
+        {hasDraft ? "Continue" : "Start"}
         <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
       </motion.button>
     </div>
