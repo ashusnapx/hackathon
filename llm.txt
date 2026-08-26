@@ -1,0 +1,77 @@
+# CyberComplaint - LLM Context File
+# Last updated: 2026-08-26
+
+## Project Overview
+CyberComplaint is a Next.js web application designed to help users in India file cybercrime complaints. It provides a guided, step-by-step interface for reporting various types of cybercrime including UPI fraud, online scams, and other digital crimes.
+
+## Tech Stack
+- **Framework**: Next.js 15 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS v4
+- **UI Components**: shadcn/ui
+- **Icons**: Lucide React
+- **Fonts**: Inter, DM Serif Display, JetBrains Mono
+- **State Management**: React hooks + localStorage for auto-save
+
+## Project Structure
+```
+src/
+├── app/
+│   ├── layout.tsx          # Root layout with fonts, metadata, grainy overlay
+│   ├── page.tsx            # Landing page
+│   ├── globals.css         # Global styles
+│   └── favicon.svg         # SVG favicon (shield with lock)
+├── components/
+│   ├── Logo.tsx            # Reusable logo component
+│   ├── PortalMockup.tsx    # Mockup component for landing page
+│   ├── sections/
+│   │   ├── Navbar.tsx      # Fixed navigation with scroll effects
+│   │   ├── Hero.tsx        # Hero section
+│   │   ├── Problem.tsx     # Problem statement section
+│   │   ├── Benefits.tsx    # Benefits/features section
+│   │   ├── HowItWorks.tsx  # How it works section
+│   │   ├── FAQ.tsx         # Frequently asked questions
+│   │   └── Footer.tsx      # Footer section
+│   └── ui/                 # shadcn/ui components
+│       ├── button.tsx
+│       ├── card.tsx
+│       ├── badge.tsx
+│       ├── accordion.tsx
+│       └── separator.tsx
+└── lib/
+    └── constants.ts        # App constants (nav items, etc.)
+```
+
+## Key Features
+1. **Auto-save**: Form data persists in localStorage
+2. **Mobile-first**: Designed for users on mobile devices
+3. **Guided flow**: Step-by-step complaint filing process
+4. **Dark theme**: Modern dark UI with indigo/violet accent colors
+
+## Design Tokens
+- **Primary**: #4F8EFF (blue)
+- **Accent**: #6366f1 → #8b5cf6 (indigo to violet gradient)
+- **Background**: #06060A (near black)
+- **Surface**: #0D0D12 (dark gray)
+- **Border**: #1E1E26 (subtle gray)
+- **Text**: #8A8A95 (muted), white (primary)
+
+## Components
+- **Logo**: Reusable component with size variants (sm/md/lg)
+- **Grainy overlay**: Subtle noise texture on body for visual depth
+- **Antialiased**: Font smoothing enabled for crisp text
+
+## LLM Instructions
+- Use Tailwind CSS classes for styling
+- Follow the existing color palette
+- Maintain mobile-first responsive design
+- Keep accessibility in mind (ARIA labels, semantic HTML)
+- Auto-save form data to localStorage
+- Use "use client" directive for interactive components
+
+## Recent Changes (2026-08-26)
+- Added SVG favicon with shield and lock design
+- Created reusable Logo component with size variants
+- Updated Navbar to use new Logo component
+- Added grainy texture overlay to layout
+- Ensured antialiased font rendering
