@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const STORAGE_KEY = "cybercomplaint-draft";
 
@@ -40,16 +40,27 @@ const INITIAL_DATA: ReportData = {
   district: "",
 };
 
+function save(data: ReportData) {
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ data, savedAt: new Date().toISOString() })
+  );
+}
+
 export function useReportData() {
   const [data, setData] = useState<ReportData>(INITIAL_DATA);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const dataRef = useRef(data);
+  dataRef.current = data;
 
+  // Load from localStorage on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         setData(parsed.data);
+        dataRef.current = parsed.data;
         setSavedAt(parsed.savedAt);
       }
     } catch {
@@ -57,23 +68,33 @@ export function useReportData() {
     }
   }, []);
 
+  // Save to localStorage on change (debounced)
   useEffect(() => {
     const timeout = setTimeout(() => {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ data, savedAt: new Date().toISOString() })
-      );
+      save(data);
       setSavedAt(new Date().toISOString());
-    }, 500);
+    }, 300);
     return () => clearTimeout(timeout);
   }, [data]);
 
+  // Flush immediately on unmount
+  useEffect(() => {
+    return () => {
+      save(dataRef.current);
+    };
+  }, []);
+
   const updateData = useCallback((patch: Partial<ReportData>) => {
-    setData((prev) => ({ ...prev, ...patch }));
+    setData((prev) => {
+      const next = { ...prev, ...patch };
+      dataRef.current = next;
+      return next;
+    });
   }, []);
 
   const resetData = useCallback(() => {
     setData(INITIAL_DATA);
+    dataRef.current = INITIAL_DATA;
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
