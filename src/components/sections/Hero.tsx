@@ -3,18 +3,19 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Phone, Shield, Clock, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { Kavach } from "@/components/Kavach";
 
 export function Hero() {
   return (
-    <section className="relative min-h-[100dvh] flex items-center">
-      {/* Background - subtle gradient mesh */}
+    <section className="relative min-h-[100dvh] flex items-center overflow-hidden">
+      {/* Background */}
       <div className="absolute inset-0 grid-bg" />
       <div className="absolute top-20 right-1/4 w-[500px] h-[500px] bg-blue-50 rounded-full blur-[100px] opacity-60" />
       <div className="absolute bottom-20 left-1/3 w-[400px] h-[400px] bg-purple-50 rounded-full blur-[80px] opacity-40" />
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-24 w-full">
         <div className="max-w-3xl mx-auto text-center">
-          {/* Emergency callout - subtle */}
+          {/* Emergency callout */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -26,7 +27,16 @@ export function Hero() {
             <span className="font-mono font-bold">1930</span> now
           </motion.div>
 
-          {/* Headline - bold, minimal */}
+          {/* Headline with Kavach */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.05 }}
+            className="flex justify-center mb-4"
+          >
+            <Kavach mood="happy" size="lg" />
+          </motion.div>
+
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -38,7 +48,6 @@ export function Hero() {
             <span className="text-gradient">complaint in 5 min.</span>
           </motion.h1>
 
-          {/* Subheadline - one line only */}
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -67,7 +76,7 @@ export function Hero() {
             </a>
           </motion.div>
 
-          {/* Trust signals - minimal */}
+          {/* Trust signals */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

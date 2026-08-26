@@ -1,4 +1,5 @@
 import { FileText, Send, CheckCircle } from "lucide-react";
+import { Kavach } from "@/components/Kavach";
 
 const steps = [
   {
@@ -6,18 +7,21 @@ const steps = [
     number: "01",
     title: "Answer simple questions",
     description: "We ask in plain language. No legal jargon.",
+    mood: "happy" as const,
   },
   {
     icon: Send,
     number: "02",
     title: "We file it for you",
     description: "Auto-formats for the government portal. No copy-paste.",
+    mood: "thinking" as const,
   },
   {
     icon: CheckCircle,
     number: "03",
     title: "Get your receipt",
     description: "Download PDF. Track status. Know your next steps.",
+    mood: "celebrating" as const,
   },
 ];
 
@@ -35,21 +39,21 @@ export function HowItWorks() {
           </p>
         </div>
 
-        {/* Steps - horizontal */}
+        {/* Steps */}
         <div className="grid sm:grid-cols-3 gap-8 lg:gap-12">
           {steps.map((step, i) => {
             const Icon = step.icon;
             return (
               <div key={step.number} className="relative group">
-                {/* Connector line - desktop only */}
+                {/* Connector line */}
                 {i < steps.length - 1 && (
                   <div className="hidden sm:block absolute top-8 left-[calc(50%+40px)] right-[calc(-50%+40px)] h-[1px] bg-border" />
                 )}
 
                 <div className="relative text-center">
-                  {/* Icon */}
-                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6 group-hover:bg-primary/15 transition-colors">
-                    <Icon className="w-7 h-7 text-primary" />
+                  {/* Kavach mascot */}
+                  <div className="flex justify-center mb-4">
+                    <Kavach mood={step.mood} size="sm" />
                   </div>
 
                   {/* Step number */}
