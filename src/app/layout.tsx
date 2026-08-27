@@ -1,58 +1,105 @@
-import type { Metadata } from "next";
-import { Inter, DM_Serif_Display, JetBrains_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
+import {
+  Inter,
+  Instrument_Serif,
+  JetBrains_Mono,
+  Noto_Sans_Arabic,
+  Noto_Sans_Bengali,
+  Noto_Sans_Devanagari,
+  Noto_Sans_Gujarati,
+  Noto_Sans_Gurmukhi,
+  Noto_Sans_Kannada,
+  Noto_Sans_Malayalam,
+  Noto_Sans_Meetei_Mayek,
+  Noto_Sans_Ol_Chiki,
+  Noto_Sans_Oriya,
+  Noto_Sans_Tamil,
+  Noto_Sans_Telugu,
+} from "next/font/google";
 import "./globals.css";
-import { SmoothScrolling } from "@/components/SmoothScrolling";
+import { I18nProvider } from "@/lib/i18n/context";
+import { LANG_COOKIE, SCRIPT_CLASS, getLanguage } from "@/lib/i18n/languages";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
+const ui = Inter({ variable: "--font-ui", subsets: ["latin"], display: "swap" });
+const serif = Instrument_Serif({ variable: "--font-serif", weight: "400", subsets: ["latin"], display: "swap" });
+const mono = JetBrains_Mono({ variable: "--font-mono-ui", subsets: ["latin"], display: "swap" });
 
-const dmSerif = DM_Serif_Display({
-  variable: "--font-dm-serif",
-  weight: "400",
-  subsets: ["latin"],
-});
+/**
+ * One Noto family per script. `preload: false` matters: a citizen reading in
+ * Tamil should not pay for the Malayalam font, and the browser only fetches a
+ * family once a rule actually matches rendered text.
+ */
+const devanagari = Noto_Sans_Devanagari({ variable: "--font-devanagari", subsets: ["devanagari"], weight: ["400", "600"], display: "swap", preload: false });
+const bengali = Noto_Sans_Bengali({ variable: "--font-bengali", subsets: ["bengali"], weight: ["400", "600"], display: "swap", preload: false });
+const gujarati = Noto_Sans_Gujarati({ variable: "--font-gujarati", subsets: ["gujarati"], weight: ["400", "600"], display: "swap", preload: false });
+const gurmukhi = Noto_Sans_Gurmukhi({ variable: "--font-gurmukhi", subsets: ["gurmukhi"], weight: ["400", "600"], display: "swap", preload: false });
+const kannada = Noto_Sans_Kannada({ variable: "--font-kannada", subsets: ["kannada"], weight: ["400", "600"], display: "swap", preload: false });
+const malayalam = Noto_Sans_Malayalam({ variable: "--font-malayalam", subsets: ["malayalam"], weight: ["400", "600"], display: "swap", preload: false });
+const odia = Noto_Sans_Oriya({ variable: "--font-odia", subsets: ["oriya"], weight: ["400", "600"], display: "swap", preload: false });
+const tamil = Noto_Sans_Tamil({ variable: "--font-tamil", subsets: ["tamil"], weight: ["400", "600"], display: "swap", preload: false });
+const telugu = Noto_Sans_Telugu({ variable: "--font-telugu", subsets: ["telugu"], weight: ["400", "600"], display: "swap", preload: false });
+const arabic = Noto_Sans_Arabic({ variable: "--font-arabic", subsets: ["arabic"], weight: ["400", "600"], display: "swap", preload: false });
+const meetei = Noto_Sans_Meetei_Mayek({ variable: "--font-meetei", subsets: ["meetei-mayek"], weight: ["400", "600"], display: "swap", preload: false });
+const olchiki = Noto_Sans_Ol_Chiki({ variable: "--font-olchiki", subsets: ["ol-chiki"], weight: ["400", "600"], display: "swap", preload: false });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-});
+const FONT_VARS = [
+  ui, serif, mono, devanagari, bengali, gujarati, gurmukhi, kannada,
+  malayalam, odia, tamil, telugu, arabic, meetei, olchiki,
+]
+  .map((f) => f.variable)
+  .join(" ");
 
 export const metadata: Metadata = {
-  title: "CyberComplaint — Report Cybercrime, Guided",
+  title: {
+    default: "Kavach — the first hour, and the ninety days after",
+    template: "%s · Kavach",
+  },
   description:
-    "A simpler way to file cybercrime complaints in India. Auto-saved, guided, step-by-step. Built for stressed users on mobile.",
-  keywords: [
-    "cybercrime",
-    "india",
-    "complaint",
-    "cyber crime",
-    "report",
-    "fraud",
-    "UPI fraud",
-    "online scam",
-  ],
+    "Report cybercrime in India in any of 23 languages. Kavach turns what you say into the NCRP complaint, the letter to your bank and the FIR application — and counts down all nine legal deadlines nobody tells victims about.",
+  applicationName: "Kavach",
+  keywords: ["cybercrime", "India", "NCRP", "1930", "cyber fraud", "UPI fraud", "FIR", "RBI", "digital arrest"],
   openGraph: {
-    title: "CyberComplaint — Report Cybercrime, Guided",
+    title: "Kavach — the first hour, and the ninety days after",
     description:
-      "A simpler way to file cybercrime complaints in India. Auto-saved, guided, step-by-step.",
+      "Speak in your language. We write the complaint, the bank letter and the FIR application, and track every deadline.",
     type: "website",
   },
+  robots: { index: true, follow: true },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fbfaf7" },
+    { media: "(prefers-color-scheme: dark)", color: "#14120f" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Read the language on the server so the first paint is already correct —
+  // no flash of English for someone who chose Tamil last week.
+  const stored = (await cookies()).get(LANG_COOKIE)?.value;
+  const lang = getLanguage(stored);
+
   return (
     <html
-      lang="en"
-      className={`${inter.variable} ${dmSerif.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      lang={lang.code}
+      dir={lang.dir}
+      data-script={lang.script}
+      className={`${FONT_VARS} ${SCRIPT_CLASS[lang.script]}`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">
-        <SmoothScrolling>{children}</SmoothScrolling>
+      <body className="min-h-dvh antialiased">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:bg-ink focus:text-paper focus:px-4 focus:py-2 focus:rounded"
+        >
+          Skip to content
+        </a>
+        <I18nProvider initial={lang.code}>{children}</I18nProvider>
       </body>
     </html>
   );

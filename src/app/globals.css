@@ -1,195 +1,313 @@
 @import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* ══════════════════════════════════════════════════════════════════════════
+   Kavach design system — "the case file"
+
+   The visual metaphor is a well-typeset legal dossier, not a SaaS dashboard.
+   Warm paper rather than clinical white, hairline rules rather than boxes and
+   shadows, an editorial serif for voice, and monospaced numerals for anything a
+   citizen may have to read down a phone line to a police officer.
+
+   One accent colour, used only for urgency. If everything is highlighted,
+   a person in distress cannot find the one thing that matters.
+   ══════════════════════════════════════════════════════════════════════════ */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-mono);
-  --font-heading: var(--font-dm-serif);
-  --font-display: var(--font-dm-serif);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-surface: var(--surface);
-  --color-surface-elevated: var(--surface-elevated);
-  --color-accent-blue: var(--accent-blue);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --color-paper: var(--paper);
+  --color-raised: var(--raised);
+  --color-sunk: var(--sunk);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-urgent: var(--urgent);
+  --color-urgent-soft: var(--urgent-soft);
+  --color-urgent-ink: var(--urgent-ink);
+  --color-done: var(--done);
+  --color-done-soft: var(--done-soft);
+  --color-wait: var(--wait);
+  --color-wait-soft: var(--wait-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --font-sans: var(--font-ui), var(--font-indic), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-serif), var(--font-indic), Georgia, serif;
+  --font-mono: var(--font-mono-ui), ui-monospace, SFMono-Regular, monospace;
+
+  --radius-card: 4px;
 }
 
 :root {
-  --background: #FAFAFA;
-  --foreground: #1A1A2E;
-  --card: #FFFFFF;
-  --card-foreground: #1A1A2E;
-  --popover: #FFFFFF;
-  --popover-foreground: #1A1A2E;
-  --primary: #2563EB;
-  --primary-foreground: #FFFFFF;
-  --secondary: #F3F4F6;
-  --secondary-foreground: #1A1A2E;
-  --muted: #F3F4F6;
-  --muted-foreground: #6B7280;
-  --accent: #F3F4F6;
-  --accent-foreground: #1A1A2E;
-  --destructive: #DC2626;
-  --border: #E5E7EB;
-  --input: #E5E7EB;
-  --ring: #2563EB;
-  --surface: #FFFFFF;
-  --surface-elevated: #F9FAFB;
-  --accent-blue: #2563EB;
-  --success: #16A34A;
-  --warning: #F59E0B;
-  --chart-1: #2563EB;
-  --chart-2: #16A34A;
-  --chart-3: #F59E0B;
-  --chart-4: #DC2626;
-  --chart-5: #8B5CF6;
-  --radius: 0.75rem;
+  --paper: #fbfaf7;
+  --raised: #ffffff;
+  --sunk: #f4f2ec;
+  --ink: #17140f;
+  --ink-2: #56504a;
+  --ink-3: #8b8378;
+  --rule: #e5e0d6;
+  --rule-strong: #cec7ba;
+
+  --urgent: #c1440e;
+  --urgent-soft: #fdf0e9;
+  --urgent-ink: #8c3009;
+
+  --done: #14713b;
+  --done-soft: #ecf6ef;
+
+  --wait: #8a6d1f;
+  --wait-soft: #fbf5e4;
+
+  --info: #1f4b99;
+  --info-soft: #eef2fb;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #14120f;
+    --raised: #1c1916;
+    --sunk: #100e0c;
+    --ink: #f4f1ea;
+    --ink-2: #b3aca1;
+    --ink-3: #837c72;
+    --rule: #2e2a25;
+    --rule-strong: #453f38;
+
+    --urgent: #f97a45;
+    --urgent-soft: #2c150c;
+    --urgent-ink: #ffb694;
+
+    --done: #4fbc7c;
+    --done-soft: #0f2418;
+
+    --wait: #d6b357;
+    --wait-soft: #251e0c;
+
+    --info: #7ba3ea;
+    --info-soft: #101a2c;
+
+    color-scheme: dark;
+  }
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--rule);
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+
   html {
-    @apply font-sans scroll-smooth;
+    font-family: var(--font-sans);
+    -webkit-text-size-adjust: 100%;
   }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    /* 17px: the guide's 16px floor plus a little, because a lot of these users
+       are reading in daylight on a cracked screen. */
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--urgent);
+    color: #fff;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--urgent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    line-height: 1.08;
+    text-wrap: balance;
+  }
+
+  /* Indic scripts have no italic and much taller line boxes; a serif display
+     face designed for Latin makes them worse, not better. */
+  :root[data-script]:not([data-script="latin"]) h1,
+  :root[data-script]:not([data-script="latin"]) h2,
+  :root[data-script]:not([data-script="latin"]) h3 {
+    font-family: var(--font-indic), var(--font-ui), sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+  }
+
+  :root[data-script]:not([data-script="latin"]) body {
+    line-height: 1.8;
+  }
+
+  /* Devanagari, Bengali and the rest stack matras above and below the line.
+     Latin line-heights clip them, so every heading gets more room. */
+  :root[data-script]:not([data-script="latin"]) h1 { line-height: 1.45; }
+  :root[data-script]:not([data-script="latin"]) h2,
+  :root[data-script]:not([data-script="latin"]) h3 { line-height: 1.4; }
+
+  p { text-wrap: pretty; }
+
+  /* Anchor jumps must clear the sticky header, or the heading lands under it. */
+  section[id] { scroll-margin-top: 5rem; }
 }
 
-/* Noise texture overlay - light mode subtle */
-.noise-bg::before {
+/* ── Script-specific font stacks ─────────────────────────────────────────── */
+.script-latin      { --font-indic: var(--font-ui); }
+.script-devanagari { --font-indic: var(--font-devanagari); }
+.script-bengali    { --font-indic: var(--font-bengali); }
+.script-gujarati   { --font-indic: var(--font-gujarati); }
+.script-gurmukhi   { --font-indic: var(--font-gurmukhi); }
+.script-kannada    { --font-indic: var(--font-kannada); }
+.script-malayalam  { --font-indic: var(--font-malayalam); }
+.script-odia       { --font-indic: var(--font-odia); }
+.script-tamil      { --font-indic: var(--font-tamil); }
+.script-telugu     { --font-indic: var(--font-telugu); }
+.script-arabic     { --font-indic: var(--font-arabic); }
+.script-meetei     { --font-indic: var(--font-meetei); }
+.script-olchiki    { --font-indic: var(--font-olchiki); }
+
+/* ── Primitives ──────────────────────────────────────────────────────────── */
+
+/* The small-caps mono label that runs above every section, like a file tab. */
+.label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/*
+ * None of that survives an Indic script. Letter-spacing splits conjuncts, there
+ * is no uppercase to transform to, and the mono face has no Devanagari at all —
+ * so the label reverts to a plain small caption and keeps only its colour.
+ */
+:root[data-script]:not([data-script="latin"]) .label {
+  font-family: var(--font-indic), var(--font-ui), sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 600;
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Status pills. These carry translated words, not just digits, so they follow
+   the same script-aware rules as .label rather than staying monospaced. */
+.chip {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+:root[data-script]:not([data-script="latin"]) .chip {
+  font-family: var(--font-indic), var(--font-ui), sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 600;
+}
+
+/* Paper stock: a sheet, not a floating card. */
+.sheet {
+  background: var(--raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+}
+
+/* A ruled line that fades out, used to separate without shouting. */
+.hairline {
+  height: 1px;
+  background: linear-gradient(90deg, var(--rule-strong), var(--rule) 40%, transparent);
+}
+
+/* The faint ledger grid behind the hero — evokes ruled paper at low opacity. */
+.ledger {
+  background-image:
+    linear-gradient(var(--rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--rule) 1px, transparent 1px);
+  background-size: 100% 2.4rem, 2.4rem 100%;
+  opacity: 0.5;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 75%);
+}
+
+/* Underline that grows on hover — used for text links in prose. */
+.link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--rule-strong);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: text-decoration-color 150ms;
+}
+.link:hover { text-decoration-color: var(--urgent); }
+
+/* ── Motion ──────────────────────────────────────────────────────────────── */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.rise { animation: rise 320ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--urgent) 45%, transparent); }
+  70%  { box-shadow: 0 0 0 14px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.pulse-ring { animation: pulse-ring 2.2s ease-out infinite; }
+
+@keyframes tick {
+  from { opacity: 0.45; }
+  to   { opacity: 1; }
+}
+.tick { animation: tick 1s steps(2, jump-none) infinite alternate; }
+
+@keyframes sweep {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(300%); }
+}
+.sweep::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.02'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  pointer-events: none;
-  z-index: 1;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--urgent) 18%, transparent), transparent);
+  animation: sweep 1.6s ease-in-out infinite;
 }
 
-/* Text gradient */
-.text-gradient {
-  background: linear-gradient(135deg, #2563EB 0%, #7C3AED 50%, #16A34A 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+/* Under stress, motion is noise. Everything here is decoration except the
+   countdown, which is information. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
-.text-gradient-warm {
-  background: linear-gradient(135deg, #DC2626 0%, #F59E0B 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--sunk); }
+::-webkit-scrollbar-thumb { background: var(--rule-strong); border: 3px solid var(--sunk); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
 
-/* Subtle grid background */
-.grid-bg {
-  background-image: 
-    linear-gradient(rgba(37, 99, 235, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(37, 99, 235, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-}
-
-/* Floating animation */
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
-}
-
-.float-animation {
-  animation: float 5s ease-in-out infinite;
-}
-
-/* Subtle pulse */
-@keyframes subtle-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.subtle-pulse {
-  animation: subtle-pulse 2s ease-in-out infinite;
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #FAFAFA;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #D1D5DB;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #9CA3AF;
-}
-
-/* Selection */
-::selection {
-  background: rgba(37, 99, 235, 0.15);
-  color: #1A1A2E;
-}
-
-/* Lenis smooth scroll */
-html.lenis,
-html.lenis body {
-  height: auto;
-}
-
-.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
-}
-
-.lenis.lenis-smooth [data-lenis-prevent] {
-  overscroll-behavior: contain;
-}
-
-.lenis.lenis-stopped {
-  overflow: hidden;
+/* ── Print: the case pack has to survive a police station printer ────────── */
+@media print {
+  :root { --paper: #fff; --raised: #fff; --ink: #000; --ink-2: #333; --rule: #bbb; }
+  .no-print { display: none !important; }
+  body { font-size: 11pt; }
+  .sheet { border: 1px solid #999; break-inside: avoid; }
+  a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 9pt; color: #555; }
 }
