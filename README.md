@@ -5,6 +5,8 @@
 A cybercrime reporting assistant for India. Built for the
 [Build What Moves India](https://buildwhatmovesindia.com) hackathon.
 
+**[Live Demo →](https://cybercrime-assistant.vercel.app)**
+
 <table>
   <tr>
     <td align="center">

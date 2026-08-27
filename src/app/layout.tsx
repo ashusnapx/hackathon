@@ -50,6 +50,8 @@ const FONT_VARS = [
   .map((f) => f.variable)
   .join(" ");
 
+const SITE_URL = "https://cybercrime-assistant.vercel.app";
+
 export const metadata: Metadata = {
   title: {
     default: "Kavach — the first hour, and the ninety days after",
@@ -59,11 +61,35 @@ export const metadata: Metadata = {
     "Report cybercrime in India in any of 23 languages. Kavach turns what you say into the NCRP complaint, the letter to your bank and the FIR application — and counts down all nine legal deadlines nobody tells victims about.",
   applicationName: "Kavach",
   keywords: ["cybercrime", "India", "NCRP", "1930", "cyber fraud", "UPI fraud", "FIR", "RBI", "digital arrest"],
+  metadataBase: new URL(SITE_URL),
   openGraph: {
     title: "Kavach — the first hour, and the ninety days after",
     description:
       "Speak in your language. We write the complaint, the bank letter and the FIR application, and track every deadline.",
     type: "website",
+    url: SITE_URL,
+    siteName: "Kavach",
+    images: [
+      {
+        url: "/og-image.svg",
+        width: 1200,
+        height: 630,
+        alt: "Kavach — Report cybercrime in India",
+      },
+    ],
+    locale: "en_IN",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Kavach — the first hour, and the ninety days after",
+    description:
+      "Speak in your language. We write the complaint, the bank letter and the FIR application, and track every deadline.",
+    images: ["/og-image.svg"],
+  },
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
   },
   robots: { index: true, follow: true },
 };
