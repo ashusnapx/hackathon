@@ -5,6 +5,9 @@
 A cybercrime reporting assistant for India. Built for the
 [Build What Moves India](https://buildwhatmovesindia.com) hackathon.
 
+Built by [Ashutosh Kumar](https://github.com/ashusnapx) and
+[Kaustubh Tripathi](https://github.com/ktripathi2281).
+
 > Independent tool. Not affiliated with, endorsed by, or connected to any
 > government body. It cannot submit anything on a citizen's behalf, and every
 > reference number it generates is mock.
