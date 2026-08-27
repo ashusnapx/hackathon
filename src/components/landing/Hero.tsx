@@ -46,7 +46,7 @@ export function Hero() {
                 {t("hero.cta")}
                 <Arrow />
               </Button>
-              <Button href="#how" size="lg" variant="secondary">{t("hero.cta2")}</Button>
+              <Button href="/check" size="lg" variant="secondary">{t("hero.cta3")}</Button>
             </div>
 
             <p className="mt-5 text-sm text-ink-3">{t("hero.notOfficial")}</p>

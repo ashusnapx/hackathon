@@ -9,7 +9,8 @@ export type TrackId =
   | "fir"
   | "chakshu"
   | "ombudsman"
-  | "bank-resolution";
+  | "bank-resolution"
+  | "legal-aid";
 
 export type TrackState = "due" | "upcoming" | "done" | "missed" | "na";
 

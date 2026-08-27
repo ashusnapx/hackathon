@@ -23,9 +23,9 @@ export interface Category {
 }
 
 const FINANCIAL_TRACKS: TrackId[] = [
-  "helpline", "ncrp", "bank-notice", "bank-credit", "fir", "chakshu", "mrm", "ombudsman", "bank-resolution",
+  "helpline", "ncrp", "bank-notice", "bank-credit", "fir", "chakshu", "mrm", "ombudsman", "bank-resolution", "legal-aid",
 ];
-const NON_FINANCIAL_TRACKS: TrackId[] = ["ncrp", "fir", "chakshu"];
+const NON_FINANCIAL_TRACKS: TrackId[] = ["ncrp", "fir", "chakshu", "legal-aid"];
 
 export const CATEGORIES: Category[] = [
   {

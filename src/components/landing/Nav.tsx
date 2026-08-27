@@ -32,6 +32,7 @@ export function Nav() {
         <Wordmark />
 
         <nav className="hidden lg:flex items-center gap-7 ms-8 text-[0.9375rem] text-ink-2">
+          <a href="/check" className="hover:text-ink transition-colors">{t("nav.check")}</a>
           <a href="#clocks" className="hover:text-ink transition-colors">{t("nav.clocks")}</a>
           <a href="#how" className="hover:text-ink transition-colors">{t("nav.how")}</a>
           <a href="#honesty" className="hover:text-ink transition-colors">{t("nav.honesty")}</a>

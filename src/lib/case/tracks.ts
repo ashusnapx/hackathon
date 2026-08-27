@@ -165,6 +165,17 @@ export const TRACKS: TrackDef[] = [
       return n ? addDays(n, 90) : null;
     },
   },
+  {
+    id: "legal-aid",
+    index: 10,
+    titleKey: "track.legal.t",
+    whyKey: "track.legal.w",
+    howKey: "track.legal.h",
+    dueKey: "track.legal.d",
+    action: { href: "tel:15100", labelKey: "track.legal.call", tel: true },
+    /** Not a clock — an entitlement almost nobody is told they already have. */
+    deadline: () => null,
+  },
 ];
 
 export const TRACK_BY_ID = new Map(TRACKS.map((t) => [t.id, t]));

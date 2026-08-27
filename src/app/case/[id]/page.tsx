@@ -11,6 +11,8 @@ import { DocumentsPanel } from "@/components/case/DocumentsPanel";
 import { AskPanel } from "@/components/case/AskPanel";
 import { CaseBuilder } from "@/components/case/CaseBuilder";
 import { Completeness } from "@/components/case/Completeness";
+import { Escalation } from "@/components/case/Escalation";
+import { Aftercare } from "@/components/case/Aftercare";
 import { CaseHeader } from "@/components/case/CaseHeader";
 import { useCase } from "@/lib/case/store";
 import { isFinancial } from "@/lib/case/tracks";
@@ -91,6 +93,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
               {isFinancial(caseFile) && <RecoveryWindow incidentAt={incidentAt} />}
               <NextAction caseFile={caseFile} onGoToTracks={() => setTab("tracks")} />
               <Completeness caseFile={caseFile} />
+              <Escalation caseFile={caseFile} />
+              <Aftercare />
               <CaseBuilder caseFile={caseFile} update={update} />
             </>
           )}

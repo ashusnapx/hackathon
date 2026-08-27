@@ -8,7 +8,7 @@ import { useT } from "@/lib/i18n/context";
 import type { CaseFile, TrackId, TrackState } from "@/lib/case/types";
 import { cn, fmtDate } from "@/lib/utils";
 
-const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
 const STATE_LABEL: Record<TrackState, Parameters<ReturnType<typeof useT>>[0]> = {
   due: "track.status.due",

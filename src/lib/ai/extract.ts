@@ -10,7 +10,7 @@ import { EMPTY_ENTITIES, type Entities } from "@/lib/case/types";
  * and merge, rather than trusting either alone.
  */
 
-const UPI_HANDLES = [
+export const UPI_HANDLES = [
   "okhdfcbank","okaxis","okicici","oksbi","ybl","ibl","axl","paytm","apl","upi","sbi","hdfcbank",
   "icici","axisbank","kotak","yesbank","idfcbank","fbl","jupiteraxis","airtel","freecharge",
   "abfspay","timecosmos","waaxis","waicici","wahdfcbank","wasbi","postbank","indus","pnb","boi",

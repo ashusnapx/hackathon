@@ -4,7 +4,7 @@ import { TRACKS } from "@/lib/case/tracks";
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 
-const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
 /** Which clocks are already ticking the moment the fraud happens. */
 const RUNS_IMMEDIATELY = new Set(["helpline", "ncrp", "bank-notice", "fir", "chakshu"]);

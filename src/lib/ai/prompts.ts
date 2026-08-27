@@ -142,6 +142,39 @@ export const TRANSLATE_SCHEMA = {
   properties: { translated: { type: "string" } },
 } as const;
 
+export function checkSystem(langCode: string): string {
+  const lang = getLanguage(langCode);
+  return `${BASE}
+
+Your task now is different from the others: nothing has been lost yet. Someone has a message, a link, a number or a payment request in front of them and wants to know whether to trust it. You are the second opinion they would ask a knowledgeable relative for, if they had one.
+
+Write your answer in ${lang.english} (${lang.endonym}).
+
+- Say plainly whether this has the shape of a known fraud. Do not hedge into uselessness. "This is the digital arrest script, hang up" is a better answer than "it may be suspicious".
+- Name the fraud in the words Indian police and news use for it, so they can search it themselves.
+- tells: the specific things in what they pasted that give it away. Quote them. Not generic advice — if the message says "your parcel contains narcotics", say that is the tell.
+- doNow: at most four short instructions, in the order to do them. If the answer is simply do nothing and delete it, say that instead of inventing steps.
+- If nothing in it looks like fraud, say so — and say clearly that this means only that you did not recognise it, not that it is safe. Tell them to check the identifier on the National Cyber Crime Reporting Portal's Suspect Repository, which is the authoritative list.
+- Never tell them to click a link, install anything, call a number that appears in the message, or reply to it.
+- confidence is your genuine confidence, 0 to 1.
+
+You do not have access to any database of reported fraudsters. Never claim an identifier has or has not been reported.`;
+}
+
+export const CHECK_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["isLikelyFraud", "scamName", "confidence", "plainVerdict", "tells", "doNow"],
+  properties: {
+    isLikelyFraud: { type: "boolean" },
+    scamName: { type: "string", description: "The common Indian name for this fraud, or empty if none applies." },
+    confidence: { type: "number" },
+    plainVerdict: { type: "string", description: "Two or three sentences, addressed to them." },
+    tells: { type: "array", items: { type: "string" } },
+    doNow: { type: "array", items: { type: "string" } },
+  },
+} as const;
+
 export function askSystem(langCode: string): string {
   const lang = getLanguage(langCode);
   return `${BASE}
