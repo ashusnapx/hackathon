@@ -5,8 +5,22 @@
 A cybercrime reporting assistant for India. Built for the
 [Build What Moves India](https://buildwhatmovesindia.com) hackathon.
 
-Built by [Ashutosh Kumar](https://github.com/ashusnapx) and
-[Kaustubh Tripathi](https://github.com/ktripathi2281).
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/ashusnapx">
+        <img src="screenshots/ashutosh-avatar.png" width="100" style="border-radius:50%" /><br />
+        <sub><b>Ashutosh Kumar</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/ktripathi2281">
+        <img src="screenshots/kaustubh-avatar.png" width="100" style="border-radius:50%" /><br />
+        <sub><b>Kaustubh Tripathi</b></sub>
+      </a>
+    </td>
+  </tr>
+</table>
 
 > Independent tool. Not affiliated with, endorsed by, or connected to any
 > government body. It cannot submit anything on a citizen's behalf, and every
@@ -57,6 +71,34 @@ Today the victim absorbs that gap.
    circular, an FIR application citing IT Act ss.66C/66D and BNS s.318, a
    Chakshu report, and an Ombudsman complaint.
 5. **The citizen reads it in their language; the authorities get English.**
+
+---
+
+## Screenshots
+
+### Landing Page
+
+| Hero | Problem Statement | How It Works |
+|------|-------------------|--------------|
+| ![Hero](screenshots/01-landing-hero.png) | ![Problem](screenshots/03-landing-problem.png) | ![Mid](screenshots/04-landing-mid.png) |
+
+| Footer & Emergency Numbers | Full Page |
+|---------------------------|-----------|
+| ![Footer](screenshots/05-landing-footer.png) | ![Full](screenshots/02-landing-full.png) |
+
+### Voice & Text Triage
+
+| Start Page | With Sample Input | AI Triage Result |
+|------------|-------------------|------------------|
+| ![Start](screenshots/06-start-page.png) | ![Filled](screenshots/07-start-filled.png) | ![Triage](screenshots/08-start-triage.png) |
+
+### Case File
+
+| Case Dashboard | Full Case View | Risk Check |
+|----------------|----------------|------------|
+| ![Case](screenshots/09-case-page.png) | ![Case Full](screenshots/10-case-full.png) | ![Check](screenshots/11-check-page.png) |
+
+---
 
 ## Running it
 
@@ -175,5 +217,5 @@ src/
 
 ## Helplines
 
-**1930** cyber fraud, 24×7 · **1091** women's helpline · **112** emergency ·
+**1930** cyber fraud, 24x7 · **1091** women's helpline · **112** emergency ·
 **14416** Tele-MANAS
