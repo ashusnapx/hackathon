@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { EMPTY_ENTITIES, type CaseEvent, type CaseFile, type TrackId } from "./types";
+import { createDefaultEvidence, ensureEvidence } from "./evidence";
 
 /**
  * The case file lives in the browser and nowhere else.
@@ -19,10 +20,18 @@ function emit() {
   for (const l of listeners) l();
 }
 
+function migrate(c: CaseFile): CaseFile {
+  // Evidence vault was added after launch — old cases must not break.
+  if (!c.evidence) return ensureEvidence(c);
+  // Also backfill any new templates added later
+  return ensureEvidence(c);
+}
+
 function readAll(): CaseFile[] {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(KEY) || "[]") as CaseFile[];
+    const raw = JSON.parse(localStorage.getItem(KEY) || "[]") as CaseFile[];
+    return raw.map(migrate);
   } catch {
     return [];
   }
@@ -47,7 +56,7 @@ function makeRef(): string {
 
 export function newCase(partial: Partial<CaseFile> = {}): CaseFile {
   const now = new Date().toISOString();
-  return {
+  const base: CaseFile = {
     id: crypto.randomUUID(),
     ref: makeRef(),
     createdAt: now,
@@ -64,8 +73,13 @@ export function newCase(partial: Partial<CaseFile> = {}): CaseFile {
     tracks: [],
     docs: {},
     events: [{ at: now, kind: "opened", label: "Case file opened" }],
-    ...partial,
+    evidence: createDefaultEvidence(now),
   };
+  const merged = { ...base, ...partial };
+  // Respect explicit evidence if caller passed one, otherwise keep default.
+  if (!merged.evidence) merged.evidence = base.evidence;
+  // Ensure any new templates are present (extensible)
+  return ensureEvidence(merged as CaseFile);
 }
 
 export function saveCase(c: CaseFile) {
@@ -82,7 +96,8 @@ export function saveCase(c: CaseFile) {
 }
 
 export function getCase(id: string): CaseFile | null {
-  return readAll().find((c) => c.id === id) ?? null;
+  const found = readAll().find((c) => c.id === id) ?? null;
+  return found ? migrate(found) : null;
 }
 
 export function deleteCase(id: string) {
