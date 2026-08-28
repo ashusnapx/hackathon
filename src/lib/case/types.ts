@@ -1,4 +1,5 @@
 import type { DictKey } from "@/lib/i18n";
+import type { EvidenceItem } from "./evidence";
 
 export type TrackId =
   | "helpline"
@@ -111,4 +112,6 @@ export interface CaseFile {
   tracks: TrackProgress[];
   docs: CaseDocs;
   events: CaseEvent[];
+  /** Evidence Vault — checklist per case, stored locally. Optional for backwards compat. */
+  evidence?: EvidenceItem[];
 }

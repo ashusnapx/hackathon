@@ -208,6 +208,7 @@ export const en = {
   "case.deleteConfirm": "This erases the case file from this browser for good. There is no copy anywhere else.",
   "case.tabOverview": "Overview",
   "case.tabTracks": "Tracks",
+  "case.tabEvidence": "Evidence",
   "case.tabDocs": "Documents",
   "case.tabAsk": "Ask",
 
