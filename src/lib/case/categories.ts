@@ -72,6 +72,22 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
+    id: "men",
+    label: "Crime against a man",
+    blurb: "Assault, robbery, extortion, stalking, or false accusations targeting men.",
+    portalTrack: "other",
+    tracks: NON_FINANCIAL_TRACKS,
+    subcategories: [
+      { id: "assault", label: "Physical assault or violence", hints: ["assault", "beaten", "hit", "attack", "violence", "injured", "thrashed"] },
+      { id: "robbery", label: "Robbery or dacoity", hints: ["robbery", "dacoity", "looted", "held up", "armed", "snatched", "chain snatch"] },
+      { id: "extortion", label: "Extortion or threats", hints: ["extortion", "threat", "blackmail", "ransom", "demand money", "goonda", "protection"] },
+      { id: "kidnap", label: "Kidnapping or forced labor", hints: ["kidnap", "abduct", "forced labor", "trafficking", "passport taken", "trapped"] },
+      { id: "false-case", label: "False accusation or fake FIR", hints: ["false case", "fake fir", "falsely accused", "wrongly implicated", "498a", "fake complaint"] },
+      { id: "stalking-men", label: "Stalking or online threats", hints: ["stalking", "following", "threatening message", "online threat", "cyberstalk"] },
+      { id: "workplace", label: "Workplace harassment", hints: ["workplace harassment", "boss", "colleague", "office", "sexual harassment men"] },
+    ],
+  },
+  {
     id: "social-media",
     label: "Social media and online abuse",
     blurb: "Fake profiles, hacked accounts, bullying, defamation.",
