@@ -56,17 +56,20 @@ export function Clocks() {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                        <h3 className="text-lg sm:text-xl leading-snug">{t(track.titleKey)}</h3>
+                        <h3 className="text-lg sm:text-xl leading-snug font-normal">{t(track.titleKey)}</h3>
                         <span
                           className={cn(
-                            "chip px-1.5 py-0.5 rounded-[2px] shrink-0",
+                            // Not shrink-0: some of these deadlines read as a
+                            // whole sentence ("After your bank confirms money
+                            // is held"), which ran off a 360px screen.
+                            "chip px-1.5 py-0.5 rounded-[2px] max-w-full",
                             live ? "bg-urgent-soft text-urgent-ink" : "bg-sunk text-ink-3",
                           )}
                         >
                           {t(track.dueKey)}
                         </span>
                       </div>
-                      <p className="mt-2 text-[0.9375rem] leading-[1.6] text-ink-2 max-w-2xl">
+                      <p className="mt-2 text-[0.9375rem] leading-[1.6] text-ink-2 font-light max-w-2xl">
                         {t(track.whyKey)}
                       </p>
                     </div>

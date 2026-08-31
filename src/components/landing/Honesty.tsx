@@ -17,18 +17,18 @@ export function Honesty() {
       <div className="mx-auto max-w-6xl px-5 sm:px-8 py-18 sm:py-24">
         <p className="label">{t("honesty.kicker")}</p>
         <h2 className="mt-3 max-w-2xl text-4xl sm:text-5xl">{t("honesty.h2")}</h2>
-        <p className="mt-6 max-w-2xl text-[1.0625rem] leading-[1.7] text-ink-2">{t("honesty.body")}</p>
+        <p className="mt-6 max-w-2xl text-[1.0625rem] leading-[1.7] text-ink-2 font-light">{t("honesty.body")}</p>
 
         <div className="mt-12 grid md:grid-cols-2 gap-px bg-rule border border-rule">
           <div className="bg-paper p-6 sm:p-8">
-            <h3 className="flex items-center gap-2.5 text-lg">
+            <h3 className="flex items-center gap-2.5 text-lg em-done !font-semibold">
               <Tick />
               {t("honesty.realTitle")}
             </h3>
             <ul className="mt-5 space-y-3">
               {REAL.map((k) => (
-                <li key={k} className="flex gap-3 text-[0.9375rem] leading-snug">
-                  <span className="text-done mt-0.5 shrink-0" aria-hidden>✓</span>
+                <li key={k} className="flex gap-3 text-[0.9375rem] leading-snug font-medium">
+                  <span className="text-done mt-0.5 shrink-0 font-bold" aria-hidden>✓</span>
                   <span>{t(k)}</span>
                 </li>
               ))}
@@ -42,7 +42,7 @@ export function Honesty() {
             </h3>
             <ul className="mt-5 space-y-3">
               {MOCK.map((k) => (
-                <li key={k} className="flex gap-3 text-[0.9375rem] leading-snug text-ink-2">
+                <li key={k} className="flex gap-3 text-[0.9375rem] leading-snug text-ink-2 font-light">
                   <span className="text-ink-3 mt-0.5 shrink-0" aria-hidden>◦</span>
                   <span>{t(k)}</span>
                 </li>
@@ -52,8 +52,8 @@ export function Honesty() {
         </div>
 
         <div className="mt-10 max-w-3xl border-s-2 border-urgent ps-5 sm:ps-6">
-          <h3 className="text-lg">{t("honesty.scaleTitle")}</h3>
-          <p className="mt-3 text-[0.9375rem] leading-[1.7] text-ink-2">{t("honesty.scale")}</p>
+          <h3 className="text-lg quiet-em">{t("honesty.scaleTitle")}</h3>
+          <p className="mt-3 text-[0.9375rem] leading-[1.7] text-ink-2 font-light">{t("honesty.scale")}</p>
         </div>
       </div>
     </section>

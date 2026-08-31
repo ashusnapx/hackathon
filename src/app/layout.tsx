@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import {
+  Caveat,
   Inter,
   Instrument_Serif,
   JetBrains_Mono,
@@ -24,6 +25,9 @@ import { LANG_COOKIE, SCRIPT_CLASS, getLanguage } from "@/lib/i18n/languages";
 const ui = Inter({ variable: "--font-ui", subsets: ["latin"], display: "swap" });
 const serif = Instrument_Serif({ variable: "--font-serif", weight: "400", subsets: ["latin"], display: "swap" });
 const mono = JetBrains_Mono({ variable: "--font-mono-ui", subsets: ["latin"], display: "swap" });
+/* The pen in the margin. Decorative only — never the sole carrier of meaning,
+   so it can load late without holding anything up. */
+const hand = Caveat({ variable: "--font-hand", weight: ["500", "600"], subsets: ["latin"], display: "swap" });
 
 /**
  * One Noto family per script. `preload: false` matters: a citizen reading in
@@ -44,7 +48,7 @@ const meetei = Noto_Sans_Meetei_Mayek({ variable: "--font-meetei", subsets: ["me
 const olchiki = Noto_Sans_Ol_Chiki({ variable: "--font-olchiki", subsets: ["ol-chiki"], weight: ["400", "600"], display: "swap", preload: false });
 
 const FONT_VARS = [
-  ui, serif, mono, devanagari, bengali, gujarati, gurmukhi, kannada,
+  ui, serif, mono, hand, devanagari, bengali, gujarati, gurmukhi, kannada,
   malayalam, odia, tamil, telugu, arabic, meetei, olchiki,
 ]
   .map((f) => f.variable)

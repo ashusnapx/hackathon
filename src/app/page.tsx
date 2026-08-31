@@ -2,6 +2,7 @@ import { Nav } from "@/components/landing/Nav";
 import { Hero } from "@/components/landing/Hero";
 import { Problem } from "@/components/landing/Problem";
 import { Clocks } from "@/components/landing/Clocks";
+import { Demo } from "@/components/landing/Demo";
 import { How } from "@/components/landing/How";
 import { Languages } from "@/components/landing/Languages";
 import { Honesty } from "@/components/landing/Honesty";
@@ -15,6 +16,7 @@ export default function HomePage() {
       <main id="main">
         <Hero />
         <Problem />
+        <Demo />
         <Clocks />
         <How />
         <Languages />

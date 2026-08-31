@@ -35,3 +35,39 @@ export function since(iso: string, now = Date.now()): string {
   const d = Math.floor(h / 24);
   return `${d} day${d > 1 ? "s" : ""} ${h % 24} hr`;
 }
+
+/**
+ * Copy text, and tell the truth about whether it worked.
+ *
+ * The async Clipboard API needs a secure context and a permission that several
+ * Android WebViews decline silently. Since copying the complaint into the NCRP
+ * portal is the whole point of this app, we fall back to the old
+ * execCommand path before giving up, and the caller shows a real error if both
+ * fail rather than a "Copied!" that lied.
+ */
+export async function writeToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* fall through to the legacy path */
+  }
+
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    // Off-screen but still focusable, and not at a position that scrolls iOS.
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;pointer-events:none";
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  } catch {
+    return false;
+  }
+}

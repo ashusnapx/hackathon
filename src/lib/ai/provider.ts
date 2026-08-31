@@ -116,8 +116,18 @@ export async function textCall(system: string, user: string, model = MODEL_FAST)
   }
 }
 
-/** Speech to text. The citizen speaks Marathi; we need the words. */
-export async function transcribe(file: Blob, languageHint?: string): Promise<string | null> {
+/**
+ * Speech to text. The citizen speaks Marathi; we need the words.
+ *
+ * `filename` is not cosmetic: the transcription endpoint picks its demuxer from
+ * the extension, so an iPhone's MP4 recording announced as `speech.webm` is
+ * rejected outright. The browser sends the real one.
+ */
+export async function transcribe(
+  file: Blob,
+  languageHint?: string,
+  filename = "speech.webm",
+): Promise<string | null> {
   if (!KEY) return null;
 
   const ctrl = new AbortController();
@@ -125,7 +135,7 @@ export async function transcribe(file: Blob, languageHint?: string): Promise<str
 
   try {
     const form = new FormData();
-    form.append("file", file, "speech.webm");
+    form.append("file", file, filename);
     form.append("model", MODEL_TRANSCRIBE);
     if (languageHint) form.append("language", languageHint);
 

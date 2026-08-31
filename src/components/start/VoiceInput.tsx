@@ -32,6 +32,40 @@ interface SpeechRecognitionLike extends EventTarget {
   onend: (() => void) | null;
 }
 
+/**
+ * Containers, best first. Safari on iOS cannot produce WebM at all — it records
+ * MP4/AAC — so hard-coding `audio/webm` meant every iPhone posted a WebM-labelled
+ * MP4 and the transcription model rejected it. Chrome's SpeechRecognition hid
+ * this on desktop, because the recorder path only runs when that is missing.
+ */
+const MIME_CANDIDATES = [
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/mp4;codecs=mp4a.40.2",
+  "audio/mp4",
+  "audio/ogg;codecs=opus",
+  "audio/ogg",
+] as const;
+
+function pickMime(): string | undefined {
+  if (typeof MediaRecorder === "undefined") return undefined;
+  return MIME_CANDIDATES.find((m) => {
+    try {
+      return MediaRecorder.isTypeSupported(m);
+    } catch {
+      return false;
+    }
+  });
+}
+
+/** The transcription API keys off the extension, so it has to match the bytes. */
+function extFor(mime: string): string {
+  if (mime.includes("mp4")) return "m4a";
+  if (mime.includes("ogg")) return "ogg";
+  if (mime.includes("wav")) return "wav";
+  return "webm";
+}
+
 function getRecognition(): SpeechRecognitionLike | null {
   if (typeof window === "undefined") return null;
   const w = window as unknown as Record<string, new () => SpeechRecognitionLike>;
@@ -89,14 +123,17 @@ export function VoiceInput({ onResult, disabled }: Props) {
       streamRef.current = stream;
       meter(stream);
 
-      const rec = new MediaRecorder(stream);
+      const mime = pickMime();
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
       recorderRef.current = rec;
       chunksRef.current = [];
       rec.ondataavailable = (e) => e.data.size && chunksRef.current.push(e.data);
 
       rec.onstop = async () => {
         cleanup();
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        // Trust what the recorder says it produced over what we asked for.
+        const type = rec.mimeType || mime || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type });
         if (blob.size < 1200) {
           setMode("idle");
           return;
@@ -104,7 +141,7 @@ export function VoiceInput({ onResult, disabled }: Props) {
         setMode("processing");
         try {
           const form = new FormData();
-          form.append("audio", blob);
+          form.append("audio", blob, `speech.${extFor(type)}`);
           form.append("lang", lang.code);
           const res = await fetch("/api/ai/transcribe", { method: "POST", body: form });
           const data = await res.json();
