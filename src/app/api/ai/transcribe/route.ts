@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { transcribe } from "@/lib/ai/provider";
+import { isGemini, transcribe } from "@/lib/ai/provider";
 import { getLanguage } from "@/lib/i18n/languages";
 
 export const runtime = "nodejs";
@@ -25,5 +25,5 @@ export async function POST(req: Request) {
 
   const text = await transcribe(audio, getLanguage(lang).code, `speech.${ext}`);
   if (!text) return NextResponse.json({ text: null, source: "unavailable" });
-  return NextResponse.json({ text, source: "openai" });
+  return NextResponse.json({ text, source: isGemini ? "gemini" : "openai" });
 }

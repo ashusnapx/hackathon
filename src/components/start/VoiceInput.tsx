@@ -14,7 +14,9 @@ import { cn } from "@/lib/utils";
  * would exclude exactly the users this is meant for.
  */
 
-type Mode = "idle" | "listening" | "processing" | "unsupported";
+/** `nothing` is "we heard you but got no words" — not the same failure as
+    "this device cannot do voice at all", and it needs different advice. */
+type Mode = "idle" | "listening" | "processing" | "unsupported" | "nothing";
 
 interface Props {
   onResult: (text: string) => void;
@@ -28,7 +30,7 @@ interface SpeechRecognitionLike extends EventTarget {
   start(): void;
   stop(): void;
   onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null;
-  onerror: ((e: unknown) => void) | null;
+  onerror: ((e: { error?: string }) => void) | null;
   onend: (() => void) | null;
 }
 
@@ -66,6 +68,27 @@ function extFor(mime: string): string {
   return "webm";
 }
 
+/**
+ * A phone will not lend the microphone to two consumers at once.
+ *
+ * `webkitSpeechRecognition` exists on iOS Safari and Android Chrome, so the
+ * recognition path was always taken there — and then a second getUserMedia was
+ * opened alongside it purely to animate the level meter. Desktop operating
+ * systems share a microphone happily; mobile ones do not, so recognition was
+ * being starved on exactly the devices this app is built for. Touch devices now
+ * record and transcribe server-side, which is one microphone, one consumer, and
+ * covers all 23 languages rather than the handful Chrome speaks.
+ */
+function prefersRecorder(): boolean {
+  if (typeof window === "undefined") return false;
+  // Any touch capability at all is enough to prefer the recorder. Erring this
+  // way costs a desktop-with-touchscreen its live interim text; erring the
+  // other way costs every phone the feature entirely.
+  const coarse = window.matchMedia?.("(any-pointer: coarse)")?.matches ?? false;
+  const touch = (navigator.maxTouchPoints ?? 0) > 0 || "ontouchstart" in window;
+  return coarse || touch;
+}
+
 function getRecognition(): SpeechRecognitionLike | null {
   if (typeof window === "undefined") return null;
   const w = window as unknown as Record<string, new () => SpeechRecognitionLike>;
@@ -85,6 +108,17 @@ export function VoiceInput({ onResult, disabled }: Props) {
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  /**
+   * Loudest frame seen this take, and how many frames were measured.
+   *
+   * The transcription model will happily invent a sentence from silence, and
+   * that sentence would be drafted straight into a police complaint — so a take
+   * with no sound in it is never uploaded. `frames` guards the guard: iOS can
+   * hand back a suspended AudioContext, in which case nothing is ever measured
+   * and we must not mistake "did not listen" for "heard nothing".
+   */
+  const peakRef = useRef(0);
+  const framesRef = useRef(0);
 
   const cleanup = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -102,6 +136,10 @@ export function VoiceInput({ onResult, disabled }: Props) {
   const meter = useCallback((stream: MediaStream) => {
     const ctx = new AudioContext();
     audioCtxRef.current = ctx;
+    // iOS hands back a suspended context when it is built outside the gesture
+    // that opened the mic; without this the meter never moves and the user
+    // gets no sign they are being heard.
+    void ctx.resume().catch(() => {});
     const src = ctx.createMediaStreamSource(stream);
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 256;
@@ -111,17 +149,25 @@ export function VoiceInput({ onResult, disabled }: Props) {
     const tick = () => {
       analyser.getByteFrequencyData(buf);
       const avg = buf.reduce((s, v) => s + v, 0) / buf.length;
-      setLevel(Math.min(1, avg / 90));
+      const next = Math.min(1, avg / 90);
+      if (next > peakRef.current) peakRef.current = next;
+      framesRef.current += 1;
+      setLevel(next);
       rafRef.current = requestAnimationFrame(tick);
     };
     tick();
   }, []);
 
   const startRecording = useCallback(async () => {
+    if (recorderRef.current?.state === "recording") return;
+    peakRef.current = 0;
+    framesRef.current = 0;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Reuse a stream we already hold rather than asking for a second one.
+      const stream =
+        streamRef.current ?? (await navigator.mediaDevices.getUserMedia({ audio: true }));
       streamRef.current = stream;
-      meter(stream);
+      if (!audioCtxRef.current) meter(stream);
 
       const mime = pickMime();
       const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
@@ -138,19 +184,35 @@ export function VoiceInput({ onResult, disabled }: Props) {
           setMode("idle");
           return;
         }
+        // Skip the upload only when the meter proved it was working and still
+        // heard nothing. A peak of exactly zero across a whole take means the
+        // analyser was never wired to the microphone — some WebViews and a
+        // suspended iOS context both do this — and treating that as silence
+        // would throw away a statement the citizen actually gave us. So this
+        // fails open and lets the server decide; the cost is one wasted
+        // request, against the cost of losing someone's words.
+        const meterWorked = framesRef.current > 10 && peakRef.current > 0;
+        if (meterWorked && peakRef.current < 0.04) {
+          setMode("nothing");
+          return;
+        }
         setMode("processing");
         try {
           const form = new FormData();
           form.append("audio", blob, `speech.${extFor(type)}`);
           form.append("lang", lang.code);
           const res = await fetch("/api/ai/transcribe", { method: "POST", body: form });
+          if (!res.ok) throw new Error(String(res.status));
           const data = await res.json();
-          if (data.text) onResult(data.text);
-          else setMode("unsupported");
+          if (data.text) {
+            onResult(data.text);
+            setMode("idle");
+          } else {
+            // The call worked; there were just no words in it.
+            setMode("nothing");
+          }
         } catch {
           setMode("unsupported");
-        } finally {
-          setMode((m) => (m === "unsupported" ? m : "idle"));
         }
       };
 
@@ -164,8 +226,10 @@ export function VoiceInput({ onResult, disabled }: Props) {
   const start = useCallback(async () => {
     if (disabled) return;
     setInterim("");
+    setMode((m) => (m === "nothing" ? "idle" : m));
 
-    const rec = getRecognition();
+    // On a touch device, skip recognition entirely — see prefersRecorder.
+    const rec = prefersRecorder() ? null : getRecognition();
     if (rec) {
       rec.lang = lang.speech;
       rec.continuous = true;
@@ -188,7 +252,12 @@ export function VoiceInput({ onResult, disabled }: Props) {
           finalText = "";
         }
       };
-      rec.onerror = () => {
+      rec.onerror = (e) => {
+        // `no-speech` fires when someone pauses to think and `aborted` fires
+        // when they press stop. Neither is a failure, and starting a recorder
+        // on them used to reopen the mic after the user had closed it.
+        const kind = e?.error;
+        if (kind === "no-speech" || kind === "aborted") return;
         recognitionRef.current = null;
         void startRecording();
       };
@@ -259,7 +328,9 @@ export function VoiceInput({ onResult, disabled }: Props) {
       <p className="text-sm text-ink-3 text-center min-h-[1.25rem]">
         {mode === "unsupported"
           ? t("start.voiceUnsupported")
-          : busy
+          : mode === "nothing"
+            ? t("start.voiceNothing")
+            : busy
             ? t("start.analysing")
             : listening
               ? t("start.micStop")

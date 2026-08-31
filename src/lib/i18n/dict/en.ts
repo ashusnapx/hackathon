@@ -486,6 +486,7 @@ export const en = {
   "demo.unsupported": "This browser cannot play the video inline.",
   "g.demoMode": "Demo mode — no AI key configured, so responses come from a built-in rule engine.",
   "nav.demo": "Watch the demo",
+  "start.voiceNothing": "We did not catch that. Try again, or type it below.",
 } as const;
 
 export type Dict = Record<keyof typeof en, string>;
