@@ -73,16 +73,27 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       <main id="main" className="mx-auto max-w-5xl px-5 sm:px-8 py-8 sm:py-10">
         <CaseHeader caseFile={caseFile} />
 
-        <nav className="mt-8 flex gap-1 border-b border-rule overflow-x-auto no-print" role="tablist">
+        {/* The strip scrolls on a phone. `no-bar` matters: the styled 10px
+            scrollbar used to sit inside this 48px-tall strip and clip the
+            label of whichever tab was active. */}
+        <nav
+          className="mt-8 flex gap-1 border-b border-rule swipe-x no-bar no-print"
+          role="tablist"
+        >
           {TABS.map(({ id: tid, key }) => (
             <button
               key={tid}
               role="tab"
               aria-selected={tab === tid}
-              onClick={() => setTab(tid)}
+              onClick={(e) => {
+                setTab(tid);
+                e.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" });
+              }}
               className={cn(
-                "relative px-4 py-3 text-[0.9375rem] whitespace-nowrap transition-colors -mb-px border-b-2",
-                tab === tid ? "border-ink text-ink font-medium" : "border-transparent text-ink-3 hover:text-ink",
+                "relative px-4 py-3 text-[0.9375rem] whitespace-nowrap transition-colors -mb-px border-b-2 shrink-0",
+                tab === tid
+                  ? "border-urgent text-ink font-semibold"
+                  : "border-transparent text-ink-3 font-light hover:text-ink",
               )}
             >
               {t(key)}

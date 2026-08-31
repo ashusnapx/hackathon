@@ -22,7 +22,7 @@ export function Hero() {
             <span className="relative inline-flex h-2 w-2 rounded-full bg-urgent" />
           </span>
           <span className="font-medium">{t("sos.title")}</span>
-          <span className="num font-semibold underline underline-offset-2">1930</span>
+          <span className="num font-bold tracking-tight underline underline-offset-2">1930</span>
         </a>
 
         <div className="mt-8 grid lg:grid-cols-[minmax(0,1fr)_20rem] gap-x-14 gap-y-10 items-end">
@@ -30,12 +30,12 @@ export function Hero() {
             <p className="label rise" style={{ animationDelay: "40ms" }}>{t("hero.eyebrow")}</p>
 
             <h1 className="mt-4 text-[2.75rem] sm:text-6xl lg:text-[4.25rem] leading-[1.02]">
-              <span className="block rise" style={{ animationDelay: "80ms" }}>{t("hero.h1a")}</span>
-              <span className="block rise text-ink-2" style={{ animationDelay: "140ms" }}>{t("hero.h1b")}</span>
+              <span className="block rise font-normal" style={{ animationDelay: "80ms" }}>{t("hero.h1a")}</span>
+              <span className="block rise airy text-ink-2" style={{ animationDelay: "140ms" }}>{t("hero.h1b")}</span>
             </h1>
 
             <p
-              className="mt-7 max-w-2xl text-[1.0625rem] sm:text-lg leading-[1.65] text-ink-2 rise"
+              className="mt-7 max-w-2xl text-[1.0625rem] sm:text-lg leading-[1.65] text-ink-2 font-light rise"
               style={{ animationDelay: "200ms" }}
             >
               {t("hero.sub")}
@@ -49,15 +49,18 @@ export function Hero() {
               <Button href="/check" size="lg" variant="secondary">{t("hero.cta3")}</Button>
             </div>
 
-            <p className="mt-5 text-sm text-ink-3">{t("hero.notOfficial")}</p>
+            <p className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-ink-3">
+              <span className="font-light">{t("hero.notOfficial")}</span>
+              <span className="hand text-urgent">free, and nothing leaves your phone</span>
+            </p>
           </div>
 
           {/* Three claims, set as a ruled list — like the margin notes on a form. */}
           <ul className="grid gap-0 rise lg:pb-2" style={{ animationDelay: "320ms" }}>
             {(["hero.point1", "hero.point2", "hero.point3"] as const).map((k, i) => (
               <li key={k} className="flex gap-4 py-4 border-t border-rule last:border-b">
-                <span className="num text-xs text-ink-3 pt-1 w-4 shrink-0">{String(i + 1).padStart(2, "0")}</span>
-                <span className="text-[0.9375rem] leading-snug">{t(k)}</span>
+                <span className="num text-xs text-urgent pt-1 w-4 shrink-0 font-semibold">{String(i + 1).padStart(2, "0")}</span>
+                <span className="text-[0.9375rem] leading-snug font-light">{t(k)}</span>
               </li>
             ))}
           </ul>

@@ -34,6 +34,7 @@
   --font-sans: var(--font-ui), var(--font-indic), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-serif), var(--font-indic), Georgia, serif;
   --font-mono: var(--font-mono-ui), ui-monospace, SFMono-Regular, monospace;
+  --font-script: var(--font-hand), "Bradley Hand", "Segoe Script", cursive;
 
   --radius-card: 4px;
 }
@@ -254,6 +255,105 @@
 }
 .link:hover { text-decoration-color: var(--urgent); }
 
+/* ── Voice: weight, style and colour ─────────────────────────────────────────
+ *
+ * A wall of one weight in one colour reads as a form. These are the four voices
+ * the page speaks in, and they are deliberately few — a citizen scanning in a
+ * panic should be able to tell "this is the number to call" from "this is
+ * background" without reading either.
+ *
+ * Every colour below is a token that already flips in dark mode, so nothing
+ * here needs a second definition further down.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+/* 1. The hand in the margin. A pen note on the case file — used for asides and
+      reassurance, never for anything load-bearing. */
+.hand {
+  font-family: var(--font-script);
+  font-weight: 400;
+  font-size: 1.18em;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+}
+/* No Indic script has a Latin-cursive equivalent; forcing one gives us tofu. */
+:root[data-script]:not([data-script="latin"]) .hand {
+  font-family: var(--font-indic), var(--font-ui), sans-serif;
+  font-size: 1em;
+  font-style: normal;
+  font-weight: 500;
+}
+
+/* 2. The editorial italic — the serif display face leaning in for one phrase. */
+.quiet-em {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+}
+:root[data-script]:not([data-script="latin"]) .quiet-em {
+  font-family: var(--font-indic), var(--font-ui), sans-serif;
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* 3. Hairline display type. Only ever at large sizes — a thin weight under
+      ~24px disappears on a cheap LCD in daylight, which is most of our users. */
+.airy {
+  font-weight: 200;
+  letter-spacing: -0.02em;
+}
+:root[data-script]:not([data-script="latin"]) .airy { font-weight: 400; }
+
+/* 4. Semantic emphasis. Each maps to a meaning already used elsewhere in the
+      app, so the colour teaches itself: orange = act now, green = done,
+      amber = waiting, blue = information. */
+.em-urgent { color: var(--urgent); font-weight: 600; }
+.em-done   { color: var(--done);   font-weight: 600; }
+.em-wait   { color: var(--wait);   font-weight: 600; }
+.em-info   { color: var(--info);   font-weight: 600; }
+.em-strong { color: var(--ink);    font-weight: 700; letter-spacing: -0.01em; }
+
+/* A highlighter run, sitting behind the baseline like a marker pen. */
+.marker {
+  background-image: linear-gradient(
+    to bottom,
+    transparent 58%,
+    color-mix(in srgb, var(--urgent) 22%, transparent) 58%
+  );
+  padding-inline: 0.1em;
+  font-weight: 600;
+}
+.marker-info {
+  background-image: linear-gradient(
+    to bottom,
+    transparent 58%,
+    color-mix(in srgb, var(--info) 24%, transparent) 58%
+  );
+}
+.marker-done {
+  background-image: linear-gradient(
+    to bottom,
+    transparent 58%,
+    color-mix(in srgb, var(--done) 24%, transparent) 58%
+  );
+}
+
+/* Two-tone display type for a single headline word. Falls back to a flat ink
+   colour anywhere background-clip:text is unsupported. */
+.grad {
+  color: var(--urgent);
+  font-weight: 600;
+}
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+  .grad {
+    background: linear-gradient(100deg, var(--urgent) 10%, var(--wait) 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+}
+
 /* ── Motion ──────────────────────────────────────────────────────────────── */
 @keyframes rise {
   from { opacity: 0; transform: translateY(8px); }
@@ -298,10 +398,28 @@
 }
 
 /* ── Scrollbar ───────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: var(--sunk); }
-::-webkit-scrollbar-thumb { background: var(--rule-strong); border: 3px solid var(--sunk); border-radius: 6px; }
-::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
+/*
+ * Only devices with a real pointer get a styled scrollbar. A touch screen has
+ * no cursor to aim with, and a 10px track inside a short strip (the case-file
+ * tabs, the language list) stole enough height to clip the label it sat under.
+ */
+@media (pointer: fine) {
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--sunk); }
+  ::-webkit-scrollbar-thumb { background: var(--rule-strong); border: 3px solid var(--sunk); border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
+}
+
+/* Swipeable strips: the content itself is the affordance, not a track. */
+.no-bar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-bar::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+/* Momentum scrolling inside those strips on iOS. */
+.swipe-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
 
 /* ── Print: the case pack has to survive a police station printer ────────── */
 @media print {
@@ -311,3 +429,54 @@
   .sheet { border: 1px solid #999; break-inside: avoid; }
   a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 9pt; color: #555; }
 }
+
+/* ── Video player controls ───────────────────────────────────────────────────
+   The scrub and volume inputs are real <input type="range">, so dragging,
+   tapping and arrow keys come free. Their own track is hidden — the coloured
+   played/buffered bars are drawn behind them — leaving only the thumb.
+   ─────────────────────────────────────────────────────────────────────────── */
+.scrub, .vol { -webkit-appearance: none; appearance: none; outline: none; }
+.scrub::-webkit-slider-runnable-track,
+.vol::-webkit-slider-runnable-track { background: transparent; height: 100%; }
+.scrub::-moz-range-track { background: transparent; }
+.vol::-moz-range-track { background: rgba(255, 255, 255, 0.3); height: 4px; border-radius: 2px; }
+
+.scrub::-webkit-slider-thumb,
+.vol::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--urgent);
+  border: 2px solid #fff;
+  cursor: pointer;
+  /* A 13px dot on a 24px-tall input needs centring by hand once the track
+     is transparent. */
+  margin-top: 5.5px;
+}
+.scrub::-moz-range-thumb,
+.vol::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--urgent);
+  border: 2px solid #fff;
+  cursor: pointer;
+}
+.vol::-webkit-slider-thumb { background: #fff; border-color: transparent; }
+.vol::-moz-range-thumb { background: #fff; border-color: transparent; }
+
+/* A bigger hit area on touch, where a 13px dot is not a target. */
+@media (pointer: coarse) {
+  .scrub::-webkit-slider-thumb { width: 17px; height: 17px; margin-top: 3.5px; }
+  .scrub::-moz-range-thumb { width: 17px; height: 17px; }
+}
+
+.scrub:focus-visible::-webkit-slider-thumb,
+.vol:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--urgent) 55%, transparent);
+}
+
+/* The player paints its own dark chrome, so it keeps the same colours in both
+   themes; only the page around it flips. */

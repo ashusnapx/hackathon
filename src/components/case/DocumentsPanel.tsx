@@ -6,7 +6,8 @@ import { downloadCasePack } from "@/lib/case/pack";
 import { completeness } from "@/lib/case/tracks";
 import { useI18n } from "@/lib/i18n/context";
 import type { CaseDocs, CaseFile } from "@/lib/case/types";
-import { cn } from "@/lib/utils";
+import { cn, writeToClipboard } from "@/lib/utils";
+import { useIsClient } from "@/lib/useIsClient";
 
 type DocKey = "ncrp" | "script" | "bank" | "fir" | "chakshu" | "mrm" | "ombudsman";
 
@@ -95,7 +96,7 @@ export function DocumentsPanel({ caseFile, update }: Props) {
         </div>
       ) : (
         <>
-          <div className="mt-6 flex gap-1 border-b border-rule overflow-x-auto no-print" role="tablist">
+          <div className="mt-6 flex gap-1 border-b border-rule swipe-x no-bar no-print" role="tablist">
             {DOCS.map((d) => (
               <button
                 key={d.key}
@@ -151,24 +152,53 @@ function Document({
   onTranslated: (text: string) => void;
 }) {
   const { t } = useI18n();
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
+  // navigator.share only exists on the client, and only over HTTPS.
+  const canShare = useIsClient() && !!navigator.share;
   const [showTranslation, setShowTranslation] = useState(false);
   const [translating, setTranslating] = useState(false);
 
+  /**
+   * Copying the complaint out is the single most important action on this
+   * screen — it is how the text reaches the NCRP portal. `navigator.clipboard`
+   * is not available in every Android WebView, and it rejects outright in the
+   * in-app browsers inside WhatsApp and Instagram, which is exactly how a link
+   * like this gets opened. So there is a fallback, and a visible failure.
+   */
   const copy = async () => {
-    await navigator.clipboard.writeText(body);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+    const ok = await writeToClipboard(body);
+    setCopyState(ok ? "done" : "failed");
+    setTimeout(() => setCopyState("idle"), ok ? 1800 : 4000);
   };
 
+  /**
+   * A detached anchor whose object URL is revoked in the same tick never
+   * downloads on iOS Safari — the revoke lands before the browser has read the
+   * blob. It has to be in the document, and the URL has to outlive the click.
+   */
   const download = () => {
     const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `kavach-${docKey}.txt`;
+    a.rel = "noopener";
+    a.style.display = "none";
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => {
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, 30_000);
+  };
+
+  /** On a phone the useful destination is usually WhatsApp, not the filesystem. */
+  const share = async () => {
+    try {
+      await navigator.share({ title, text: body });
+    } catch {
+      /* dismissed, or the share sheet is unavailable — copy is still there */
+    }
   };
 
   const translate = async () => {
@@ -201,9 +231,16 @@ function Document({
       </div>
 
       <div className="px-5 py-3 border-b border-rule flex flex-wrap items-center gap-2 no-print">
-        <Button onClick={copy} size="sm" variant="secondary">
-          {copied ? t("doc.copied") : t("doc.copy")}
+        <Button onClick={copy} size="sm" variant={copyState === "failed" ? "urgent" : "secondary"}>
+          {copyState === "done"
+            ? t("doc.copied")
+            : copyState === "failed"
+              ? "Select the text below and copy"
+              : t("doc.copy")}
         </Button>
+        {canShare && (
+          <Button onClick={share} size="sm" variant="ghost">{t("doc.share")}</Button>
+        )}
         <Button onClick={download} size="sm" variant="ghost">{t("doc.download")}</Button>
         <Button onClick={() => window.print()} size="sm" variant="ghost">{t("doc.print")}</Button>
 
@@ -220,7 +257,7 @@ function Document({
           <pre className="px-5 py-4 whitespace-pre-wrap text-[0.9375rem] leading-[1.75] font-sans">{translated}</pre>
         </>
       ) : (
-        <pre className="px-5 py-5 whitespace-pre-wrap text-[0.875rem] leading-[1.7] font-mono overflow-x-auto">
+        <pre className="px-5 py-5 whitespace-pre-wrap break-words text-[0.875rem] leading-[1.7] font-mono swipe-x no-bar">
           {body}
         </pre>
       )}

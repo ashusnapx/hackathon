@@ -18,7 +18,12 @@ export async function POST(req: Request) {
   if (!(audio instanceof Blob)) return NextResponse.json({ error: "no-audio" }, { status: 400 });
   if (audio.size > 25 * 1024 * 1024) return NextResponse.json({ error: "too-large" }, { status: 413 });
 
-  const text = await transcribe(audio, getLanguage(lang).code);
+  // Only the extension is taken from the upload — never the caller's full
+  // filename, which has no business reaching an outbound multipart request.
+  const sent = audio instanceof File ? audio.name : "";
+  const ext = /\.(webm|m4a|mp4|ogg|wav|mp3|mpga)$/i.exec(sent)?.[1].toLowerCase() ?? "webm";
+
+  const text = await transcribe(audio, getLanguage(lang).code, `speech.${ext}`);
   if (!text) return NextResponse.json({ text: null, source: "unavailable" });
   return NextResponse.json({ text, source: "openai" });
 }

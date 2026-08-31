@@ -22,11 +22,11 @@ export function How() {
           {STEPS.map(([title, body, time], i) => (
             <article key={title} className="bg-paper p-6 flex flex-col">
               <div className="flex items-baseline justify-between">
-                <span className="num text-sm text-ink-3">{String(i + 1).padStart(2, "0")}</span>
-                <span className="num text-[0.6875rem] uppercase tracking-wider text-urgent">{t(time)}</span>
+                <span className="num text-sm text-ink-3 font-light">{String(i + 1).padStart(2, "0")}</span>
+                <span className="num text-[0.6875rem] uppercase tracking-wider text-urgent font-bold">{t(time)}</span>
               </div>
-              <h3 className="mt-5 text-xl leading-snug">{t(title)}</h3>
-              <p className="mt-3 text-[0.9375rem] leading-[1.6] text-ink-2">{t(body)}</p>
+              <h3 className="mt-5 text-xl leading-snug font-normal">{t(title)}</h3>
+              <p className="mt-3 text-[0.9375rem] leading-[1.6] text-ink-2 font-light">{t(body)}</p>
             </article>
           ))}
         </div>
