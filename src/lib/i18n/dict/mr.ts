@@ -397,4 +397,5 @@ export const mr: Partial<Record<DictKey, string>> = {
   "demo.volume": "आवाज",
   "demo.unsupported": "हा ब्राउझर व्हिडिओ इथेच चालवू शकत नाही.",
   "nav.demo": "डेमो पाहा",
+  "start.voiceNothing": "आम्हाला काही ऐकू आले नाही. पुन्हा प्रयत्न करा, किंवा खाली लिहा.",
 };

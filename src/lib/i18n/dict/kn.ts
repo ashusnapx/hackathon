@@ -390,4 +390,5 @@ export const kn: Partial<Record<DictKey, string>> = {
   "demo.volume": "ಶಬ್ದ",
   "demo.unsupported": "ಈ ಬ್ರೌಸರ್ ವೀಡಿಯೊವನ್ನು ಇಲ್ಲಿಯೇ ಚಲಾಯಿಸಲಾಗದು.",
   "nav.demo": "ಡೆಮೊ ನೋಡಿ",
+  "start.voiceNothing": "ನಮಗೆ ಏನೂ ಕೇಳಿಸಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ, ಅಥವಾ ಕೆಳಗೆ ಬರೆಯಿರಿ.",
 };
