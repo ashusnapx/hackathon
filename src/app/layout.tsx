@@ -21,6 +21,7 @@ import {
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n/context";
 import { LANG_COOKIE, SCRIPT_CLASS, getLanguage } from "@/lib/i18n/languages";
+import { SITE_URL, pageMetadata } from "@/lib/seo";
 
 /* Figtree for everything a person has to operate, EB Garamond for everything
    the page says. The pairing is lifted wholesale from the reference the design
@@ -71,42 +72,21 @@ const FONT_VARS = [
   .map((f) => f.variable)
   .join(" ");
 
-const SITE_URL = "https://cybercrime-assistant.vercel.app";
-
 export const metadata: Metadata = {
+  ...pageMetadata({
+    title: "Kavach — the first hour, and the ninety days after",
+    description:
+      "Speak in your language. We write the complaint, the bank letter and the FIR application, and track every deadline.",
+  }),
   title: {
     default: "Kavach — the first hour, and the ninety days after",
     template: "%s · Kavach",
   },
   description:
-    "Report cybercrime in India in any of 23 languages. Kavach turns what you say into the NCRP complaint, the letter to your bank and the FIR application — and counts down all nine legal deadlines nobody tells victims about.",
+    "Report cybercrime in India in any of 23 languages. Kavach turns what you say into the NCRP complaint, the letter to your bank and the FIR application — and counts down all ten legal deadlines nobody tells victims about.",
   applicationName: "Kavach",
   keywords: ["cybercrime", "India", "NCRP", "1930", "cyber fraud", "UPI fraud", "FIR", "RBI", "digital arrest"],
   metadataBase: new URL(SITE_URL),
-  openGraph: {
-    title: "Kavach — the first hour, and the ninety days after",
-    description:
-      "Speak in your language. We write the complaint, the bank letter and the FIR application, and track every deadline.",
-    type: "website",
-    url: SITE_URL,
-    siteName: "Kavach",
-    images: [
-      {
-        url: "/og-image.svg",
-        width: 1200,
-        height: 630,
-        alt: "Kavach — Report cybercrime in India",
-      },
-    ],
-    locale: "en_IN",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Kavach — the first hour, and the ninety days after",
-    description:
-      "Speak in your language. We write the complaint, the bank letter and the FIR application, and track every deadline.",
-    images: ["/og-image.svg"],
-  },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
