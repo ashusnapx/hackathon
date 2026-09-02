@@ -56,7 +56,7 @@ export function AskPanel({ caseFile }: { caseFile: CaseFile }) {
             <button
               key={k}
               onClick={() => ask(t(k))}
-              className="text-start text-sm px-3 py-2 border border-rule rounded-[3px] bg-raised hover:border-ink hover:bg-sunk transition-colors"
+              className="text-start text-sm px-3 py-2 border border-rule rounded-ctl bg-raised hover:border-ink hover:bg-sunk transition-colors"
             >
               {t(k)}
             </button>
@@ -93,7 +93,7 @@ export function AskPanel({ caseFile }: { caseFile: CaseFile }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t("ask.ph")}
-          className="flex-1 h-12 px-3.5 bg-raised border border-rule-strong rounded-[3px] focus:outline-none focus:border-ink"
+          className="flex-1 h-12 px-3.5 bg-raised border border-rule-strong rounded-ctl focus:outline-none focus:border-ink"
         />
         <Button type="submit" disabled={busy || !q.trim()}>{t("ask.send")}</Button>
       </form>

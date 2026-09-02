@@ -2,6 +2,7 @@
 
 import { jsPDF } from "jspdf";
 import { findCategory, findSubcategory } from "./categories";
+import { appendLetter } from "./letter";
 import { TRACKS, liveTracks } from "./tracks";
 import type { CaseFile } from "./types";
 
@@ -111,12 +112,18 @@ class Sheet {
     this.footer();
     this.doc.save(name);
   }
+
+  /** Hand the open document to the letter typesetter and take it back after. */
+  handOff(): { doc: jsPDF; page: number } {
+    this.footer();
+    return { doc: this.doc, page: this.page };
+  }
 }
 
 const fmt = (iso?: string) =>
   iso ? new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—";
 
-export function downloadCasePack(c: CaseFile) {
+function buildCasePack(c: CaseFile): jsPDF {
   const s = new Sheet();
   const cat = findCategory(c.triage?.categoryId);
   const sub = findSubcategory(c.triage?.categoryId, c.triage?.subcategoryId);
@@ -229,14 +236,24 @@ export function downloadCasePack(c: CaseFile) {
     ["Ombudsman complaint", c.docs.ombudsman],
   ];
 
+  // The letters are typeset rather than dumped as monospace: the pack is what
+  // gets carried to a counter, and each document in it has to read as the
+  // document it claims to be.
+  const handed = s.handOff();
+  let page = handed.page;
   for (const [title, body] of docs) {
     if (!body) continue;
-    s.break();
-    s.label("Document");
-    s.heading(title, 16);
-    s.gap(4);
-    s.body(body, { mono: true, size: 8.5 });
+    page = appendLetter(handed.doc, page, body, { title, caseRef: c.ref });
   }
 
-  s.save(`kavach-${c.ref}.pdf`);
+  return handed.doc;
+}
+
+export function downloadCasePack(c: CaseFile) {
+  buildCasePack(c).save(`kavach-${c.ref}.pdf`);
+}
+
+/** Same pack, returned rather than saved — for tests. */
+export function casePackBytes(c: CaseFile): ArrayBuffer {
+  return buildCasePack(c).output("arraybuffer");
 }

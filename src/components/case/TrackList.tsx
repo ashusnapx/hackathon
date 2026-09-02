@@ -111,7 +111,7 @@ function TrackRow({
             </span>
             <span
               className={cn(
-                "chip px-1.5 py-0.5 rounded-[2px] border shrink-0",
+                "chip px-1.5 py-0.5 rounded-ctl border shrink-0",
                 STATE_STYLE[state],
               )}
             >
@@ -187,7 +187,7 @@ function TrackRow({
               value={ackRef}
               onChange={(e) => setAckRef(e.target.value)}
               placeholder="Bank acknowledgement number (optional)"
-              className="w-full max-w-sm h-11 px-3 bg-raised border border-rule-strong rounded-[3px] num text-sm focus:outline-none focus:border-ink"
+              className="w-full max-w-sm h-11 px-3 bg-raised border border-rule-strong rounded-ctl num text-sm focus:outline-none focus:border-ink"
             />
           )}
         </div>

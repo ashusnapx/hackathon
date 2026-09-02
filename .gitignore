@@ -48,3 +48,7 @@ next-env.d.ts
 *.png
 !public/**/*.png
 !screenshots/**/*.png
+
+# generated case packs and sample documents (test output)
+kavach-*.pdf
+sample-*.pdf

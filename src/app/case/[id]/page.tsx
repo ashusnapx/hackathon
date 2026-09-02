@@ -54,8 +54,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
   return (
     <>
-      <header className="border-b border-rule sticky top-0 z-40 bg-paper/92 backdrop-blur-md no-print">
-        <div className="mx-auto max-w-5xl px-5 sm:px-8 h-[68px] flex items-center gap-4">
+      <header className="sticky top-0 z-40 px-3 sm:px-5 pt-3 sm:pt-4 pointer-events-none no-print">
+        <div className="pointer-events-auto mx-auto max-w-5xl rounded-card border border-ink/15 bg-paper/85 backdrop-blur-xl shadow-[0_6px_24px_-18px_rgba(26,26,26,0.55)] px-3 sm:px-4 h-[60px] sm:h-[64px] flex items-center gap-4">
           <Wordmark />
           <span
             className={cn(
@@ -139,7 +139,7 @@ function EvidenceOverviewCard({ caseFile, onGoEvidence }: { caseFile: import("@/
         <div className={cn("h-full rounded-full transition-[width] duration-500", tone)} style={{ width: `${readiness.percentage}%` }} />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className={cn("chip px-2 py-1 rounded-[2px] border", readiness.level === "READY" ? "bg-done-soft text-done border-done/25" : readiness.level === "PARTIALLY_READY" ? "bg-sunk text-ink-3 border-rule" : "bg-urgent-soft text-urgent-ink border-urgent/30")}>
+        <span className={cn("chip px-2 py-1 rounded-ctl border", readiness.level === "READY" ? "bg-done-soft text-done border-done/25" : readiness.level === "PARTIALLY_READY" ? "bg-sunk text-ink-3 border-rule" : "bg-urgent-soft text-urgent-ink border-urgent/30")}>
           {label}
         </span>
         <span className="text-sm text-ink-3">

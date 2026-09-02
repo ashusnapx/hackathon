@@ -180,6 +180,52 @@ export const TRACKS: TrackDef[] = [
 
 export const TRACK_BY_ID = new Map(TRACKS.map((t) => [t.id, t]));
 
+export interface ScheduledTrack {
+  id: TrackId;
+  index: number;
+  titleKey: DictKey;
+  dueKey: DictKey;
+  /** null where the track is real but not on a statutory clock. */
+  deadline: Date | null;
+}
+
+/**
+ * Every deadline for a hypothetical incident at `at`.
+ *
+ * The landing page has no case file, but it does have the same rules, and a
+ * date a reader can check against their own calendar argues far better than
+ * "ten working days after you notified". This runs the real deadline functions
+ * — not a second copy of them — so the page cannot drift from the app.
+ *
+ * The rules above read six fields and no others: `incidentAt`, `bankAlertAt`,
+ * `createdAt`, `triage.incidentAt`, `bank.notifiedAt` and `tracks`. A stub
+ * carrying those is therefore sufficient, and a stub is the honest shape: there
+ * is no case here, only an "if this happened to you now".
+ *
+ * `bank.notifiedAt` is the assumption worth naming. Three of the ten clocks
+ * start when the citizen writes to their bank rather than when the fraud
+ * happens, so passing the same instant for both means "and you notify today".
+ * Callers must say so; the landing section does, in the line under the list.
+ */
+export function scheduleFrom(at: Date): ScheduledTrack[] {
+  const iso = at.toISOString();
+  const stub = {
+    createdAt: iso,
+    incidentAt: iso,
+    bankAlertAt: iso,
+    bank: { notifiedAt: iso },
+    tracks: [],
+  } as unknown as CaseFile;
+
+  return TRACKS.map((t) => ({
+    id: t.id,
+    index: t.index,
+    titleKey: t.titleKey,
+    dueKey: t.dueKey,
+    deadline: t.deadline(stub),
+  }));
+}
+
 export interface LiveTrack {
   def: TrackDef;
   state: TrackState;

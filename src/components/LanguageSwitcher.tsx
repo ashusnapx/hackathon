@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { LANGUAGES, SCRIPT_CLASS } from "@/lib/i18n/languages";
 import { useI18n } from "@/lib/i18n/context";
-import { isTranslated } from "@/lib/i18n/loader";
+import { coverageOf, isTranslated } from "@/lib/i18n/loader";
 import { cn } from "@/lib/utils";
 import { useIsClient } from "@/lib/useIsClient";
 
@@ -29,7 +29,6 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
   const { lang, setLang, loading, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-  const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const mounted = useIsClient();
@@ -48,7 +47,14 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
     // never send at all.
     const onDown = (e: PointerEvent) => {
       const target = e.target as Node;
-      if (panelRef.current?.contains(target)) return;
+      // Both panels — the desktop dropdown and the phone sheet — are mounted
+      // whenever this is open; only one is visible at a given width. They used
+      // to share a single ref, so the portal (mounted last) won it and a real
+      // click on the desktop dropdown read as "outside": pointerdown closed the
+      // panel and the click landed on nothing. Asking the DOM which panel a
+      // target sits in cannot go wrong however many panels there are.
+      const el = target instanceof Element ? target : target.parentElement;
+      if (el?.closest("[data-lang-panel]")) return;
       if (buttonRef.current?.contains(target)) return;
       setOpen(false);
     };
@@ -105,7 +111,7 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
           onChange={(e) => setQ(e.target.value)}
           placeholder={t("lang.search")}
           /* 16px minimum, or iOS Safari zooms the whole page on focus. */
-          className="w-full h-11 px-3 bg-sunk border border-rule rounded-[3px] text-base focus:outline-none focus:border-ink"
+          className="w-full h-11 px-3 bg-sunk border border-rule rounded-ctl text-base focus:outline-none focus:border-ink"
         />
       </div>
 
@@ -119,7 +125,7 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
                 aria-selected={active}
                 onClick={() => choose(l.code)}
                 className={cn(
-                  "w-full flex items-baseline gap-3 px-3 py-3 rounded-[3px] text-start",
+                  "w-full flex items-baseline gap-3 px-3 py-3 rounded-ctl text-start",
                   "hover:bg-sunk transition-colors",
                   active && "bg-sunk",
                 )}
@@ -135,14 +141,22 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
                   {l.endonym}
                 </span>
                 <span className="text-sm text-ink-3 ms-auto shrink-0 font-light">{l.english}</span>
-                {!isTranslated(l.code) && (
-                  <span
-                    className="label !tracking-wider shrink-0"
-                    title="Interface not yet translated — shows English"
-                  >
+                {/* Coverage, stated rather than discovered. A language that is
+                    only two-thirds translated shows a mixed interface, and a
+                    citizen should be told that before they pick it, not left to
+                    wonder whether the button is broken. */}
+                {!isTranslated(l.code) ? (
+                  <span className="label !tracking-wider shrink-0" title={t("lang.noneTitle")}>
                     EN
                   </span>
-                )}
+                ) : coverageOf(l.code) < 0.95 ? (
+                  <span
+                    className="label !tracking-wider shrink-0 text-wait"
+                    title={t("lang.partialTitle")}
+                  >
+                    {Math.round(coverageOf(l.code) * 100)}%
+                  </span>
+                ) : null}
                 {active && <CheckIcon />}
               </button>
             </li>
@@ -164,7 +178,7 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
         aria-haspopup="listbox"
         aria-label={t("lang.choose")}
         className={cn(
-          "inline-flex items-center gap-2 h-11 rounded-[3px] border border-rule-strong bg-raised",
+          "inline-flex items-center gap-2 h-11 rounded-ctl border border-rule-strong bg-raised",
           "hover:border-ink transition-colors text-[0.9375rem]",
           compact ? "px-2 sm:px-3" : "px-3.5",
         )}
@@ -184,7 +198,7 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
           window on a narrow laptop as well. */}
       {open && (
         <div
-          ref={panelRef}
+          data-lang-panel
           role="listbox"
           aria-label={t("lang.choose")}
           className={cn(
@@ -207,7 +221,7 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
                 onClick={() => setOpen(false)}
               />
               <div
-                ref={panelRef}
+                data-lang-panel
                 role="listbox"
                 aria-label={t("lang.choose")}
                 className={cn(

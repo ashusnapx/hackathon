@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import {
   Caveat,
-  Inter,
-  Instrument_Serif,
+  EB_Garamond,
+  Figtree,
   JetBrains_Mono,
   Noto_Sans_Arabic,
   Noto_Sans_Bengali,
@@ -22,8 +22,25 @@ import "./globals.css";
 import { I18nProvider } from "@/lib/i18n/context";
 import { LANG_COOKIE, SCRIPT_CLASS, getLanguage } from "@/lib/i18n/languages";
 
-const ui = Inter({ variable: "--font-ui", subsets: ["latin"], display: "swap" });
-const serif = Instrument_Serif({ variable: "--font-serif", weight: "400", subsets: ["latin"], display: "swap" });
+/* Figtree for everything a person has to operate, EB Garamond for everything
+   the page says. The pairing is lifted wholesale from the reference the design
+   is built against; both are open licence and both are on Google Fonts, so the
+   whole stack still self-hosts through next/font with no third-party request. */
+const ui = Figtree({
+  variable: "--font-ui",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+/* Italic is not decoration here — it is the only emphasis mechanism the display
+   face gets, so it has to load with the roman. */
+const serif = EB_Garamond({
+  variable: "--font-serif",
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  style: ["normal", "italic"],
+  display: "swap",
+});
 const mono = JetBrains_Mono({ variable: "--font-mono-ui", subsets: ["latin"], display: "swap" });
 /* The pen in the margin. Decorative only — never the sole carrier of meaning,
    so it can load late without holding anything up. */
@@ -100,8 +117,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fbfaf7" },
-    { media: "(prefers-color-scheme: dark)", color: "#14120f" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffeb" },
+    { media: "(prefers-color-scheme: dark)", color: "#141410" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -119,6 +136,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       lang={lang.code}
       dir={lang.dir}
       data-script={lang.script}
+      // Light is the canonical look. GIGW 3.0 is written around a light,
+      // high-contrast surface, and the people this is for are reading in
+      // daylight on cheap screens — the design is judged there, not on a
+      // developer's dark monitor.
+      data-theme="light"
       className={`${FONT_VARS} ${SCRIPT_CLASS[lang.script]}`}
       suppressHydrationWarning
     >

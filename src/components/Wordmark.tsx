@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
  */
 export function Wordmark({ className, href = "/" }: { className?: string; href?: string | null }) {
   const inner = (
-    <span className={cn("inline-flex items-center gap-2.5 group", className)}>
+    <span className={cn("inline-flex items-center gap-2.5 h-11 group", className)}>
       <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden>
         <path
           d="M16 2.5 4.5 7v10.2c0 6.6 4.7 10.9 11.5 12.3 6.8-1.4 11.5-5.7 11.5-12.3V7L16 2.5Z"

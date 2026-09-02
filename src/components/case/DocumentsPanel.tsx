@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { downloadCasePack } from "@/lib/case/pack";
+import { downloadLetter } from "@/lib/case/letter";
 import { completeness } from "@/lib/case/tracks";
 import { useI18n } from "@/lib/i18n/context";
 import type { CaseDocs, CaseFile } from "@/lib/case/types";
@@ -117,6 +118,7 @@ export function DocumentsPanel({ caseFile, update }: Props) {
             <Document
               key={d.key}
               docKey={d.key}
+              caseRef={caseFile.ref}
               title={t(d.title)}
               blurb={t(d.blurb)}
               body={caseFile.docs[d.key] ?? ""}
@@ -141,9 +143,10 @@ export function DocumentsPanel({ caseFile, update }: Props) {
 }
 
 function Document({
-  docKey, title, blurb, body, translated, targetLang, onTranslated,
+  docKey, caseRef, title, blurb, body, translated, targetLang, onTranslated,
 }: {
   docKey: DocKey;
+  caseRef: string;
   title: string;
   blurb: string;
   body: string;
@@ -172,25 +175,13 @@ function Document({
   };
 
   /**
-   * A detached anchor whose object URL is revoked in the same tick never
-   * downloads on iOS Safari — the revoke lands before the browser has read the
-   * blob. It has to be in the document, and the URL has to outlive the click.
+   * Typeset, not dumped. A station clerk who is handed a printed .txt file reads
+   * it as somebody's notes; the same words with margins, a subject line and a
+   * signature block read as an application. Copy and share still carry the plain
+   * text, which is what a portal box and WhatsApp actually want.
    */
-  const download = () => {
-    const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `kavach-${docKey}.txt`;
-    a.rel = "noopener";
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      a.remove();
-      URL.revokeObjectURL(url);
-    }, 30_000);
-  };
+  const download = () =>
+    downloadLetter(body, { title, caseRef, filename: `kavach-${docKey}-${caseRef}.pdf` });
 
   /** On a phone the useful destination is usually WhatsApp, not the filesystem. */
   const share = async () => {
@@ -241,7 +232,7 @@ function Document({
         {canShare && (
           <Button onClick={share} size="sm" variant="ghost">{t("doc.share")}</Button>
         )}
-        <Button onClick={download} size="sm" variant="ghost">{t("doc.download")}</Button>
+        <Button onClick={download} size="sm" variant="secondary">{t("doc.downloadPdf")}</Button>
         <Button onClick={() => window.print()} size="sm" variant="ghost">{t("doc.print")}</Button>
 
         {targetLang !== "en" && (

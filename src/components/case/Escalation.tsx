@@ -153,7 +153,7 @@ export function Escalation({ caseFile }: { caseFile: CaseFile }) {
           <select
             value={override || officers?.state || ""}
             onChange={(e) => setOverride(e.target.value)}
-            className="mt-1.5 w-full max-w-sm h-11 px-3 bg-raised border border-rule-strong rounded-[3px] text-sm focus:outline-none focus:border-ink"
+            className="mt-1.5 w-full max-w-sm h-11 px-3 bg-raised border border-rule-strong rounded-ctl text-sm focus:outline-none focus:border-ink"
           >
             <option value="">{t("esc.pickState")}</option>
             {OFFICERS.map((o) => (

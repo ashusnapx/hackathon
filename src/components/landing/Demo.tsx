@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Headline } from "@/components/ui/Split";
 import { useT } from "@/lib/i18n/context";
 import { useIsClient } from "@/lib/useIsClient";
 import { cn } from "@/lib/utils";
@@ -192,16 +193,20 @@ export function Demo() {
   const bufPct = duration ? Math.min(100, (buffered / duration) * 100) : 0;
 
   return (
-    <section id="demo" className="relative border-t border-rule">
-      <div className="mx-auto max-w-6xl px-5 sm:px-8 py-16 sm:py-24">
-        <p className="label">{t("demo.label")}</p>
+    // The dark slab. The player paints its own black chrome no matter what the
+    // page is doing, so putting the section on ink is the one place where the
+    // panel colour and the content agree without any coaxing.
+    <section id="demo" className="on-dark panel-full relative overflow-hidden">
+      <div className="mx-auto max-w-6xl px-5 sm:px-8 py-20 sm:py-28">
 
-        <h2 className="mt-4 text-[2.25rem] sm:text-5xl lg:text-[3.5rem] leading-[1.05]">
-          <span className="block font-normal">{t("demo.h1")}</span>
-          <span className="block airy text-ink-2">{t("demo.h2")}</span>
+        <h2 className="max-w-[18ch]">
+          <Headline>{t("demo.h1")}</Headline>{" "}
+          <span className="quiet-em">
+            <Headline>{t("demo.h2")}</Headline>
+          </span>
         </h2>
 
-        <p className="mt-6 max-w-2xl text-[1.0625rem] leading-[1.65] text-ink-2 font-light">
+        <p className="mt-8 max-w-[52ch] text-[1.0625rem] sm:text-lg leading-[1.55] text-ink-2">
           {t("demo.sub")}
         </p>
 
@@ -214,8 +219,13 @@ export function Demo() {
           role="region"
           aria-label={t("demo.play")}
           className={cn(
-            "group relative mt-10 overflow-hidden bg-black rounded-[4px] border border-rule",
-            "focus-visible:outline-2 focus-visible:outline-urgent focus-visible:outline-offset-2",
+            "group relative mt-12 overflow-hidden bg-black rounded-card border border-rule",
+            "focus-visible:outline-2 focus-visible:outline-paper focus-visible:outline-offset-2",
+            // Scroll-scrubbed: the card arrives a little small with a much
+            // larger corner and settles into its own shape as it crosses the
+            // viewport. Pure CSS scroll timeline, so it costs no script and
+            // simply does not happen where it is unsupported.
+            !fullscreen && "scrub-grow origin-center",
             fullscreen && "flex flex-col justify-center rounded-none border-0",
           )}
         >
@@ -542,7 +552,7 @@ function MenuButton({
       {open && (
         <div
           role="menu"
-          className="absolute bottom-full end-0 mb-2 min-w-[11rem] rounded-[4px] border border-white/15 bg-black/95 p-1 shadow-xl"
+          className="absolute bottom-full end-0 mb-2 min-w-[11rem] rounded-ctl border border-white/15 bg-black/95 p-1 shadow-xl"
         >
           <p className="label !text-white/45 px-2.5 py-1.5">{label}</p>
           {options.map((o) => (

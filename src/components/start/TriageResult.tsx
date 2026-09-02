@@ -132,7 +132,7 @@ export function TriageResult({ triage, entities, source, onBack, onConfirm }: Pr
                   setCategoryId(e.target.value);
                   setSubcategoryId("");
                 }}
-                className="w-full h-11 px-3 bg-paper border border-rule-strong rounded-[3px] focus:outline-none focus:border-ink"
+                className="w-full h-11 px-3 bg-paper border border-rule-strong rounded-ctl focus:outline-none focus:border-ink"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c.id} value={c.id}>{c.label}</option>
@@ -148,7 +148,7 @@ export function TriageResult({ triage, entities, source, onBack, onConfirm }: Pr
               <select
                 value={subcategoryId}
                 onChange={(e) => setSubcategoryId(e.target.value)}
-                className="w-full h-11 px-3 bg-paper border border-rule-strong rounded-[3px] focus:outline-none focus:border-ink"
+                className="w-full h-11 px-3 bg-paper border border-rule-strong rounded-ctl focus:outline-none focus:border-ink"
               >
                 <option value="">—</option>
                 {subs.map((s) => (
@@ -166,7 +166,7 @@ export function TriageResult({ triage, entities, source, onBack, onConfirm }: Pr
                 type="datetime-local"
                 value={incidentAt}
                 onChange={(e) => setIncidentAt(e.target.value)}
-                className="w-full h-11 px-3 bg-paper border border-rule-strong rounded-[3px] num focus:outline-none focus:border-ink"
+                className="w-full h-11 px-3 bg-paper border border-rule-strong rounded-ctl num focus:outline-none focus:border-ink"
               />
             ) : (
               <span className="num">
@@ -184,7 +184,7 @@ export function TriageResult({ triage, entities, source, onBack, onConfirm }: Pr
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="85000"
-                  className="w-full h-11 px-3 bg-paper border border-rule-strong rounded-[3px] num focus:outline-none focus:border-ink"
+                  className="w-full h-11 px-3 bg-paper border border-rule-strong rounded-ctl num focus:outline-none focus:border-ink"
                 />
               ) : (
                 <span className="num text-lg">{amount ? inr(Number(amount)) : "—"}</span>

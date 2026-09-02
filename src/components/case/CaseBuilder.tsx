@@ -157,7 +157,7 @@ function EvidenceSection({ caseFile: c, update }: Props) {
       <div>
         <p className="text-[0.9375rem] font-medium">{t("build.evidence.files")}</p>
         <p className="mt-1 text-sm text-ink-3 leading-snug max-w-xl">{t("build.evidence.filesHint")}</p>
-        <label className="mt-3 inline-flex items-center justify-center h-11 px-4 border border-rule-strong rounded-[3px] bg-raised hover:border-ink cursor-pointer text-[0.9375rem] transition-colors">
+        <label className="mt-3 inline-flex items-center justify-center h-11 px-4 border border-rule-strong rounded-ctl bg-raised hover:border-ink cursor-pointer text-[0.9375rem] transition-colors">
           {t("build.evidence.add")}
           <input type="file" multiple className="sr-only" onChange={(e) => addFiles(e.target.files)} />
         </label>

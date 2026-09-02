@@ -12,7 +12,7 @@ interface BaseProps {
 }
 
 const inputCls =
-  "w-full h-12 px-3.5 bg-raised border border-rule-strong rounded-[3px] text-ink " +
+  "w-full h-12 px-3.5 bg-raised border border-rule-strong rounded-ctl text-ink " +
   "placeholder:text-ink-3/70 transition-colors " +
   "hover:border-ink-3 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink";
 

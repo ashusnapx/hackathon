@@ -31,6 +31,8 @@ const ALL = [
   { href: "#demo", key: "nav.demo" },
   { href: "#how", key: "nav.how" },
   { href: "/check", key: "nav.check" },
+  { href: "/compare", key: "nav.compare" },
+  { href: "/cases", key: "nav.cases" },
   { href: "#clocks", key: "nav.clocks" },
   { href: "#honesty", key: "nav.honesty" },
   { href: "#faq", key: "nav.faq" },
@@ -46,10 +48,26 @@ export function Nav() {
 
   useEffect(() => {
     setCaseId(activeCaseId());
-    const onScroll = () => setScrolled(window.scrollY > 12);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+
+    // A scroll listener fires on every frame to answer one boolean. An observer
+    // on a sentinel at the top of the page answers it twice: once when the page
+    // leaves the top, once when it comes back. On the cheap phones this is
+    // built for, that difference is real.
+    const sentinel = document.createElement("div");
+    sentinel.setAttribute("aria-hidden", "true");
+    sentinel.style.cssText = "position:absolute;top:0;left:0;height:12px;width:1px;pointer-events:none;";
+    document.body.prepend(sentinel);
+
+    const io = new IntersectionObserver(
+      ([entry]) => setScrolled(!entry.isIntersecting),
+      { threshold: 0 },
+    );
+    io.observe(sentinel);
+
+    return () => {
+      io.disconnect();
+      sentinel.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -82,9 +100,9 @@ export function Nav() {
           onClick={() => setMenu(false)}
           className={cn(
             "flex items-center justify-between gap-4 transition-colors",
-            "py-3.5 sm:py-2.5 px-0 sm:px-3 sm:rounded-[3px]",
+            "py-3.5 sm:py-2.5 px-0 sm:px-3 rounded-ctl",
             "border-b border-rule last:border-0 sm:border-0",
-            "text-[1.0625rem] sm:text-[0.9375rem] font-light hover:sm:bg-sunk hover:text-ink",
+            "text-[1.0625rem] sm:text-[0.9375rem] font-medium hover:bg-ink/[0.055] hover:text-ink",
           )}
         >
           {t(l.key)}
@@ -97,7 +115,7 @@ export function Nav() {
           onClick={() => setMenu(false)}
           className={cn(
             "flex items-center justify-between gap-4 transition-colors",
-            "py-3.5 sm:py-2.5 px-0 sm:px-3 sm:rounded-[3px] sm:mt-1 sm:border-t sm:border-rule sm:pt-3",
+            "py-3.5 sm:py-2.5 px-0 sm:px-3 sm:rounded-ctl sm:mt-1 sm:border-t sm:border-rule sm:pt-3",
             "text-[1.0625rem] sm:text-[0.9375rem] font-semibold text-urgent",
           )}
         >
@@ -109,36 +127,42 @@ export function Nav() {
   );
 
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-40 transition-colors duration-200",
-        scrolled || menu
-          ? "bg-paper/92 backdrop-blur-md border-b border-rule"
-          : "bg-transparent border-b border-transparent",
-      )}
-    >
+    // A floating pill rather than a full-width bar. It matters here beyond
+    // looks: the sections below are coloured slabs, and a bar that spanned the
+    // window would have to change its own background four times on the way
+    // down. A cream pill sits on top of every one of them unchanged.
+    <header className="sticky top-0 z-40 px-2 sm:px-5 pt-3 sm:pt-4 pointer-events-none">
       {/* flex-nowrap + shrink-0 everywhere: the row cannot break onto a second
           line at any width, it can only run out of shortcuts to show. */}
-      <div className="mx-auto max-w-6xl px-5 sm:px-8 h-[68px] flex flex-nowrap items-center gap-2 sm:gap-4">
+      <div
+        className={cn(
+          "pointer-events-auto mx-auto max-w-6xl rounded-card",
+          "px-2.5 sm:px-4 h-[60px] sm:h-[64px] flex flex-nowrap items-center gap-1.5 sm:gap-4",
+          "bg-paper/85 backdrop-blur-xl transition-[box-shadow,border-color] duration-300",
+          scrolled || menu
+            ? "border border-ink/20 shadow-[0_10px_34px_-16px_rgba(26,26,26,0.5)]"
+            : "border border-ink/10 shadow-[0_4px_18px_-14px_rgba(26,26,26,0.4)]",
+        )}
+      >
         <div className="shrink-0">
           <Wordmark />
         </div>
 
-        <nav className="hidden lg:flex items-center gap-6 xl:gap-7 ms-6 xl:ms-8 shrink-0 text-[0.9375rem] text-ink-2">
+        <nav className="hidden lg:flex items-center gap-1 ms-5 xl:ms-7 shrink-0 text-[0.9375rem] text-ink-2">
           {PRIMARY.map((l) => (
             <a
               key={l.href}
               href={l.href}
-              className="whitespace-nowrap font-light hover:text-ink transition-colors"
+              className="press inline-flex items-center h-11 whitespace-nowrap rounded-ctl px-3 font-medium hover:text-ink hover:bg-ink/[0.055] transition-colors"
             >
               {t(l.key)}
             </a>
           ))}
         </nav>
 
-        <div className="ms-auto flex flex-nowrap items-center gap-1.5 sm:gap-2.5 shrink-0">
+        <div className="ms-auto flex flex-nowrap items-center gap-1 sm:gap-2.5 shrink-0">
           <LanguageSwitcher compact />
-          <Button href="/start" size="sm" className="shrink-0">{t("nav.start")}</Button>
+          <Button href="/report" size="sm" className="shrink-0">{t("nav.start")}</Button>
 
           <div className="relative shrink-0">
             <button
@@ -148,8 +172,8 @@ export function Nav() {
               aria-controls="site-menu"
               aria-label={t("nav.menu")}
               className={cn(
-                "inline-flex h-11 w-11 items-center justify-center rounded-[3px] border transition-colors",
-                menu ? "border-ink bg-sunk" : "border-rule-strong bg-raised hover:border-ink",
+                "press inline-flex h-10 w-10 items-center justify-center rounded-ctl border transition-colors",
+                menu ? "border-ink bg-ink text-paper" : "border-ink/25 bg-transparent hover:border-ink",
               )}
             >
               {menu ? <CloseIcon /> : <MenuIcon />}
@@ -161,7 +185,7 @@ export function Nav() {
               <div
                 ref={menuRef}
                 id="site-menu"
-                className="hidden sm:block absolute end-0 top-full mt-2 w-60 sheet p-1.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)] rise"
+                className="hidden sm:block absolute end-0 top-full mt-3 w-60 rounded-card border border-ink/20 bg-paper/95 backdrop-blur-xl p-1.5 shadow-[0_18px_50px_-18px_rgba(26,26,26,0.5)] rise"
               >
                 {items}
               </div>
@@ -170,11 +194,11 @@ export function Nav() {
         </div>
       </div>
 
-      {/* On a phone it drops in under the bar at full width — more room for a
-          thumb than a 240px card would give. */}
+      {/* On a phone it drops in under the pill as a second card — more room for
+          a thumb than a 240px menu hung off the button would give. */}
       {menu && (
-        <div className="sm:hidden border-t border-rule bg-paper">
-          <nav className="mx-auto max-w-6xl px-5 py-2">{items}</nav>
+        <div className="pointer-events-auto sm:hidden mx-auto mt-2 max-w-6xl rounded-card border border-ink/20 bg-paper/95 backdrop-blur-xl shadow-[0_16px_44px_-18px_rgba(26,26,26,0.5)] rise">
+          <nav className="px-4 py-1">{items}</nav>
         </div>
       )}
     </header>

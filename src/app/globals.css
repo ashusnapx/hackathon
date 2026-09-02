@@ -1,15 +1,23 @@
 @import "tailwindcss";
 
 /* ══════════════════════════════════════════════════════════════════════════
-   Kavach design system — "the case file"
+   Kavach design system — cream, Garamond, and panels that slide
 
-   The visual metaphor is a well-typeset legal dossier, not a SaaS dashboard.
-   Warm paper rather than clinical white, hairline rules rather than boxes and
-   shadows, an editorial serif for voice, and monospaced numerals for anything a
-   citizen may have to read down a phone line to a police officer.
+   The visual language is taken from wisprflow.ai: a warm cream ground, an
+   EB Garamond display face set very large and very tight with a same-family
+   italic doing all the emphasis, Figtree for anything a person operates, and
+   full-bleed colour panels with very large corner radii that scroll over one
+   another.
 
-   One accent colour, used only for urgency. If everything is highlighted,
-   a person in distress cannot find the one thing that matters.
+   What is deliberately *not* taken from it: the lilac primary button. Wispr is
+   selling a dictation app and can afford a playful CTA. This page is read by
+   people who have just lost money, so the primary action stays ink and the one
+   loud colour stays reserved for urgency.
+
+   Shape rule, applied everywhere with no exceptions:
+     controls (buttons, inputs, chips, menu rows) …… --radius-ctl   10px
+     cards, sheets, media …………………………………………………… --radius-card  20px
+     section panels ……………………………………………………………… --radius-panel 2.5rem → 5rem
    ══════════════════════════════════════════════════════════════════════════ */
 
 @theme inline {
@@ -31,63 +39,153 @@
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
 
+  /* The four panel grounds. Sections are built from these, never from
+     one-off background utilities. */
+  --color-deep: var(--deep);
+  --color-dawn: var(--dawn);
+  --color-glow: var(--glow);
+  --color-flare: var(--flare);
+
   --font-sans: var(--font-ui), var(--font-indic), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-serif), var(--font-indic), Georgia, serif;
+  --font-display: var(--font-serif), var(--font-indic), "Iowan Old Style", Georgia, serif;
   --font-mono: var(--font-mono-ui), ui-monospace, SFMono-Regular, monospace;
   --font-script: var(--font-hand), "Bradley Hand", "Segoe Script", cursive;
 
-  --radius-card: 4px;
+  --radius-ctl: 10px;
+  --radius-card: 20px;
+  --radius-panel: 2.5rem;
+  --radius-panel-lg: 5rem;
 }
 
 :root {
-  --paper: #fbfaf7;
+  /* ── Ground ──────────────────────────────────────────────────────────── */
+  --paper: #ffffeb;
   --raised: #ffffff;
-  --sunk: #f4f2ec;
-  --ink: #17140f;
-  --ink-2: #56504a;
-  --ink-3: #8b8378;
-  --rule: #e5e0d6;
-  --rule-strong: #cec7ba;
+  --sunk: #f6f4de;
 
-  --urgent: #c1440e;
-  --urgent-soft: #fdf0e9;
-  --urgent-ink: #8c3009;
+  /* ── Ink. Alpha rather than mixed hex, so the same three tokens work on
+        cream, on white and (redefined once, below) on the dark panels. ──── */
+  --ink: #1a1a1a;
+  --ink-2: rgba(26, 26, 26, 0.68);
+  /* 0.60, not the 0.46 this started at. `--ink-3` carries the section labels,
+     the captions and the dates — all of it small text, all of it therefore
+     held to 4.5:1 rather than the 3:1 large-text floor. 0.46 measured 2.95
+     against the cream and failed both. 0.60 measures 4.53. */
+  --ink-3: rgba(26, 26, 26, 0.6);
+  --rule: rgba(26, 26, 26, 0.13);
+  --rule-strong: rgba(26, 26, 26, 0.3);
 
-  --done: #14713b;
-  --done-soft: #ecf6ef;
+  /* ── Raw palette ─────────────────────────────────────────────────────── */
+  --flare: #ff6c4c;
+  --glow: #ffa946;
+  --deep: #034f46;
+  --dawn: #f0d7ff;
+  --pulse: #7f1c34;
+  --lumen-dark: #e4e4d0;
 
-  --wait: #8a6d1f;
-  --wait-soft: #fbf5e4;
+  /* ── Semantics. Each has a saturated `--x` for fills and marks and an
+        `--x-ink` dark enough to set small text on cream. The bright flare
+        is 2.3:1 against the ground; it is never allowed to carry words. ─── */
+  --urgent: var(--flare);
+  --urgent-soft: #ffeae3;
+  --urgent-ink: #b5330f;
 
-  --info: #1f4b99;
-  --info-soft: #eef2fb;
+  --done: var(--deep);
+  --done-soft: #dfeeea;
+
+  --wait: #7d5310;
+  --wait-soft: #fdf1d9;
+
+  --info: #4b2a8f;
+  --info-soft: #f4e9ff;
 
   color-scheme: light;
 }
 
+/* Text and rules for anything sitting on a dark or deep panel. Set the class on
+   the panel and every child token flips once — no `text-paper/60` sprinkled
+   through a dozen components. */
+.on-dark {
+  --paper: #1a1a1a;
+  --raised: rgba(255, 255, 235, 0.06);
+  --sunk: rgba(255, 255, 235, 0.04);
+  --ink: #ffffeb;
+  --ink-2: rgba(255, 255, 235, 0.72);
+  --ink-3: rgba(255, 255, 235, 0.5);   /* 5.13:1 on ink */
+  --rule: rgba(255, 255, 235, 0.16);
+  --rule-strong: rgba(255, 255, 235, 0.34);
+  --urgent: #ff8f74;
+  --urgent-ink: #ffc0ad;
+  --urgent-soft: rgba(255, 108, 76, 0.16);
+  --done: #7fd6bd;
+  --done-soft: rgba(127, 214, 189, 0.14);
+  --wait: var(--glow);
+  --wait-soft: rgba(255, 169, 70, 0.14);
+  --info: var(--dawn);
+  --info-soft: rgba(240, 215, 255, 0.14);
+  color-scheme: dark;
+  background: #1a1a1a;
+  color: var(--ink);
+}
+
+.on-deep {
+  --paper: var(--deep);
+  --raised: rgba(255, 255, 235, 0.07);
+  --sunk: rgba(0, 0, 0, 0.12);
+  --ink: #ffffeb;
+  --ink-2: rgba(255, 255, 235, 0.74);
+  /* The deep green is much lighter than the ink panel, so the same alpha buys
+     far less contrast: 0.52 measures 3.76 here against 5.13 there. */
+  --ink-3: rgba(255, 255, 235, 0.62);
+  --rule: rgba(255, 255, 235, 0.18);
+  --rule-strong: rgba(255, 255, 235, 0.36);
+  --urgent: #ffa98f;
+  --urgent-ink: #ffcbba;
+  --urgent-soft: rgba(255, 108, 76, 0.2);
+  --done: #a8e6d3;
+  --done-soft: rgba(168, 230, 211, 0.14);
+  --wait: var(--glow);
+  --wait-soft: rgba(255, 169, 70, 0.16);
+  --info: var(--dawn);
+  --info-soft: rgba(240, 215, 255, 0.16);
+  color-scheme: dark;
+  background: var(--deep);
+  color: var(--ink);
+}
+
+/* Dawn is a light panel, so only the ground moves. */
+.on-dawn {
+  --paper: var(--dawn);
+  /* Opaque, not a white wash. The cards on this panel are the sticky stack,
+     and a translucent card shows the text of every card underneath it. */
+  --raised: #ffffff;
+  --sunk: rgba(26, 26, 26, 0.05);
+  background: var(--dawn);
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #14120f;
-    --raised: #1c1916;
-    --sunk: #100e0c;
-    --ink: #f4f1ea;
-    --ink-2: #b3aca1;
-    --ink-3: #837c72;
-    --rule: #2e2a25;
-    --rule-strong: #453f38;
+    --paper: #141410;
+    --raised: #1e1e18;
+    --sunk: #0e0e0b;
+    --ink: #f4f2e2;
+    --ink-2: rgba(244, 242, 226, 0.7);
+    --ink-3: rgba(244, 242, 226, 0.52);
+    --rule: rgba(244, 242, 226, 0.14);
+    --rule-strong: rgba(244, 242, 226, 0.3);
 
-    --urgent: #f97a45;
-    --urgent-soft: #2c150c;
-    --urgent-ink: #ffb694;
+    --urgent: #ff8f74;
+    --urgent-soft: #35150c;
+    --urgent-ink: #ffc0ad;
 
-    --done: #4fbc7c;
-    --done-soft: #0f2418;
+    --done: #7fd6bd;
+    --done-soft: #0c2620;
 
-    --wait: #d6b357;
-    --wait-soft: #251e0c;
+    --wait: var(--glow);
+    --wait-soft: #2a1e08;
 
-    --info: #7ba3ea;
-    --info-soft: #101a2c;
+    --info: var(--dawn);
+    --info-soft: #23142c;
 
     color-scheme: dark;
   }
@@ -109,35 +207,62 @@
     /* 17px: the guide's 16px floor plus a little, because a lot of these users
        are reading in daylight on a cracked screen. */
     font-size: 17px;
-    line-height: 1.6;
+    /* Figtree is set at 500 throughout. The reference runs its body at 1.3,
+       which is right for two-line ledes and wrong for the long paragraphs this
+       site actually has, so prose gets 1.55 and short blocks opt into tighter. */
+    font-weight: 500;
+    line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
 
   ::selection {
-    background: var(--urgent);
-    color: #fff;
+    background: var(--flare);
+    color: #1a1a1a;
   }
 
   :focus-visible {
-    outline: 2px solid var(--urgent);
+    outline: 2px solid var(--ink);
     outline-offset: 2px;
-    border-radius: 2px;
+    border-radius: 4px;
   }
+  .on-dark :focus-visible,
+  .on-deep :focus-visible { outline-color: var(--paper); }
 
+  /* ── Display type ──────────────────────────────────────────────────────
+     Garamond at 400, tracked in hard and leaded to just under the em. That
+     combination is the whole reference look; it only survives above ~2.5rem,
+     which is why every heading below has a clamp floor that high. */
   h1, h2, h3 {
     font-family: var(--font-display);
     font-weight: 400;
-    letter-spacing: -0.015em;
-    line-height: 1.08;
+    letter-spacing: -0.03em;
+    line-height: 0.95;
     text-wrap: balance;
   }
+  h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.06;
+  }
+
+  h1 { font-size: clamp(2.875rem, 1.4rem + 6.4vw, 6rem); }
+
+  /* A headline that is a sentence rather than a slogan. The reference's h1 is
+     four words, so it can afford 96px and a 0.95 line box. Sixty characters at
+     that size runs to four lines, collides with the paragraph under it, and
+     stops being a headline at all. Long-form copy caps lower and breathes. */
+  .h1-long { font-size: clamp(2.375rem, 1.1rem + 4.4vw, 4.5rem); line-height: 1.02; }
+  h2 { font-size: clamp(2.375rem, 1.3rem + 4.6vw, 4.25rem); }
+  h3 { font-size: clamp(1.75rem, 1.2rem + 2vw, 2.5rem); }
 
   /* Indic scripts have no italic and much taller line boxes; a serif display
      face designed for Latin makes them worse, not better. */
   :root[data-script]:not([data-script="latin"]) h1,
   :root[data-script]:not([data-script="latin"]) h2,
-  :root[data-script]:not([data-script="latin"]) h3 {
+  :root[data-script]:not([data-script="latin"]) h3,
+  :root[data-script]:not([data-script="latin"]) h4 {
     font-family: var(--font-indic), var(--font-ui), sans-serif;
     font-weight: 600;
     letter-spacing: -0.01em;
@@ -149,15 +274,18 @@
   }
 
   /* Devanagari, Bengali and the rest stack matras above and below the line.
-     Latin line-heights clip them, so every heading gets more room. */
-  :root[data-script]:not([data-script="latin"]) h1 { line-height: 1.45; }
-  :root[data-script]:not([data-script="latin"]) h2,
-  :root[data-script]:not([data-script="latin"]) h3 { line-height: 1.4; }
+     Latin line-heights clip them, so every heading gets more room — and the
+     Garamond scale is a shade smaller, since a 6rem Devanagari headline in a
+     600 weight is far heavier on the page than 6rem of Garamond at 400. */
+  :root[data-script]:not([data-script="latin"]) h1 { font-size: clamp(2.25rem, 1.2rem + 4.6vw, 4.25rem); line-height: 1.4; }
+  :root[data-script]:not([data-script="latin"]) .h1-long { font-size: clamp(1.875rem, 1rem + 3.2vw, 3.25rem); line-height: 1.45; }
+  :root[data-script]:not([data-script="latin"]) h2 { font-size: clamp(1.875rem, 1.1rem + 3.2vw, 3.25rem); line-height: 1.35; }
+  :root[data-script]:not([data-script="latin"]) h3 { font-size: clamp(1.5rem, 1.1rem + 1.5vw, 2rem); line-height: 1.35; }
 
   p { text-wrap: pretty; }
 
-  /* Anchor jumps must clear the sticky header, or the heading lands under it. */
-  section[id] { scroll-margin-top: 5rem; }
+  /* Anchor jumps must clear the floating header, or the heading lands under it. */
+  section[id] { scroll-margin-top: 7rem; }
 }
 
 /* ── Script-specific font stacks ─────────────────────────────────────────── */
@@ -177,26 +305,25 @@
 
 /* ── Primitives ──────────────────────────────────────────────────────────── */
 
-/* The small-caps mono label that runs above every section, like a file tab. */
+/* The small tracked label that runs above every section. */
 .label {
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.14em;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--ink-3);
 }
 
 /*
- * None of that survives an Indic script. Letter-spacing splits conjuncts, there
- * is no uppercase to transform to, and the mono face has no Devanagari at all —
- * so the label reverts to a plain small caption and keeps only its colour.
+ * None of that survives an Indic script. Letter-spacing splits conjuncts and
+ * there is no uppercase to transform to, so the label reverts to a plain small
+ * caption and keeps only its colour.
  */
 :root[data-script]:not([data-script="latin"]) .label {
-  font-family: var(--font-indic), var(--font-ui), sans-serif;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   letter-spacing: 0;
   text-transform: none;
-  font-weight: 600;
 }
 
 .num {
@@ -205,20 +332,34 @@
   font-feature-settings: "tnum" 1;
 }
 
+/* Figures set in the display face, the way the reference sets "45 wpm". Used
+   for anything that is a quantity rather than a reference number. */
+.figure {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 0.92;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+:root[data-script]:not([data-script="latin"]) .figure {
+  font-family: var(--font-indic), var(--font-ui), sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
 /* Status pills. These carry translated words, not just digits, so they follow
    the same script-aware rules as .label rather than staying monospaced. */
 .chip {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.6875rem;
-  letter-spacing: 0.08em;
+  font-weight: 600;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 :root[data-script]:not([data-script="latin"]) .chip {
-  font-family: var(--font-indic), var(--font-ui), sans-serif;
   font-size: 0.75rem;
   letter-spacing: 0;
   text-transform: none;
-  font-weight: 600;
 }
 
 /* Paper stock: a sheet, not a floating card. */
@@ -226,6 +367,26 @@
   background: var(--raised);
   border: 1px solid var(--rule);
   border-radius: var(--radius-card);
+}
+
+/* A full-bleed section panel. The signature move of the reference: a coloured
+   slab with a very large radius that scrolls up over the section behind it.
+   `--radius-panel` on a phone, `--radius-panel-lg` once there is room. */
+.panel {
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+  position: relative;
+  isolation: isolate;
+}
+.panel-full { border-radius: var(--radius-panel); }
+@media (min-width: 768px) {
+  .panel { border-radius: var(--radius-panel-lg) var(--radius-panel-lg) 0 0; }
+  .panel-full { border-radius: var(--radius-panel-lg); }
+}
+/* Panels overlap the section above by their own radius, so the curve is cut
+   out of the previous surface rather than floating on a seam. */
+.panel-lift { margin-top: calc(var(--radius-panel) * -1); }
+@media (min-width: 768px) {
+  .panel-lift { margin-top: calc(var(--radius-panel-lg) * -1); }
 }
 
 /* A ruled line that fades out, used to separate without shouting. */
@@ -240,7 +401,7 @@
     linear-gradient(var(--rule) 1px, transparent 1px),
     linear-gradient(90deg, var(--rule) 1px, transparent 1px);
   background-size: 100% 2.4rem, 2.4rem 100%;
-  opacity: 0.5;
+  opacity: 0.55;
   mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 75%);
 }
 
@@ -253,17 +414,14 @@
   text-decoration-thickness: 1px;
   transition: text-decoration-color 150ms;
 }
-.link:hover { text-decoration-color: var(--urgent); }
+.link:hover { text-decoration-color: var(--flare); }
 
 /* ── Voice: weight, style and colour ─────────────────────────────────────────
  *
- * A wall of one weight in one colour reads as a form. These are the four voices
- * the page speaks in, and they are deliberately few — a citizen scanning in a
- * panic should be able to tell "this is the number to call" from "this is
- * background" without reading either.
- *
- * Every colour below is a token that already flips in dark mode, so nothing
- * here needs a second definition further down.
+ * A wall of one weight in one colour reads as a form. These are the voices the
+ * page speaks in, and they are deliberately few — a citizen scanning in a panic
+ * should be able to tell "this is the number to call" from "this is background"
+ * without reading either.
  * ─────────────────────────────────────────────────────────────────────────── */
 
 /* 1. The hand in the margin. A pen note on the case file — used for asides and
@@ -283,42 +441,48 @@
   font-weight: 500;
 }
 
-/* 2. The editorial italic — the serif display face leaning in for one phrase. */
+/* 2. The editorial italic. This is the emphasis mechanism for display type and
+      the single most recognisable thing about the reference: the same face,
+      leaning, for one phrase of a headline. Never a second family. */
 .quiet-em {
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 400;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.025em;
+  /* Garamond italic descends a long way. Inside a 0.95 line box the tail of a
+     `g` or `y` is cut off, so italic runs buy back a little room. */
+  line-height: 1.04;
+  padding-bottom: 0.06em;
 }
 :root[data-script]:not([data-script="latin"]) .quiet-em {
   font-family: var(--font-indic), var(--font-ui), sans-serif;
   font-style: normal;
   font-weight: 600;
+  line-height: inherit;
+  padding-bottom: 0;
 }
 
 /* 3. Hairline display type. Only ever at large sizes — a thin weight under
       ~24px disappears on a cheap LCD in daylight, which is most of our users. */
 .airy {
-  font-weight: 200;
-  letter-spacing: -0.02em;
+  color: var(--ink-2);
 }
-:root[data-script]:not([data-script="latin"]) .airy { font-weight: 400; }
 
 /* 4. Semantic emphasis. Each maps to a meaning already used elsewhere in the
-      app, so the colour teaches itself: orange = act now, green = done,
-      amber = waiting, blue = information. */
-.em-urgent { color: var(--urgent); font-weight: 600; }
-.em-done   { color: var(--done);   font-weight: 600; }
-.em-wait   { color: var(--wait);   font-weight: 600; }
-.em-info   { color: var(--info);   font-weight: 600; }
-.em-strong { color: var(--ink);    font-weight: 700; letter-spacing: -0.01em; }
+      app, so the colour teaches itself: flare = act now, deep = done,
+      amber = waiting, violet = information. Text uses the `-ink` variants. */
+.em-urgent { color: var(--urgent-ink); font-weight: 600; }
+.em-done   { color: var(--done);       font-weight: 600; }
+.em-wait   { color: var(--wait);       font-weight: 600; }
+.em-info   { color: var(--info);       font-weight: 600; }
+.em-strong { color: var(--ink);        font-weight: 700; letter-spacing: -0.01em; }
 
 /* A highlighter run, sitting behind the baseline like a marker pen. */
 .marker {
   background-image: linear-gradient(
     to bottom,
-    transparent 58%,
-    color-mix(in srgb, var(--urgent) 22%, transparent) 58%
+    transparent 56%,
+    color-mix(in srgb, var(--flare) 38%, transparent) 56%
   );
   padding-inline: 0.1em;
   font-weight: 600;
@@ -326,27 +490,27 @@
 .marker-info {
   background-image: linear-gradient(
     to bottom,
-    transparent 58%,
-    color-mix(in srgb, var(--info) 24%, transparent) 58%
+    transparent 56%,
+    color-mix(in srgb, var(--dawn) 85%, transparent) 56%
   );
 }
 .marker-done {
   background-image: linear-gradient(
     to bottom,
-    transparent 58%,
-    color-mix(in srgb, var(--done) 24%, transparent) 58%
+    transparent 56%,
+    color-mix(in srgb, var(--glow) 45%, transparent) 56%
   );
 }
 
-/* Two-tone display type for a single headline word. Falls back to a flat ink
+/* Two-tone display type for a single headline word. Falls back to a flat
    colour anywhere background-clip:text is unsupported. */
 .grad {
-  color: var(--urgent);
+  color: var(--urgent-ink);
   font-weight: 600;
 }
 @supports (-webkit-background-clip: text) or (background-clip: text) {
   .grad {
-    background: linear-gradient(100deg, var(--urgent) 10%, var(--wait) 90%);
+    background: linear-gradient(100deg, var(--flare) 10%, var(--glow) 90%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -354,15 +518,33 @@
   }
 }
 
-/* ── Motion ──────────────────────────────────────────────────────────────── */
+/* ══ Motion ═══════════════════════════════════════════════════════════════
+   The reference drives all of this with GSAP, ScrollTrigger and SplitText —
+   roughly 90kB of JavaScript before a pixel moves. The whole argument of this
+   site is that it works on a cheap phone on 2G, so none of that ships. What is
+   below reproduces the same four effects in CSS: a scroll-scrubbed scale, a
+   line-by-line headline reveal, a sticky stack, and a marquee.
+
+   Every one of them is decoration. `prefers-reduced-motion` switches all of it
+   off at the bottom of this file, and nothing here is required for any content
+   to be visible or reachable.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* The reference's easing, near enough: a hard-out curve that arrives and stops
+   rather than drifting. One variable so nothing invents its own. */
+:root {
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
+}
+
 @keyframes rise {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: none; }
 }
-.rise { animation: rise 320ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.rise { animation: rise 620ms var(--ease) both; }
 
 @keyframes pulse-ring {
-  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--urgent) 45%, transparent); }
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--flare) 55%, transparent); }
   70%  { box-shadow: 0 0 0 14px transparent; }
   100% { box-shadow: 0 0 0 0 transparent; }
 }
@@ -382,8 +564,243 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--urgent) 18%, transparent), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--flare) 22%, transparent), transparent);
   animation: sweep 1.6s ease-in-out infinite;
+}
+
+/* ── Scroll reveal ───────────────────────────────────────────────────────
+   Gated on `data-reveal-ready`, which useReveal sets only when JavaScript runs
+   and motion is welcome. Without it nothing is hidden, so the page never
+   depends on script to be readable. `--i` staggers siblings. */
+[data-reveal-ready] [data-reveal] {
+  opacity: 0;
+  transform: translateY(18px);
+}
+[data-reveal-ready] [data-reveal][data-in] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 700ms var(--ease),
+    transform 700ms var(--ease);
+  transition-delay: calc(var(--i, 0) * 60ms);
+}
+
+/* ── Headline reveal, word by word ───────────────────────────────────────
+   SplitText's job without SplitText. Each word is a clipping box; the word
+   inside starts pushed below its own baseline and slides up. Words rather than
+   measured lines, because measuring lines breaks on every re-wrap, in every
+   one of twenty-three scripts, and in both directions.
+
+   The clip box is padded and negatively margined by the same amount, so a
+   Garamond italic descender has somewhere to go and the text still sits on its
+   original baseline. */
+.split { display: inline; }
+.split .w {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  /* Room on every side for what a 0.95 line box does not contain: Garamond's
+     ascenders above, its descenders below, and the overhang of an italic on
+     both flanks. Each pad is cancelled by an equal negative margin, so the clip
+     box grows without moving a single glyph. */
+  padding: 0.22em 0.08em 0.24em;
+  margin: -0.22em -0.08em -0.24em;
+}
+[data-reveal-ready] .split .w > span {
+  display: inline-block;
+  transform: translateY(110%);
+}
+[data-reveal-ready] [data-in] .split .w > span,
+[data-reveal-ready] .split[data-in] .w > span {
+  transform: none;
+  transition: transform 900ms var(--ease);
+  transition-delay: calc(var(--w, 0) * var(--step, 42) * 1ms);
+}
+
+/* ── Scroll-scrubbed effects ─────────────────────────────────────────────
+   Native scroll-driven animations. These run on the compositor with no script
+   at all, which is the entire reason they are worth having here. `@supports`
+   means a browser without them simply gets the finished state. */
+@keyframes scrub-grow {
+  from { transform: scale(0.86); border-radius: var(--radius-panel-lg); }
+  to   { transform: scale(1); border-radius: var(--radius-card); }
+}
+@keyframes scrub-shrink {
+  from { transform: scale(1); }
+  to   { transform: scale(0.9); opacity: 0.55; }
+}
+@keyframes scrub-rise {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes scrub-pan {
+  from { transform: translateX(var(--pan-from, -3%)); }
+  to   { transform: translateX(var(--pan-to, 3%)); }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .scrub-grow {
+      animation: scrub-grow linear both;
+      animation-timeline: view();
+      animation-range: entry 5% cover 42%;
+    }
+    .scrub-rise {
+      animation: scrub-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 28%;
+    }
+    .scrub-pan {
+      animation: scrub-pan linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+    /* Applied to a sticky child so the panel it sits in recedes as the next
+       panel climbs over it. */
+    .scrub-recede {
+      animation: scrub-shrink linear both;
+      animation-timeline: view();
+      animation-range: exit 0% exit 100%;
+    }
+  }
+}
+
+/* ── Sticky stack ────────────────────────────────────────────────────────
+   The reference pins a sequence of cards and deals them over each other. This
+   is the same effect with `position: sticky` and nothing else: each card sticks
+   under the header, the next one scrolls up and covers it. */
+.stack-item {
+  position: sticky;
+  top: calc(var(--stack-top, 6.5rem) + var(--n, 0) * 0.75rem);
+}
+
+/* ── Marquee ─────────────────────────────────────────────────────────────
+   A band of text that never stops moving. Duplicated content, translated by
+   exactly one copy's width, so the loop has no seam. The copy is marked
+   aria-hidden at the call site. */
+.marquee {
+  display: flex;
+  overflow: hidden;
+  user-select: none;
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+.marquee > * {
+  flex: 0 0 auto;
+  min-width: max-content;
+  animation: marquee var(--marquee-dur, 48s) linear infinite;
+}
+.marquee[data-dir="rtl"] > * { animation-direction: reverse; }
+.marquee:hover > * { animation-play-state: paused; }
+@keyframes marquee {
+  to { transform: translateX(-100%); }
+}
+
+/* ── Micro-interactions ──────────────────────────────────────────────────
+   Each one answers a question the reader is already asking: is this thing
+   pressable, is this row the one I am on, did that click register. */
+
+/* A physical push. Applied to anything that takes a click. */
+.press {
+  transition: transform 140ms var(--ease);
+}
+.press:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+/* A rule that draws itself under a link on hover, rather than a colour flip. */
+.underline-grow {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0% 1px;
+  transition: background-size 300ms var(--ease);
+}
+.underline-grow:hover,
+.underline-grow:focus-visible {
+  background-size: 100% 1px;
+}
+
+/* A row that lifts its own mark as the cursor crosses it. */
+.row-mark {
+  position: relative;
+}
+.row-mark::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block: 0;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--flare);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 320ms var(--ease);
+}
+.row-mark:hover::before,
+.row-mark:focus-within::before {
+  transform: scaleY(1);
+}
+
+/* A card that lifts a little under the pointer. The reference does this to its
+   testimonial tiles; the shadow is tinted to the ground rather than black. */
+.lift {
+  transition: transform 320ms var(--ease), box-shadow 320ms var(--ease);
+}
+.lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px -22px rgba(26, 26, 26, 0.45);
+}
+
+/* ── Portraits ───────────────────────────────────────────────────────────
+   Two photographs taken on different phones in different light will not sit
+   together on their own. Desaturating and then tinting toward the accent makes
+   them one set, and belong to the page rather than sitting on top of it.
+   Colour comes back on hover. */
+.portrait {
+  position: relative;
+  display: inline-block;
+  border-radius: 9999px;
+  isolation: isolate;
+}
+.portrait img {
+  /* `--lift` matches exposure between portraits. The duotone unifies hue, not
+     brightness, so a photo taken in a dim room still reads darker than one
+     taken in daylight once both are desaturated. One number per portrait,
+     set where the person is declared. */
+  filter: grayscale(1) contrast(1.06) brightness(var(--lift, 1.02));
+  transition: filter 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.portrait::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--urgent);
+  mix-blend-mode: color;
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* A hairline so the circle reads as a deliberate edge, not a cut-out. */
+.portrait::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  /* currentColor, so the ring works on the light page and inside the dark
+     footer without a second rule for each surface. */
+  border: 1px solid currentColor;
+  opacity: 0.22;
+  pointer-events: none;
+  z-index: 1;
+}
+.portrait:hover img,
+.portrait:focus-within img {
+  filter: none;
+}
+.portrait:hover::after,
+.portrait:focus-within::after {
+  opacity: 0;
 }
 
 /* Under stress, motion is noise. Everything here is decoration except the
@@ -395,6 +812,20 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  /* Belt and braces: useReveal already declines to run, but if the attribute
+     is ever set, nothing may stay hidden waiting for a transition that has
+     been reduced to nothing. */
+  [data-reveal-ready] [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  /* The word-reveal hides its own text below a clip box. If the transition that
+     brings it back is reduced to nothing, the headline never arrives — so the
+     clipping is removed outright rather than sped up. */
+  [data-reveal-ready] .split .w > span { transform: none !important; }
+  .split .w { overflow: visible; }
+  .marquee > * { animation: none !important; transform: none !important; }
+  .marquee { mask-image: none; }
 }
 
 /* ── Scrollbar ───────────────────────────────────────────────────────────── */
@@ -406,7 +837,7 @@
 @media (pointer: fine) {
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: var(--sunk); }
-  ::-webkit-scrollbar-thumb { background: var(--rule-strong); border: 3px solid var(--sunk); border-radius: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--rule-strong); border: 3px solid var(--sunk); border-radius: 10px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
 }
 
@@ -423,9 +854,14 @@
 
 /* ── Print: the case pack has to survive a police station printer ────────── */
 @media print {
-  :root { --paper: #fff; --raised: #fff; --ink: #000; --ink-2: #333; --rule: #bbb; }
+  :root { --paper: #fff; --raised: #fff; --ink: #000; --ink-2: #333; --ink-3: #555; --rule: #bbb; --rule-strong: #999; }
+  .on-dark, .on-deep, .on-dawn { background: #fff !important; color: #000 !important; --ink: #000; --ink-2: #333; --ink-3: #555; --rule: #bbb; }
   .no-print { display: none !important; }
   body { font-size: 11pt; }
+  /* Every radius in the system is decoration on paper, and a printer renders a
+     5rem corner as a wedge of toner. Flatten the lot. */
+  .sheet, .panel, .panel-full { border-radius: 0; }
+  .panel-lift { margin-top: 0; }
   .sheet { border: 1px solid #999; break-inside: avoid; }
   a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 9pt; color: #555; }
 }

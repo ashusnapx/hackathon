@@ -3,15 +3,27 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-type Variant = "primary" | "secondary" | "ghost" | "urgent";
+type Variant = "primary" | "secondary" | "ghost" | "urgent" | "dawn";
 type Size = "sm" | "md" | "lg";
 
+/*
+ * Every button carries a real 1px border in the ink colour, filled or not.
+ * That is the reference's button idiom and it is worth copying for a reason
+ * beyond looks: on a cheap LCD in daylight, a borderless tinted button and the
+ * surface behind it are the same grey.
+ *
+ * The one thing not copied is the reference's lilac primary. It is selling a
+ * dictation app; this page is read by people who have just lost money, so the
+ * primary action stays ink and the loud colour stays reserved for urgency.
+ * Dawn is available as a third tone for actions that are inviting rather than
+ * grave — the language picker, "see an example".
+ */
 const VARIANTS: Record<Variant, string> = {
-  // Ink, not brand blue. The one loud colour is reserved for urgency.
-  primary: "bg-ink text-paper hover:bg-ink/88 border border-ink",
-  secondary: "bg-raised text-ink border border-rule-strong hover:border-ink hover:bg-sunk",
-  ghost: "text-ink-2 hover:text-ink hover:bg-sunk border border-transparent",
-  urgent: "bg-urgent text-white border border-urgent hover:bg-urgent-ink",
+  primary: "bg-ink text-paper border border-ink hover:bg-ink/86",
+  secondary: "bg-transparent text-ink border border-rule-strong hover:border-ink hover:bg-ink/[0.045]",
+  ghost: "text-ink-2 hover:text-ink hover:bg-ink/[0.045] border border-transparent",
+  urgent: "bg-urgent text-[#1a1a1a] border border-[#1a1a1a] hover:bg-[#ff8161]",
+  dawn: "bg-[color:var(--dawn)] text-[#1a1a1a] border border-[#1a1a1a] hover:bg-[#e7c6ff]",
 };
 
 const SIZES: Record<Size, string> = {
@@ -33,8 +45,11 @@ export function Button({
   variant = "primary", size = "md", href, external, full, className, children, ...rest
 }: Props) {
   const cls = cn(
-    "inline-flex items-center justify-center gap-2 rounded-[3px] font-medium tracking-tight",
-    "transition-colors duration-150 select-none",
+    "inline-flex items-center justify-center gap-2 rounded-ctl font-semibold tracking-[-0.01em] whitespace-nowrap",
+    // A physical push on press. One line here rather than a class on every
+    // call site, so nothing on the page is clickable without acknowledging it.
+    "transition-[color,background-color,border-color,transform] duration-150 select-none",
+    "active:translate-y-px active:scale-[0.985]",
     "disabled:opacity-45 disabled:pointer-events-none",
     VARIANTS[variant],
     SIZES[size],

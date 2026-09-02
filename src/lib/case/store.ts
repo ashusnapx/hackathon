@@ -16,7 +16,18 @@ const KEY = "kavach.cases.v1";
 const ACTIVE = "kavach.active.v1";
 
 const listeners = new Set<() => void>();
+
+/**
+ * `useSyncExternalStore` compares snapshots by identity, and `readAll` parses
+ * JSON into a fresh array on every call — so an uncached snapshot looks like a
+ * change on every render and React loops until it gives up. The cache is
+ * invalidated by `emit`, which is exactly when the stored data can differ.
+ */
+let snapshot: CaseFile[] | null = null;
+const EMPTY: CaseFile[] = [];
+
 function emit() {
+  snapshot = null;
   for (const l of listeners) l();
 }
 
@@ -100,6 +111,20 @@ export function getCase(id: string): CaseFile | null {
   return found ? migrate(found) : null;
 }
 
+/**
+ * Find a case by the reference the citizen was given.
+ *
+ * The reference is the only handle most people keep — it goes on the complaint,
+ * in the documents, and read down a phone line to an officer. Matching is loose
+ * on purpose: people write it back without the dashes, in lower case, or with a
+ * stray space, and none of that should mean "no such case".
+ */
+export function findByRef(ref: string): CaseFile | null {
+  const want = (ref || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (want.length < 4) return null;
+  return readAll().find((c) => c.ref.toUpperCase().replace(/[^A-Z0-9]/g, "") === want) ?? null;
+}
+
 export function deleteCase(id: string) {
   writeAll(readAll().filter((c) => c.id !== id));
   if (localStorage.getItem(ACTIVE) === id) localStorage.removeItem(ACTIVE);
@@ -112,16 +137,30 @@ export function activeCaseId(): string | null {
 
 function subscribe(cb: () => void) {
   listeners.add(cb);
-  window.addEventListener("storage", cb);
+  const onStorage = () => {
+    snapshot = null;
+    cb();
+  };
+  window.addEventListener("storage", onStorage);
   return () => {
     listeners.delete(cb);
-    window.removeEventListener("storage", cb);
+    window.removeEventListener("storage", onStorage);
   };
+}
+
+function getSnapshot(): CaseFile[] {
+  if (snapshot === null) snapshot = readAll();
+  return snapshot;
+}
+
+/** The server has no localStorage, so the same frozen empty array every time. */
+function getServerSnapshot(): CaseFile[] {
+  return EMPTY;
 }
 
 /** The list of cases, kept in sync across tabs. */
 export function useCases(): CaseFile[] {
-  return useSyncExternalStore(subscribe, readAll, () => []);
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 /**

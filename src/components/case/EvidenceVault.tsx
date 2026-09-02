@@ -106,7 +106,7 @@ export function EvidenceVault({ caseFile, update }: Props) {
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
-          <span className={cn("chip px-2 py-1 rounded-[2px] border", STATUS_STYLES[readiness.level === "READY" ? "added" : readiness.level === "PARTIALLY_READY" ? "not_applicable" : "missing"])}>
+          <span className={cn("chip px-2 py-1 rounded-ctl border", STATUS_STYLES[readiness.level === "READY" ? "added" : readiness.level === "PARTIALLY_READY" ? "not_applicable" : "missing"])}>
             {levelLabel}
           </span>
           <span className="text-sm text-ink-3">
@@ -158,7 +158,7 @@ export function EvidenceVault({ caseFile, update }: Props) {
         </p>
 
         {error && (
-          <p className="mt-4 text-sm text-urgent bg-urgent-soft border border-urgent/20 px-3 py-2 rounded-[3px]">{error}</p>
+          <p className="mt-4 text-sm text-urgent bg-urgent-soft border border-urgent/20 px-3 py-2 rounded-ctl">{error}</p>
         )}
 
         <div className="mt-6 border-t border-rule-strong">
@@ -174,7 +174,7 @@ export function EvidenceVault({ caseFile, update }: Props) {
                   className="w-full flex items-center gap-4 py-4 text-start hover:bg-sunk/60 transition-colors px-1 -mx-1"
                 >
                   <span className="flex-1 text-lg">{CATEGORY_LABEL[cat]}</span>
-                  <span className="num text-xs text-ink-3 border border-rule px-1.5 py-0.5 rounded-[2px]">
+                  <span className="num text-xs text-ink-3 border border-rule px-1.5 py-0.5 rounded-ctl">
                     {addedCount}/{items.length}
                   </span>
                   <span className={cn("shrink-0 text-ink-3 transition-transform duration-200", isOpen && "rotate-180")} aria-hidden>
@@ -224,7 +224,7 @@ function EvidenceRow({
       <div className="flex items-start gap-3">
         <span
           className={cn(
-            "shrink-0 w-7 h-7 grid place-items-center rounded-[3px] border text-sm font-medium num",
+            "shrink-0 w-7 h-7 grid place-items-center rounded-ctl border text-sm font-medium num",
             STATUS_STYLES[item.status],
           )}
           aria-hidden
@@ -235,7 +235,7 @@ function EvidenceRow({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[0.9375rem] font-medium leading-snug">{item.title}</p>
-            <span className={cn("chip px-1.5 py-0.5 rounded-[2px] border", STATUS_STYLES[item.status])}>
+            <span className={cn("chip px-1.5 py-0.5 rounded-ctl border", STATUS_STYLES[item.status])}>
               {STATUS_LABEL[item.status]}
             </span>
           </div>
@@ -244,7 +244,7 @@ function EvidenceRow({
           <p className="mt-1.5 text-xs text-ink-3 leading-snug border-s-2 border-rule-strong ps-3">{item.why}</p>
 
           {item.attachment && (
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm bg-sunk border border-rule px-3 py-2 rounded-[3px]">
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm bg-sunk border border-rule px-3 py-2 rounded-ctl">
               <span className="truncate font-mono text-xs">{item.attachment.name}</span>
               <span className="num text-xs text-ink-3">
                 {(item.attachment.size / 1024).toFixed(0)} KB · {item.attachment.type.split("/")[1]?.toUpperCase() || "FILE"}
@@ -258,7 +258,7 @@ function EvidenceRow({
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {item.status === "missing" && (
               <>
-                <label className="inline-flex items-center justify-center h-9 px-3 border border-rule-strong rounded-[3px] bg-raised hover:border-ink cursor-pointer text-sm transition-colors">
+                <label className="inline-flex items-center justify-center h-9 px-3 border border-rule-strong rounded-ctl bg-raised hover:border-ink cursor-pointer text-sm transition-colors">
                   Add evidence
                   <input
                     ref={inputRef}
@@ -283,7 +283,7 @@ function EvidenceRow({
             {item.status === "added" && (
               <>
                 {!item.attachment && (
-                  <label className="inline-flex items-center justify-center h-9 px-3 border border-rule-strong rounded-[3px] bg-raised hover:border-ink cursor-pointer text-sm transition-colors">
+                  <label className="inline-flex items-center justify-center h-9 px-3 border border-rule-strong rounded-ctl bg-raised hover:border-ink cursor-pointer text-sm transition-colors">
                     Attach file
                     <input
                       ref={inputRef}
@@ -298,7 +298,7 @@ function EvidenceRow({
                   </label>
                 )}
                 {item.attachment && (
-                  <label className="inline-flex items-center justify-center h-9 px-3 border border-rule-strong rounded-[3px] bg-raised hover:border-ink cursor-pointer text-sm transition-colors">
+                  <label className="inline-flex items-center justify-center h-9 px-3 border border-rule-strong rounded-ctl bg-raised hover:border-ink cursor-pointer text-sm transition-colors">
                     Replace file
                     <input
                       ref={inputRef}

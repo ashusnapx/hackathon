@@ -68,8 +68,8 @@ export default function CheckPage() {
 
   return (
     <>
-      <header className="border-b border-rule sticky top-0 z-40 bg-paper/92 backdrop-blur-md">
-        <div className="mx-auto max-w-3xl px-5 sm:px-8 h-[68px] flex items-center gap-4">
+      <header className="sticky top-0 z-40 px-3 sm:px-5 pt-3 sm:pt-4 pointer-events-none">
+        <div className="pointer-events-auto mx-auto max-w-3xl rounded-card border border-ink/15 bg-paper/85 backdrop-blur-xl shadow-[0_6px_24px_-18px_rgba(26,26,26,0.55)] px-3 sm:px-4 h-[60px] sm:h-[64px] flex items-center gap-4">
           <Wordmark />
           <div className="ms-auto">
             <LanguageSwitcher compact />
@@ -90,7 +90,7 @@ export default function CheckPage() {
             rows={6}
             placeholder={t("check.placeholder")}
             aria-label={t("check.h1")}
-            className="w-full p-4 bg-raised border border-rule-strong rounded-[3px] text-[1.0625rem] leading-[1.6] resize-y placeholder:text-ink-3/60 focus:outline-none focus:ring-1 focus:border-ink focus:ring-ink"
+            className="w-full p-4 bg-raised border border-rule-strong rounded-ctl text-[1.0625rem] leading-[1.6] resize-y placeholder:text-ink-3/60 focus:outline-none focus:ring-1 focus:border-ink focus:ring-ink"
           />
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -115,7 +115,7 @@ export default function CheckPage() {
                   <button
                     key={k}
                     onClick={() => { setText(t(k)); taRef.current?.focus(); }}
-                    className="text-start text-[0.9375rem] leading-snug text-ink-2 hover:text-ink border border-rule rounded-[3px] px-4 py-3 hover:border-rule-strong transition-colors"
+                    className="text-start text-[0.9375rem] leading-snug text-ink-2 hover:text-ink border border-rule rounded-ctl px-4 py-3 hover:border-rule-strong transition-colors"
                   >
                     {t(k)}
                   </button>
@@ -161,7 +161,7 @@ export default function CheckPage() {
                         <li key={s.id} className="py-3.5 flex items-start gap-3">
                           <span
                             className={cn(
-                              "num text-[0.6875rem] uppercase tracking-wider px-1.5 py-0.5 rounded-[2px] border shrink-0 mt-0.5",
+                              "num text-[0.6875rem] uppercase tracking-wider px-1.5 py-0.5 rounded-ctl border shrink-0 mt-0.5",
                               s.severity === "high"
                                 ? "bg-urgent-soft text-urgent-ink border-urgent/30"
                                 : "bg-wait-soft text-wait border-wait/30",
@@ -207,7 +207,7 @@ export default function CheckPage() {
               {res.rules.identifiers.length > 0 && (
                 <ul className="mt-4 flex flex-wrap gap-2">
                   {res.rules.identifiers.slice(0, 8).map((id) => (
-                    <li key={`${id.kind}-${id.value}`} className="num text-xs px-2 py-1 border border-rule rounded-[2px] text-ink-2 break-all">
+                    <li key={`${id.kind}-${id.value}`} className="num text-xs px-2 py-1 border border-rule rounded-ctl text-ink-2 break-all">
                       {id.value}
                     </li>
                   ))}
@@ -228,7 +228,7 @@ export default function CheckPage() {
               <p className="text-[0.9375rem] leading-[1.65] text-ink-2">{t("check.alreadyPaid")}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button href="tel:1930" size="sm" variant="urgent" external>{t("sos.call")}</Button>
-                <Button href="/start" size="sm">{t("check.startCase")}</Button>
+                <Button href="/report" size="sm">{t("check.startCase")}</Button>
               </div>
             </section>
 

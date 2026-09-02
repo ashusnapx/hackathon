@@ -100,8 +100,8 @@ export default function StartPage() {
 
   return (
     <>
-      <header className="border-b border-rule sticky top-0 z-40 bg-paper/92 backdrop-blur-md">
-        <div className="mx-auto max-w-3xl px-5 sm:px-8 h-[68px] flex items-center gap-4">
+      <header className="sticky top-0 z-40 px-3 sm:px-5 pt-3 sm:pt-4 pointer-events-none">
+        <div className="pointer-events-auto mx-auto max-w-3xl rounded-card border border-ink/15 bg-paper/85 backdrop-blur-xl shadow-[0_6px_24px_-18px_rgba(26,26,26,0.55)] px-3 sm:px-4 h-[60px] sm:h-[64px] flex items-center gap-4">
           <Wordmark />
           <div className="ms-auto">
             <LanguageSwitcher compact />
@@ -163,7 +163,7 @@ export default function StartPage() {
                   placeholder={t("start.placeholder")}
                   aria-label={t("start.h1")}
                   className={cn(
-                    "w-full p-4 bg-raised border rounded-[3px] text-[1.0625rem] leading-[1.6] resize-y",
+                    "w-full p-4 bg-raised border rounded-ctl text-[1.0625rem] leading-[1.6] resize-y",
                     "placeholder:text-ink-3/60 focus:outline-none focus:ring-1",
                     error ? "border-urgent focus:border-urgent focus:ring-urgent" : "border-rule-strong focus:border-ink focus:ring-ink",
                   )}
@@ -190,7 +190,7 @@ export default function StartPage() {
                         setError(null);
                         taRef.current?.focus();
                       }}
-                      className="text-start text-sm px-3 py-2 border border-rule rounded-[3px] bg-raised hover:border-ink hover:bg-sunk transition-colors max-w-full"
+                      className="text-start text-sm px-3 py-2 border border-rule rounded-ctl bg-raised hover:border-ink hover:bg-sunk transition-colors max-w-full"
                     >
                       {t(k)}
                     </button>

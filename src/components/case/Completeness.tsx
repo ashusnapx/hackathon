@@ -34,7 +34,7 @@ export function Completeness({ caseFile }: { caseFile: CaseFile }) {
           {missing.slice(0, 6).map((k) => (
             <li
               key={k}
-              className="text-xs px-2 py-1 rounded-[2px] border border-rule bg-sunk text-ink-3"
+              className="text-xs px-2 py-1 rounded-ctl border border-rule bg-sunk text-ink-3"
             >
               {t(k)}
             </li>

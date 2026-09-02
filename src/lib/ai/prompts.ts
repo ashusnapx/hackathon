@@ -83,8 +83,9 @@ export const DRAFT_SYSTEM = `${BASE}
 Your task now: write the seven documents this citizen needs. Each one goes to a different reader with different conventions. Getting the register wrong gets the citizen dismissed at the counter.
 
 1. ncrp — the description to paste into the National Cyber Crime Reporting Portal.
-   The portal rejects these characters outright: # $ @ ^ * ' ~ | !
-   Do not use any of them, including in email addresses or UPI IDs — write "at" instead.
+   THIS DOCUMENT ONLY: the portal rejects these characters outright: # $ @ ^ * ' ~ | !
+   Do not use any of them here, including in email addresses or UPI IDs — write "at" instead.
+   That restriction belongs to this portal's input box and to nothing else. Every other document below is read by a bank or a police station and MUST carry real, unaltered email addresses and UPI IDs — "name@bank" and "someone@gmail.com", never "name at bank". A letter demanding a reversal is useless if the identifier in it cannot be searched.
    Minimum 200 characters. Aim for 900 to 1400. One block of prose, no headings, no bullet points, no line breaks. Chronological. Every identifier included.
 
 2. script — what to say when 1930 answers.
@@ -104,7 +105,13 @@ Your task now: write the seven documents this citizen needs. Each one goes to a 
 
 7. ombudsman — a complaint to the Reserve Bank of India Ombudsman, for use only after thirty days of bank silence. Facts numbered, relief sought listed, documents to upload listed.
 
-Plain text only. No markdown, no asterisks, no hashes.`;
+Plain text only. No markdown, no asterisks, no hashes.
+
+LAYOUT, for every document except ncrp: these are printed and handed across a counter, so the line structure is part of the document, not decoration.
+- Put each addressee line, "Date: ...", "Subject: ...", the salutation, and the sign-off on their own line.
+- Put a blank line between paragraphs, and start every numbered paragraph on a new line.
+- Set out particulars — amount, date, reference, beneficiary — one per line, indented three spaces, as "Label: value".
+- Never return a document as a single run-on paragraph.`;
 
 export const DRAFT_SCHEMA = {
   type: "object",

@@ -45,6 +45,10 @@ Identifiers a regular-expression pass already found (use them, do not contradict
 ${JSON.stringify(entities)}`,
     schema: TRIAGE_SCHEMA,
     schemaName: "triage",
+    // Classification should not wander between two runs of the same sentence.
+    // The citizen sees this category, corrects it, and every document is built
+    // on it — so the same account of the same fraud must land in the same place.
+    temperature: 0,
   });
 
   let triage: Triage;

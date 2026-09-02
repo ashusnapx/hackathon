@@ -2,6 +2,8 @@
 
 import { Button } from "@/components/ui/Button";
 import { Wordmark } from "@/components/Wordmark";
+import { Builders } from "@/components/landing/Builders";
+import { Headline } from "@/components/ui/Split";
 import { useT } from "@/lib/i18n/context";
 
 const HELPLINES = [
@@ -17,33 +19,50 @@ const PORTALS = [
   ["https://cms.rbi.org.in", "footer.rbi"],
 ] as const;
 
+/**
+ * The closing slab. The reference ends on a rounded dark panel carrying one
+ * last ask, and so does this.
+ *
+ * `.on-dark` flips ink, rule and the semantic colours for everything inside,
+ * which is why nothing below reaches for `text-paper/60` any more: `text-ink-2`
+ * means "secondary text on whatever this panel is" in both directions.
+ */
 export function Footer() {
   const t = useT();
 
   return (
-    <footer className="border-t border-rule bg-ink text-paper">
-      <div className="mx-auto max-w-6xl px-5 sm:px-8 py-16 sm:py-20">
-        <div className="max-w-2xl">
-          <h2 className="text-4xl sm:text-5xl">{t("footer.cta")}</h2>
-          <p className="mt-4 text-[1.0625rem] text-paper/65">{t("footer.ctaSub")}</p>
-          <Button
-            href="/start"
-            size="lg"
-            className="mt-8 bg-paper text-ink border-paper hover:bg-paper/90"
-          >
-            {t("hero.cta")}
-          </Button>
+    <footer className="on-dark panel-full overflow-hidden">
+      <div className="mx-auto max-w-6xl px-5 sm:px-8 py-20 sm:py-28">
+        {/* The last ask on the left, the people who built it on the right. */}
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_auto] gap-x-16 gap-y-14 items-start">
+          <div className="max-w-2xl">
+            <h2>
+              <Headline>{t("footer.cta")}</Headline>
+            </h2>
+            <p
+              className="mt-6 text-[1.0625rem] sm:text-lg text-ink-2"
+              data-reveal
+              style={{ "--i": 1 } as React.CSSProperties}
+            >
+              {t("footer.ctaSub")}
+            </p>
+            <Button href="/report" size="lg" className="mt-9 press">
+              {t("hero.cta")}
+            </Button>
+          </div>
+
+          <Builders />
         </div>
 
-        <div className="mt-16 grid sm:grid-cols-2 lg:grid-cols-3 gap-10 border-t border-paper/15 pt-10">
+        <div className="mt-20 grid sm:grid-cols-2 lg:grid-cols-3 gap-10 border-t border-rule pt-12">
           <div>
-            <p className="label !text-paper/45">{t("footer.helplines")}</p>
-            <ul className="mt-4 space-y-2.5">
+            <p className="label">{t("footer.helplines")}</p>
+            <ul className="mt-5 space-y-3">
               {HELPLINES.map(([num, k]) => (
                 <li key={num}>
-                  <a href={`tel:${num}`} className="flex items-baseline gap-3 hover:text-white transition-colors">
-                    <span className="num text-lg font-medium">{num}</span>
-                    <span className="text-sm text-paper/60">{t(k)}</span>
+                  <a href={`tel:${num}`} className="flex items-baseline gap-3 hover:text-ink transition-colors">
+                    <span className="figure text-2xl">{num}</span>
+                    <span className="text-sm text-ink-3">{t(k)}</span>
                   </a>
                 </li>
               ))}
@@ -51,15 +70,15 @@ export function Footer() {
           </div>
 
           <div>
-            <p className="label !text-paper/45">{t("footer.official")}</p>
-            <ul className="mt-4 space-y-2.5">
+            <p className="label">{t("footer.official")}</p>
+            <ul className="mt-5 space-y-3">
               {PORTALS.map(([href, k]) => (
                 <li key={href}>
                   <a
                     href={href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[0.9375rem] text-paper/75 hover:text-white transition-colors underline underline-offset-4 decoration-paper/25"
+                    className="underline-grow text-[0.9375rem] text-ink-2 hover:text-ink transition-colors"
                   >
                     {t(k)}
                   </a>
@@ -69,8 +88,8 @@ export function Footer() {
           </div>
 
           <div className="lg:text-end">
-            <Wordmark href={null} className="text-paper" />
-            <p className="mt-4 text-sm leading-relaxed text-paper/50 lg:ms-auto max-w-sm">
+            <Wordmark href={null} />
+            <p className="mt-5 text-sm leading-relaxed text-ink-3 lg:ms-auto max-w-sm">
               {t("footer.built")}
             </p>
           </div>
