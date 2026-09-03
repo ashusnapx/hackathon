@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 /**
@@ -6,6 +9,7 @@ import { cn } from "@/lib/utils";
  * is official paperwork, and a rounded app-store glyph would undercut that.
  */
 export function Wordmark({ className, href = "/" }: { className?: string; href?: string | null }) {
+  const pathname = usePathname();
   const inner = (
     <span className={cn("inline-flex items-center gap-2.5 h-11 group", className)}>
       <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden>
@@ -18,8 +22,8 @@ export function Wordmark({ className, href = "/" }: { className?: string; href?:
         <path d="M16 8v11M11 13.5h10" stroke="var(--urgent)" strokeWidth="2" strokeLinecap="round" />
       </svg>
       {/* Below 360px the shield has to carry the mark alone — the row also
-          holds a language picker, a CTA and a menu button, and the link
-          keeps its "Kavach, home" label either way. */}
+           holds a language picker, a CTA and a menu button, and the link
+           keeps its "Kavach, home" label either way. */}
       <span className="max-[359px]:hidden font-display text-[1.375rem] leading-none tracking-tight">
         Kavach
       </span>
@@ -27,8 +31,18 @@ export function Wordmark({ className, href = "/" }: { className?: string; href?:
   );
 
   if (!href) return inner;
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // On home page the logo should bring you to the top. Next.js keeps
+    // scroll when navigating to the same route, so we scroll explicitly.
+    if (href === "/" && pathname === "/") {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      // Also push to history without scroll to keep URL clean
+      window.history.pushState(null, "", "/");
+    }
+  };
   return (
-    <Link href={href} aria-label="Kavach, home">
+    <Link href={href} aria-label="Kavach, home" onClick={handleClick} scroll={href !== pathname}>
       {inner}
     </Link>
   );
