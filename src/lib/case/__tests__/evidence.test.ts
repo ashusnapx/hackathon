@@ -14,6 +14,7 @@ import {
   calculateReadiness,
   buildEvidenceSummaryData,
   validateEvidenceFile,
+  evidenceAttachmentBlockReason,
   EVIDENCE_TEMPLATES,
   MAX_EVIDENCE_FILE_SIZE,
 } from "../evidence";
@@ -155,6 +156,32 @@ describe("evidence status changes", () => {
 });
 
 describe("file attachments (prototype local)", () => {
+  it("blocks local evidence bytes for every confirmed child context", () => {
+    const selfMinor = makeNonFinancialCase();
+    selfMinor.victim.ageContext = "self-minor";
+    expect(evidenceAttachmentBlockReason(selfMinor)).toBe("child-sexual-content-risk");
+
+    const childOther = makeNonFinancialCase();
+    childOther.victim.ageContext = "child-other";
+    expect(evidenceAttachmentBlockReason(childOther)).toBe("child-sexual-content-risk");
+  });
+
+  it("blocks CSAM and intimate-content categories but permits ordinary evidence", () => {
+    const csam = makeNonFinancialCase();
+    csam.triage = { ...csam.triage!, categoryId: "women-child", subcategoryId: "csam" };
+    expect(evidenceAttachmentBlockReason(csam)).toBe("child-sexual-content-risk");
+
+    const sextortion = makeNonFinancialCase();
+    sextortion.triage = { ...sextortion.triage!, categoryId: "women-child", subcategoryId: "sextortion" };
+    expect(evidenceAttachmentBlockReason(sextortion)).toBe("intimate-content-risk");
+
+    const morphed = makeNonFinancialCase();
+    morphed.triage = { ...morphed.triage!, categoryId: "women-child", subcategoryId: "morphed" };
+    expect(evidenceAttachmentBlockReason(morphed)).toBe("intimate-content-risk");
+
+    expect(evidenceAttachmentBlockReason(makeFinancialCase())).toBeNull();
+  });
+
   it("attaches a valid PNG and auto-marks as added", () => {
     let c = makeFinancialCase();
     c = attachEvidenceFile(c, "txn_screenshot", { name: "txn.png", size: 1024, type: "image/png" });
@@ -222,6 +249,23 @@ describe("file attachments (prototype local)", () => {
     expect(att.size).toBe(4096);
     expect(att.addedAt).toBeTruthy();
   });
+
+  it("persists the local blob manifest only after storage succeeds", () => {
+    const c = attachEvidenceFile(makeFinancialCase(), "txn_screenshot", {
+      name: "proof.png",
+      size: 3,
+      type: "image/png",
+      storageKey: "case-id:txn_screenshot",
+      sha256: "abc123",
+      storedLocally: true,
+      storedAt: "2026-09-04T12:00:00.000Z",
+    });
+    const attachment = getEvidence(c).find((item) => item.id === "txn_screenshot")!.attachment!;
+    expect(attachment.storageKey).toBe("case-id:txn_screenshot");
+    expect(attachment.sha256).toBe("abc123");
+    expect(attachment.storedLocally).toBe(true);
+    expect(attachment.addedAt).toBe("2026-09-04T12:00:00.000Z");
+  });
 });
 
 describe("evidence readiness (deterministic, no LLM)", () => {
@@ -267,6 +311,15 @@ describe("evidence readiness (deterministic, no LLM)", () => {
     const r = calculateReadiness(c);
     expect(r.percentage).toBe(100);
     expect(r.level).toBe("READY");
+  });
+
+  it("does not call an all-not-applicable checklist 100% complete", () => {
+    let c = makeFinancialCase();
+    for (const item of EVIDENCE_TEMPLATES) c = setEvidenceStatus(c, item.id, "not_applicable");
+    const result = calculateReadiness(c);
+    expect(result.percentage).toBe(0);
+    expect(result.level).toBe("NOT_READY");
+    expect(result.counts.totalApplicable).toBe(0);
   });
 
   it("PARTIALLY_READY between 40 and 79", () => {

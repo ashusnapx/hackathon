@@ -44,7 +44,12 @@ export function Clocks() {
   const { t, lang } = useI18n();
   const isClient = useIsClient();
 
-  const schedule = useMemo(() => (isClient ? scheduleFrom(new Date()) : null), [isClient]);
+  const clock = useMemo(() => {
+    if (!isClient) return null;
+    const at = new Date();
+    return { at, schedule: scheduleFrom(at) };
+  }, [isClient]);
+  const schedule = clock?.schedule ?? null;
 
   const fmt = useMemo(() => {
     // An Eighth Schedule code with no CLDR data resolves to the runtime's
@@ -106,7 +111,10 @@ export function Clocks() {
               {TRACKS.map((track, i) => {
                 const live = RUNS_IMMEDIATELY.has(track.id);
                 const due = schedule?.[i]?.deadline ?? null;
-                const soon = due ? due.getTime() - Date.now() < HOURS_48 : false;
+                // Use the exact instant that generated the schedule. Apart
+                // from satisfying render purity, this keeps every row in one
+                // coherent snapshot even if rendering crosses a second.
+                const soon = due && clock ? due.getTime() - clock.at.getTime() < HOURS_48 : false;
 
                 return (
                   <li
@@ -150,7 +158,7 @@ export function Clocks() {
                         {due ? (
                           <>
                             <time dateTime={due.toISOString()}>{fmt.day.format(due)}</time>
-                            {soon && <span className="ms-1.5 opacity-70">{` ${fmt.time.format(due)}`}</span>}
+                            {soon && !track.workingDayEstimate && <span className="ms-1.5 opacity-70">{` ${fmt.time.format(due)}`}</span>}
                           </>
                         ) : schedule ? (
                           t("clocks.noDate")

@@ -6,7 +6,8 @@
  */
 import { describe, it, expect } from "vitest";
 import { TRACKS, TRACK_BY_ID, liveTracks, nextAction, upcomingDeadline, isFinancial } from "../tracks";
-import { addWorkingDays, addHours } from "../time";
+import { addWorkingDays } from "../time";
+import { assessRbiEligibility } from "@/lib/legal/rbi";
 import type { CaseFile } from "../types";
 
 function d(y: number, m: number, day: number, h = 10, min = 0): Date {
@@ -80,80 +81,66 @@ describe("TRACKS registry — regression all 10 tracks exist", () => {
   it("TRACK_BY_ID map resolves every track", () => {
     for (const t of TRACKS) expect(TRACK_BY_ID.get(t.id)).toBeDefined();
   });
-});
 
-describe("helpline — 1 hour (first hour)", () => {
-  it("H-regression: deadline is incidentAt +1h", () => {
-    const c = makeCase({ incidentAt: iso(2026, 1, 5, 10, 0) });
-    const deadline = TRACK_BY_ID.get("helpline")!.deadline(c)!;
-    expect(deadline.getTime()).toBe(addHours(d(2026, 1, 5, 10, 0), 1).getTime());
-  });
+  it("marks only the RBI-circular 10- and 90-day tracks as conditional", () => {
+    const credit = TRACK_BY_ID.get("bank-credit")!;
+    const resolution = TRACK_BY_ID.get("bank-resolution")!;
 
-  it("A: Monday incident 10:00 => helpline due 11:00 same day", () => {
-    const c = makeCase({ incidentAt: iso(2026, 1, 5, 10, 0) });
-    const dl = TRACK_BY_ID.get("helpline")!.deadline(c)!;
-    expect(dl.getHours()).toBe(11);
-    expect(dl.getDate()).toBe(5);
-  });
-
-  it("G: near midnight 23:30 +1h crosses to next day 00:30", () => {
-    const c = makeCase({ incidentAt: iso(2026, 1, 5, 23, 30) });
-    const dl = TRACK_BY_ID.get("helpline")!.deadline(c)!;
-    expect(dl.getDate()).toBe(6);
-    expect(dl.getHours()).toBe(0);
-    expect(dl.getMinutes()).toBe(30);
-  });
-
-  it("falls back to triage.incidentAt when incidentAt missing", () => {
-    const c = makeCase({ incidentAt: undefined, triage: { categoryId: "financial-fraud", confidence: 0.9, incidentAt: iso(2026, 1, 7, 14, 0), applicableTracks: ["helpline"], urgency: "high" } as any });
-    c.createdAt = iso(2026, 1, 1, 9, 0);
-    const dl = TRACK_BY_ID.get("helpline")!.deadline(c)!;
-    expect(dl.getDate()).toBe(7);
-    expect(dl.getHours()).toBe(15);
-  });
-
-  it("falls back to createdAt when no incident time", () => {
-    const c = makeCase({ incidentAt: undefined, triage: { categoryId: "other", confidence: 0.5, applicableTracks: ["helpline"], urgency: "moderate" } as any });
-    c.triage!.incidentAt = undefined;
-    c.createdAt = iso(2026, 1, 10, 9, 0);
-    const dl = TRACK_BY_ID.get("helpline")!.deadline(c)!;
-    expect(dl.getHours()).toBe(10);
-    expect(dl.getDate()).toBe(10);
+    expect(credit.requiresRbiUnauthorisedTransaction).toBe(true);
+    expect(credit.source?.id).toBe("RBI/2017-18/15");
+    expect(credit.source?.provisions).toContain("9");
+    expect(resolution.requiresRbiUnauthorisedTransaction).toBe(true);
+    expect(resolution.source?.id).toBe("RBI/2017-18/15");
+    expect(resolution.source?.provisions).toContain("10");
   });
 });
 
-describe("ncrp — 24 hours", () => {
-  it("H-regression: deadline is incident +24h", () => {
+describe("helpline — immediate action, not a nationwide one-hour deadline", () => {
+  it("has no fixed deadline", () => {
+    const track = TRACK_BY_ID.get("helpline")!;
+
+    expect(track.deadline(makeCase())).toBeNull();
+    expect(track.source?.url).toBe("https://www.cybercrime.gov.in/Accept.aspx");
+  });
+
+  it("remains due instead of becoming missed for an older incident", () => {
     const c = makeCase({ incidentAt: iso(2026, 1, 5, 10, 0) });
-    const dl = TRACK_BY_ID.get("ncrp")!.deadline(c)!;
-    expect(dl.getTime()).toBe(addHours(d(2026, 1, 5, 10, 0), 24).getTime());
-  });
+    const helpline = liveTracks(c, d(2026, 1, 8, 10, 0)).find(
+      (track) => track.def.id === "helpline",
+    )!;
 
-  it("A: Wednesday incident => due Thursday same time", () => {
-    const c = makeCase({ incidentAt: iso(2026, 1, 7, 10, 0) });
-    const dl = TRACK_BY_ID.get("ncrp")!.deadline(c)!;
-    expect(dl.getDate()).toBe(8);
-    expect(dl.getHours()).toBe(10);
-  });
-
-  it("E: 24h crossing year — 31 Dec 23:00 => 1 Jan 23:00 +1 year", () => {
-    const c = makeCase({ incidentAt: iso(2025, 12, 31, 23, 0) });
-    const dl = TRACK_BY_ID.get("ncrp")!.deadline(c)!;
-    expect(dl.getFullYear()).toBe(2026);
-    expect(dl.getMonth()).toBe(0);
-    expect(dl.getDate()).toBe(1);
-    expect(dl.getHours()).toBe(23);
+    expect(helpline.state).toBe("due");
+    expect(helpline.deadline).toBeNull();
   });
 });
 
-describe("bank-notice — 3 working days (RBI zero-liability clock)", () => {
+describe("NCRP — report promptly, not a nationwide 24-hour deadline", () => {
+  it("has no fixed deadline", () => {
+    const track = TRACK_BY_ID.get("ncrp")!;
+
+    expect(track.deadline(makeCase())).toBeNull();
+    expect(track.source?.url).toBe("https://www.cybercrime.gov.in/Accept.aspx");
+  });
+
+  it("remains due instead of becoming missed for an older incident", () => {
+    const c = makeCase({ incidentAt: iso(2026, 1, 5, 10, 0) });
+    const ncrp = liveTracks(c, d(2026, 2, 5, 10, 0)).find(
+      (track) => track.def.id === "ncrp",
+    )!;
+
+    expect(ncrp.state).toBe("due");
+    expect(ncrp.deadline).toBeNull();
+  });
+});
+
+describe("bank-notice — conditional RBI three-working-day route", () => {
   it("H-regression: uses bankAlertAt when present", () => {
     const c = makeCase({ bankAlertAt: iso(2026, 1, 6, 9, 0), incidentAt: iso(2026, 1, 5, 10, 0) });
     const dl = TRACK_BY_ID.get("bank-notice")!.deadline(c)!;
     expect(dl.getTime()).toBe(addWorkingDays(d(2026, 1, 6, 9, 0), 3).getTime());
   });
 
-  it("prefers bankAlertAt over incidentAt (conservative fallback)", () => {
+  it("uses bankAlertAt rather than incidentAt", () => {
     const c = makeCase({ bankAlertAt: iso(2026, 1, 6, 9, 0), incidentAt: iso(2026, 1, 5, 10, 0) });
     const dl = TRACK_BY_ID.get("bank-notice")!.deadline(c)!;
     // If it used incidentAt (5 Jan), +3wd would be Thu8; using bankAlertAt 6 Jan => Fri9? Let's check
@@ -161,17 +148,16 @@ describe("bank-notice — 3 working days (RBI zero-liability clock)", () => {
     expect(dl.getDate()).toBe(9);
   });
 
-  it("falls back to incidentAt when bankAlertAt absent", () => {
+  it("does not invent an alert date from the incident time", () => {
     const c = makeCase({ bankAlertAt: undefined, incidentAt: iso(2026, 1, 5, 10, 0) });
-    const dl = TRACK_BY_ID.get("bank-notice")!.deadline(c)!;
-    expect(dl.getDate()).toBe(8); // Mon5 +3wd = Thu8
+    expect(TRACK_BY_ID.get("bank-notice")!.deadline(c)).toBeNull();
   });
 
-  it("A: Monday alert => Thu 17:00", () => {
+  it("A: Monday alert => end of Thursday estimate", () => {
     const c = makeCase({ bankAlertAt: iso(2026, 1, 5, 9, 0) });
     const dl = TRACK_BY_ID.get("bank-notice")!.deadline(c)!;
     expect(dl.getDate()).toBe(8);
-    expect(dl.getHours()).toBe(17);
+    expect(dl.getHours()).toBe(23);
   });
 
   it("B: Friday alert skips weekend => Wed", () => {
@@ -200,14 +186,14 @@ describe("bank-notice — 3 working days (RBI zero-liability clock)", () => {
     expect(dl.getDate()).toBe(1);
   });
 
-  it("G: midnight alert 00:05 still normalized to 17:00", () => {
+  it("G: midnight alert 00:05 still maps to the end of the estimated date", () => {
     const c = makeCase({ bankAlertAt: iso(2026, 1, 5, 0, 5) });
     const dl = TRACK_BY_ID.get("bank-notice")!.deadline(c)!;
-    expect(dl.getHours()).toBe(17);
+    expect(dl.getHours()).toBe(23);
   });
 });
 
-describe("bank-credit — 10 working days (requires bank-notice done)", () => {
+describe("bank-credit — conditional RBI unauthorised-transaction timing", () => {
   it("H-regression: null when bank-notice not yet done", () => {
     const c = makeCase();
     // no tracks, no bank.notifiedAt
@@ -221,19 +207,19 @@ describe("bank-credit — 10 working days (requires bank-notice done)", () => {
     expect(dl.getTime()).toBe(addWorkingDays(d(2026, 1, 5, 10, 0), 10).getTime());
   });
 
-  it("prefers tracks.doneAt for bank-notice over bank.notifiedAt", () => {
+  it("prefers the explicit bank notification time over the UI completion timestamp", () => {
     const trackDone = iso(2026, 1, 6, 10, 0);
     const bankNotified = iso(2026, 1, 5, 10, 0);
     const c = makeCase({ bank: { name: "SBI", notifiedAt: bankNotified } as any, tracks: [{ id: "bank-notice", doneAt: trackDone }] });
     const dl = TRACK_BY_ID.get("bank-credit")!.deadline(c)!;
-    expect(dl.getTime()).toBe(addWorkingDays(d(2026, 1, 6, 10, 0), 10).getTime());
+    expect(dl.getTime()).toBe(addWorkingDays(d(2026, 1, 5, 10, 0), 10).getTime());
   });
 
-  it("F: 10wd from Mon 5 Jan => Sat 17 Jan 17:00", () => {
+  it("F: 10wd from Mon 5 Jan => end of Sat 17 Jan estimate", () => {
     const c = makeCase({ tracks: [{ id: "bank-notice", doneAt: iso(2026, 1, 5, 10, 0) }] });
     const dl = TRACK_BY_ID.get("bank-credit")!.deadline(c)!;
     expect(dl.getDate()).toBe(17);
-    expect(dl.getHours()).toBe(17);
+    expect(dl.getHours()).toBe(23);
   });
 
   it("E: 10wd crossing year — 29 Dec 2025 => 9 Jan 2026", () => {
@@ -245,36 +231,81 @@ describe("bank-credit — 10 working days (requires bank-notice done)", () => {
   });
 });
 
-describe("ombudsman — 30 calendar days", () => {
-  it("H-regression: null when not notified", () => {
+describe("Ombudsman — RB-IOS 2026 opening and filing window", () => {
+  it("has no opening or deadline when the regulated entity was not complained to", () => {
     const c = makeCase();
     expect(TRACK_BY_ID.get("ombudsman")!.deadline(c)).toBeNull();
+    expect(TRACK_BY_ID.get("ombudsman")!.opensAt!(c)).toBeNull();
   });
 
-  it("F: 30 days from Mon 5 Jan => Wed 4 Feb", () => {
-    const c = makeCase({ tracks: [{ id: "bank-notice", doneAt: iso(2026, 1, 5, 10, 0) }] });
-    const dl = TRACK_BY_ID.get("ombudsman")!.deadline(c)!;
-    expect(dl.getDate()).toBe(4);
-    expect(dl.getMonth()).toBe(1);
+  it("opens after the ordinary 30-day response period and closes 90 days later", () => {
+    const c = makeCase({ tracks: [{ id: "bank-notice", doneAt: iso(2026, 7, 5, 10, 0) }] });
+    const track = TRACK_BY_ID.get("ombudsman")!;
+
+    expect(track.opensAt!(c)).toEqual(d(2026, 8, 4, 10, 0));
+    expect(track.deadline(c)).toEqual(d(2026, 11, 2, 10, 0));
   });
 
-  it("E: 30 days year crossing — 20 Dec 2025 => 19 Jan 2026", () => {
-    const c = makeCase({ tracks: [{ id: "bank-notice", doneAt: iso(2025, 12, 20, 10, 0) }] });
-    const dl = TRACK_BY_ID.get("ombudsman")!.deadline(c)!;
-    expect(dl.getFullYear()).toBe(2026);
-    expect(dl.getMonth()).toBe(0);
-    expect(dl.getDate()).toBe(19);
+  it("honours a verified longer RBI, NPCI or card-network response period", () => {
+    const c = makeCase({
+      tracks: [{ id: "bank-notice", doneAt: iso(2026, 7, 5, 10, 0) }],
+      bank: { ombudsmanResponseTimelineDays: 45 },
+    });
+    const track = TRACK_BY_ID.get("ombudsman")!;
+
+    expect(track.opensAt!(c)).toEqual(d(2026, 8, 19, 10, 0));
+    expect(track.deadline(c)).toEqual(d(2026, 11, 17, 10, 0));
   });
 
-  it("preserves wall time (not 17:00)", () => {
-    const c = makeCase({ tracks: [{ id: "bank-notice", doneAt: iso(2026, 1, 5, 9, 30) }] });
-    const dl = TRACK_BY_ID.get("ombudsman")!.deadline(c)!;
-    expect(dl.getHours()).toBe(9);
-    expect(dl.getMinutes()).toBe(30);
+  it("opens on an earlier dissatisfied reply but keeps the ordinary outer window", () => {
+    const c = makeCase({
+      tracks: [{ id: "bank-notice", doneAt: iso(2026, 7, 5, 10, 0) }],
+      bank: {
+        dissatisfiedReplyAt: iso(2026, 7, 15, 10, 0),
+        lastCommunicationAt: iso(2026, 7, 15, 10, 0),
+      },
+    });
+    const track = TRACK_BY_ID.get("ombudsman")!;
+
+    expect(track.opensAt!(c)).toEqual(d(2026, 7, 15, 10, 0));
+    expect(track.deadline(c)).toEqual(d(2026, 11, 2, 10, 0));
+  });
+
+  it("extends the filing window from a later regulated-entity communication", () => {
+    const c = makeCase({
+      tracks: [{ id: "bank-notice", doneAt: iso(2026, 7, 5, 10, 0) }],
+      bank: { lastCommunicationAt: iso(2026, 9, 1, 10, 0) },
+    });
+
+    expect(TRACK_BY_ID.get("ombudsman")!.deadline(c)).toEqual(d(2026, 11, 30, 10, 0));
+  });
+
+  it("carries the 2026 scheme and Clause 10 provenance", () => {
+    const source = TRACK_BY_ID.get("ombudsman")!.source!;
+
+    expect(source.effectiveOn).toBe("2026-07-01");
+    expect(source.provisions).toEqual(
+      expect.arrayContaining(["10(1)(f)", "10(1)(g)"]),
+    );
+  });
+
+  it("is upcoming before opening, due during the window, and missed only after closing", () => {
+    const c = makeCase({ tracks: [{ id: "bank-notice", doneAt: iso(2026, 7, 5, 10, 0) }] });
+    const before = liveTracks(c, d(2026, 7, 20)).find((track) => track.def.id === "ombudsman")!;
+    const during = liveTracks(c, d(2026, 9, 1)).find((track) => track.def.id === "ombudsman")!;
+    const after = liveTracks(c, d(2026, 11, 3)).find((track) => track.def.id === "ombudsman")!;
+
+    expect(before.state).toBe("upcoming");
+    expect(before.deadline).toEqual(d(2026, 8, 4, 10, 0));
+    expect(before.dateKind).toBe("opens");
+    expect(during.state).toBe("due");
+    expect(during.deadline).toEqual(d(2026, 11, 2, 10, 0));
+    expect(during.dateKind).toBe("deadline");
+    expect(after.state).toBe("missed");
   });
 });
 
-describe("bank-resolution — 90 calendar days", () => {
+describe("bank-resolution — conditional RBI unauthorised-transaction timing", () => {
   it("H-regression: null when not notified", () => {
     expect(TRACK_BY_ID.get("bank-resolution")!.deadline(makeCase())).toBeNull();
   });
@@ -333,19 +364,66 @@ describe("liveTracks + helpers — regression", () => {
     expect(credit.state).toBe("due");
   });
 
-  it("marks missed when deadline past and not done", () => {
-    const c = makeCase({ incidentAt: iso(2026, 1, 5, 10, 0) });
-    const now = d(2026, 1, 5, 12, 0); // 2h after incident, helpline (1h) should be missed
-    const live = liveTracks(c, now);
-    const heli = live.find((t) => t.def.id === "helpline")!;
-    expect(heli.state).toBe("missed");
+  it("known non-eligibility removes the conditional RBI 10- and 90-day tracks", () => {
+    const input = {
+      initiation: "victim",
+      credentialsShared: "no",
+      suspectedBankFault: "no",
+      reportTiming: "within_3_working_days",
+    } as const;
+    const c = makeCase({
+      tracks: [{ id: "bank-notice", doneAt: iso(2026, 1, 5, 10, 0) }],
+      legal: {
+        rbi: {
+          input,
+          assessment: assessRbiEligibility(input),
+          assessedAt: iso(2026, 1, 5, 10, 5),
+        },
+      },
+    });
+    const live = liveTracks(c, d(2026, 1, 6, 9, 0));
+
+    for (const id of ["bank-credit", "bank-resolution"] as const) {
+      const track = live.find((item) => item.def.id === id)!;
+      expect(track.state).toBe("na");
+      expect(track.finalDeadline).toBeNull();
+    }
   });
 
-  it("nextAction prioritizes missed over due", () => {
+  it("keeps paragraph 9 and 10 process tracks for credential sharing with post-report protection", () => {
+    const input = {
+      initiation: "not-victim",
+      credentialsShared: "yes",
+      suspectedBankFault: "no",
+      reportTiming: "within_3_working_days",
+    } as const;
+    const notifiedAt = iso(2026, 1, 5, 10, 0);
+    const c = makeCase({
+      bank: { notifiedAt },
+      tracks: [{ id: "bank-notice", doneAt: iso(2026, 1, 6, 15, 0) }],
+      legal: {
+        rbi: {
+          input,
+          assessment: assessRbiEligibility(input),
+          assessedAt: iso(2026, 1, 6, 15, 5),
+        },
+      },
+    });
+    const live = liveTracks(c, d(2026, 1, 6, 16, 0));
+
+    expect(c.legal?.rbi?.assessment.protection).toBe("post_report_loss_only");
+    for (const id of ["bank-credit", "bank-resolution"] as const) {
+      const track = live.find((item) => item.def.id === id)!;
+      expect(track.state).toBe("due");
+      expect(track.finalDeadline).not.toBeNull();
+    }
+  });
+
+  it("nextAction keeps immediate no-cutoff actions ahead by track order", () => {
     const c = makeCase({ incidentAt: iso(2026, 1, 5, 10, 0), bankAlertAt: iso(2026, 1, 5, 10, 0) });
-    const now = d(2026, 1, 5, 12, 0);
-    const next = nextAction(c, now)!;
-    expect(next.state).toBe("missed");
+    const next = nextAction(c, d(2026, 1, 5, 12, 0))!;
+
+    expect(next.state).toBe("due");
     expect(next.def.id).toBe("helpline");
   });
 
@@ -355,10 +433,13 @@ describe("liveTracks + helpers — regression", () => {
   });
 
   it("upcomingDeadline skips done/na and returns soonest future", () => {
-    const c = makeCase({ incidentAt: iso(2026, 1, 5, 10, 0) });
+    const c = makeCase({
+      incidentAt: iso(2026, 1, 5, 10, 0),
+      bankAlertAt: iso(2026, 1, 5, 10, 0),
+    });
     const now = d(2026, 1, 5, 9, 0);
     const up = upcomingDeadline(c, now);
     expect(up).not.toBeNull();
-    expect(up!.def.id).toBe("helpline");
+    expect(up!.def.id).toBe("bank-notice");
   });
 });

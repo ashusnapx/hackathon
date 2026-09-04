@@ -74,16 +74,16 @@ const FONT_VARS = [
 
 export const metadata: Metadata = {
   ...pageMetadata({
-    title: "Kavach — the first hour, and the ninety days after",
+    title: "Kavach — from first report to final escalation",
     description:
-      "Speak in your language. We write the complaint, the bank letter and the FIR application, and track every deadline.",
+      "Speak in your language. We prepare complaint drafts and an evidence-backed action plan with conditional legal timelines.",
   }),
   title: {
-    default: "Kavach — the first hour, and the ninety days after",
+    default: "Kavach — from first report to final escalation",
     template: "%s · Kavach",
   },
   description:
-    "Report cybercrime in India in any of 23 languages. Kavach turns what you say into the NCRP complaint, the letter to your bank and the FIR application — and counts down all ten legal deadlines nobody tells victims about.",
+    "Prepare a cybercrime report in India in any of 23 languages. Kavach turns what you say into complaint drafts and an ordered plan whose legal timelines stay tied to their source and conditions.",
   applicationName: "Kavach",
   keywords: ["cybercrime", "India", "NCRP", "1930", "cyber fraud", "UPI fraud", "FIR", "RBI", "digital arrest"],
   metadataBase: new URL(SITE_URL),

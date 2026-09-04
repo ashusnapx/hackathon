@@ -228,7 +228,7 @@ export default function CheckPage() {
               <p className="text-[0.9375rem] leading-[1.65] text-ink-2">{t("check.alreadyPaid")}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button href="tel:1930" size="sm" variant="urgent" external>{t("sos.call")}</Button>
-                <Button href="/report" size="sm">{t("check.startCase")}</Button>
+                <Button href="/assist" size="sm">{t("check.startCase")}</Button>
               </div>
             </section>
 

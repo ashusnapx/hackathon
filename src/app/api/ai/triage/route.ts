@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
-import { jsonCall } from "@/lib/ai/provider";
+import { aiConfigured, jsonCall } from "@/lib/ai/provider";
 import { TRIAGE_SCHEMA, TRIAGE_SYSTEM } from "@/lib/ai/prompts";
+import { claimAiProviderSlot, isJsonRecord, readAiJsonRequest } from "@/lib/ai/request-guard";
 import { extractAmount, extractEntities, extractIncidentTime } from "@/lib/ai/extract";
 import { ruleTriage } from "@/lib/ai/fallback";
 import { findCategory } from "@/lib/case/categories";
 import { getLanguage } from "@/lib/i18n/languages";
+import { chooseIncidentAt, triageUrgency } from "@/lib/ai/triage-safety";
 import type { Triage } from "@/lib/case/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-interface Body { text: string; lang?: string }
 
 interface ModelTriage {
   categoryId: string; subcategoryId: string; confidence: number;
@@ -20,7 +20,15 @@ interface ModelTriage {
 }
 
 export async function POST(req: Request) {
-  const { text, lang = "en" } = (await req.json()) as Body;
+  const parsed = await readAiJsonRequest(req);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+  }
+  if (!isJsonRecord(parsed.value) || typeof parsed.value.text !== "string") {
+    return NextResponse.json({ error: "bad-request" }, { status: 400 });
+  }
+  const { text } = parsed.value;
+  const lang = typeof parsed.value.lang === "string" ? parsed.value.lang.slice(0, 16) : "en";
   if (!text || text.trim().length < 12) {
     return NextResponse.json({ error: "too-short" }, { status: 400 });
   }
@@ -31,7 +39,8 @@ export async function POST(req: Request) {
   const rules = ruleTriage(text, now);
 
   const language = getLanguage(lang);
-  const model = await jsonCall<ModelTriage>({
+  const limit = aiConfigured ? claimAiProviderSlot(req) : { allowed: true, retryAfterSeconds: 0 };
+  const model = limit.allowed ? await jsonCall<ModelTriage>({
     system: TRIAGE_SYSTEM,
     user: `Current date and time in India: ${now.toISOString()}
 The citizen is writing in: ${language.english}
@@ -49,13 +58,14 @@ ${JSON.stringify(entities)}`,
     // The citizen sees this category, corrects it, and every document is built
     // on it — so the same account of the same fraud must land in the same place.
     temperature: 0,
-  });
+  }) : null;
 
   let triage: Triage;
   let source: "openai" | "rules";
 
   if (model && findCategory(model.categoryId)) {
     const cat = findCategory(model.categoryId)!;
+    const incidentAt = chooseIncidentAt(model.incidentAt, extractIncidentTime(text, now), now);
     triage = {
       categoryId: model.categoryId,
       subcategoryId: model.subcategoryId,
@@ -63,11 +73,11 @@ ${JSON.stringify(entities)}`,
       // Trust the model's reading of "eighty five thousand", but never let it
       // erase a number the citizen actually typed.
       amount: model.amount ?? extractAmount(text),
-      incidentAt: model.incidentAt || extractIncidentTime(text, now) || now.toISOString(),
+      incidentAt,
       rationale: model.rationale,
       englishNarrative: model.englishNarrative,
       applicableTracks: cat.tracks,
-      urgency: model.urgency,
+      urgency: triageUrgency(cat.portalTrack === "financial", incidentAt, now),
     };
     source = "openai";
   } else {

@@ -5,7 +5,7 @@ import { Wordmark } from "@/components/Wordmark";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/Button";
 import { useT } from "@/lib/i18n/context";
-import { activeCaseId } from "@/lib/case/store";
+import { useActiveCaseId } from "@/lib/case/store";
 import { cn } from "@/lib/utils";
 
 /**
@@ -41,14 +41,12 @@ const ALL = [
 export function Nav() {
   const t = useT();
   const [scrolled, setScrolled] = useState(false);
-  const [caseId, setCaseId] = useState<string | null>(null);
+  const caseId = useActiveCaseId();
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    setCaseId(activeCaseId());
-
     // A scroll listener fires on every frame to answer one boolean. An observer
     // on a sentinel at the top of the page answers it twice: once when the page
     // leaves the top, once when it comes back. On the cheap phones this is
@@ -162,7 +160,7 @@ export function Nav() {
 
         <div className="ms-auto flex flex-nowrap items-center gap-1 sm:gap-2.5 shrink-0">
           <LanguageSwitcher compact />
-          <Button href="/report" size="sm" className="shrink-0">{t("nav.start")}</Button>
+          <Button href="/assist" size="sm" className="shrink-0">{t("nav.start")}</Button>
 
           <div className="relative shrink-0">
             <button

@@ -6,11 +6,8 @@ import { useT } from "@/lib/i18n/context";
 /**
  * The part of the damage that is not money.
  *
- * If a fraudster got as far as a KYC document, the loss did not end when the
- * transfer did — connections get taken out in the victim's name and loans get
- * applied for against it, and none of that shows up on a bank statement. These
- * are three free government checks that surface it, and no complaint flow in
- * India tells a victim to run them.
+ * Official follow-up routes when identity documents or a handset may have been
+ * exposed. Each route remains a request/check with its own prerequisites.
  */
 
 const ITEMS = [

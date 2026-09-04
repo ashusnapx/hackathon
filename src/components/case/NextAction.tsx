@@ -21,7 +21,7 @@ export function NextAction({ caseFile, onGoToTracks }: { caseFile: CaseFile; onG
       <section className="sheet px-5 py-5">
         <p className="label">{t("case.nextTitle")}</p>
         <p className="mt-2 text-lg">
-          {t("case.nextNone")}{" "}
+          {t(upcoming?.dateKind === "opens" ? "case.nextOpens" : "case.nextNone")}{" "}
           {upcoming?.deadline ? (
             <span className="num">{fmtDate(upcoming.deadline.toISOString())}</span>
           ) : (
@@ -43,7 +43,12 @@ export function NextAction({ caseFile, onGoToTracks }: { caseFile: CaseFile; onG
       <div className={`px-5 py-4 border-b ${overdue ? "border-urgent/25 bg-urgent-soft" : "border-rule bg-sunk"}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className={`label ${overdue ? "!text-urgent-ink/70" : ""}`}>{t("case.nextTitle")}</p>
-          {next.deadline && <Countdown target={next.deadline} />}
+          {next.deadline && (
+            <span className="inline-flex items-center gap-2">
+              {def.id === "ombudsman" && <span className="text-xs text-ink-3">{t("track.fileBy")}</span>}
+              <Countdown target={next.deadline} />
+            </span>
+          )}
         </div>
       </div>
 

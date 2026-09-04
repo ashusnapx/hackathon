@@ -23,13 +23,11 @@ export function StageReview({
   goTo,
   onSubmit,
   submitting,
-  online,
 }: {
   draft: ReportDraft;
   goTo: (s: Stage) => void;
   onSubmit: () => void;
   submitting: boolean;
-  online: boolean;
 }) {
   const t = useT();
   const [agreed, setAgreed] = useState(false);
@@ -60,13 +58,11 @@ export function StageReview({
     { labelKey: "f.state", value: [draft.district, draft.state].filter(Boolean).join(", ") || "—", stage: "you" },
   ];
 
-  // What is genuinely needed to route a complaint to a police unit, as opposed
-  // to what the original form demands before it will let you save anything.
+  // A local organising plan needs facts to organise, not a person's identity.
+  // Official-channel fields remain visible but never block saving in-browser.
   const missing: string[] = [];
+  if (!cat) missing.push(t("f.category"));
   if (!draft.narrative.trim()) missing.push(t("f.narrative"));
-  if (!draft.name?.trim()) missing.push(t("f.name"));
-  if (!draft.mobile || draft.mobile.length !== 10) missing.push(t("f.mobile"));
-  if (!draft.state) missing.push(t("f.state"));
 
   const ready = missing.length === 0;
 
@@ -86,6 +82,7 @@ export function StageReview({
             </dd>
             <button
               onClick={() => goTo(r.stage)}
+              aria-label={`${t("rep.edit")} ${t(r.labelKey)}`}
               className="shrink-0 text-sm text-ink-2 hover:text-ink underline underline-offset-4"
             >
               {t("rep.edit")}
@@ -114,9 +111,8 @@ export function StageReview({
 
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={onSubmit} disabled={!ready || !agreed || submitting} size="lg">
-            {submitting ? `${t("rep.r.submitting")}…` : online ? t("rep.r.submit") : t("rep.r.submitOffline")}
+            {submitting ? `${t("rep.save.saving")}…` : t("triage.createCase")}
           </Button>
-          {!online && <p className="text-sm text-wait">{t("rep.r.offlineNote")}</p>}
         </div>
 
         <p className="text-sm leading-[1.6] text-ink-3 max-w-prose">{t("rep.r.mock")}</p>

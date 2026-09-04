@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +29,7 @@ interface SpeechRecognitionLike extends EventTarget {
   interimResults: boolean;
   start(): void;
   stop(): void;
+  abort?(): void;
   onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null;
   onerror: ((e: { error?: string }) => void) | null;
   onend: (() => void) | null;
@@ -101,6 +102,8 @@ export function VoiceInput({ onResult, disabled }: Props) {
   const [mode, setMode] = useState<Mode>("idle");
   const [level, setLevel] = useState(0);
   const [interim, setInterim] = useState("");
+  const [voiceConsent, setVoiceConsent] = useState(false);
+  const disclosureId = useId();
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -108,6 +111,8 @@ export function VoiceInput({ onResult, disabled }: Props) {
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const activityRef = useRef(0);
+  const transcriptionRequestRef = useRef<AbortController | null>(null);
   /**
    * Loudest frame seen this take, and how many frames were measured.
    *
@@ -120,7 +125,30 @@ export function VoiceInput({ onResult, disabled }: Props) {
   const peakRef = useRef(0);
   const framesRef = useRef(0);
 
-  const cleanup = useCallback(() => {
+  const cleanup = useCallback((invalidate = true) => {
+    if (invalidate) activityRef.current += 1;
+    const recognition = recognitionRef.current;
+    recognitionRef.current = null;
+    if (recognition) {
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      try {
+        if (recognition.abort) recognition.abort();
+        else recognition.stop();
+      } catch { /* already ended */ }
+    }
+    const recorder = recorderRef.current;
+    recorderRef.current = null;
+    if (recorder?.state === "recording" && invalidate) {
+      recorder.ondataavailable = null;
+      recorder.onstop = null;
+      try { recorder.stop(); } catch { /* already ended */ }
+    }
+    if (invalidate) {
+      transcriptionRequestRef.current?.abort();
+      transcriptionRequestRef.current = null;
+    }
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
     streamRef.current?.getTracks().forEach((tr) => tr.stop());
@@ -130,7 +158,7 @@ export function VoiceInput({ onResult, disabled }: Props) {
     setLevel(0);
   }, []);
 
-  useEffect(() => cleanup, [cleanup]);
+  useEffect(() => () => cleanup(), [cleanup]);
 
   /** Drives the level meter, so the user can see they are being heard. */
   const meter = useCallback((stream: MediaStream) => {
@@ -158,7 +186,7 @@ export function VoiceInput({ onResult, disabled }: Props) {
     tick();
   }, []);
 
-  const startRecording = useCallback(async () => {
+  const startRecording = useCallback(async (activity: number) => {
     if (recorderRef.current?.state === "recording") return;
     peakRef.current = 0;
     framesRef.current = 0;
@@ -166,6 +194,10 @@ export function VoiceInput({ onResult, disabled }: Props) {
       // Reuse a stream we already hold rather than asking for a second one.
       const stream =
         streamRef.current ?? (await navigator.mediaDevices.getUserMedia({ audio: true }));
+      if (activityRef.current !== activity) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       streamRef.current = stream;
       if (!audioCtxRef.current) meter(stream);
 
@@ -176,7 +208,8 @@ export function VoiceInput({ onResult, disabled }: Props) {
       rec.ondataavailable = (e) => e.data.size && chunksRef.current.push(e.data);
 
       rec.onstop = async () => {
-        cleanup();
+        if (activityRef.current !== activity) return;
+        cleanup(false);
         // Trust what the recorder says it produced over what we asked for.
         const type = rec.mimeType || mime || "audio/webm";
         const blob = new Blob(chunksRef.current, { type });
@@ -198,12 +231,15 @@ export function VoiceInput({ onResult, disabled }: Props) {
         }
         setMode("processing");
         try {
+          const controller = new AbortController();
+          transcriptionRequestRef.current = controller;
           const form = new FormData();
           form.append("audio", blob, `speech.${extFor(type)}`);
           form.append("lang", lang.code);
-          const res = await fetch("/api/ai/transcribe", { method: "POST", body: form });
+          const res = await fetch("/api/ai/transcribe", { method: "POST", body: form, signal: controller.signal });
           if (!res.ok) throw new Error(String(res.status));
           const data = await res.json();
+          if (activityRef.current !== activity) return;
           if (data.text) {
             onResult(data.text);
             setMode("idle");
@@ -212,7 +248,9 @@ export function VoiceInput({ onResult, disabled }: Props) {
             setMode("nothing");
           }
         } catch {
-          setMode("unsupported");
+          if (activityRef.current === activity) setMode("unsupported");
+        } finally {
+          if (transcriptionRequestRef.current) transcriptionRequestRef.current = null;
         }
       };
 
@@ -224,7 +262,8 @@ export function VoiceInput({ onResult, disabled }: Props) {
   }, [cleanup, lang.code, meter, onResult]);
 
   const start = useCallback(async () => {
-    if (disabled) return;
+    if (disabled || !voiceConsent) return;
+    const activity = ++activityRef.current;
     setInterim("");
     setMode((m) => (m === "nothing" ? "idle" : m));
 
@@ -258,10 +297,18 @@ export function VoiceInput({ onResult, disabled }: Props) {
         // on them used to reopen the mic after the user had closed it.
         const kind = e?.error;
         if (kind === "no-speech" || kind === "aborted") return;
+        rec.onresult = null;
+        rec.onerror = null;
+        rec.onend = null;
+        try {
+          if (rec.abort) rec.abort();
+          else rec.stop();
+        } catch { /* recognition has already ended */ }
         recognitionRef.current = null;
-        void startRecording();
+        if (activityRef.current === activity) void startRecording(activity);
       };
       rec.onend = () => {
+        if (activityRef.current !== activity) return;
         setInterim("");
         setMode((m) => (m === "listening" ? "idle" : m));
       };
@@ -272,6 +319,10 @@ export function VoiceInput({ onResult, disabled }: Props) {
         navigator.mediaDevices
           ?.getUserMedia({ audio: true })
           .then((s) => {
+            if (activityRef.current !== activity) {
+              s.getTracks().forEach((track) => track.stop());
+              return;
+            }
             streamRef.current = s;
             meter(s);
           })
@@ -283,8 +334,8 @@ export function VoiceInput({ onResult, disabled }: Props) {
       }
     }
 
-    await startRecording();
-  }, [disabled, lang.speech, meter, onResult, startRecording]);
+    await startRecording(activity);
+  }, [disabled, lang.speech, meter, onResult, startRecording, voiceConsent]);
 
   const stop = useCallback(() => {
     if (recognitionRef.current) {
@@ -306,9 +357,10 @@ export function VoiceInput({ onResult, disabled }: Props) {
       <button
         type="button"
         onClick={listening ? stop : start}
-        disabled={disabled || busy || mode === "unsupported"}
+        disabled={disabled || busy || mode === "unsupported" || !voiceConsent}
         aria-pressed={listening}
         aria-label={listening ? t("start.micStop") : t("start.mic")}
+        aria-describedby={disclosureId}
         className={cn(
           "relative flex items-center justify-center rounded-full transition-all duration-200",
           "w-20 h-20 border disabled:opacity-45",
@@ -336,6 +388,22 @@ export function VoiceInput({ onResult, disabled }: Props) {
               ? t("start.micStop")
               : `${t("start.mic")} · ${t("start.micHint")} ${lang.endonym}`}
       </p>
+
+      <div className="max-w-lg rounded-ctl border border-rule bg-sunk px-3 py-3 text-start">
+        <p id={disclosureId} className="text-xs leading-[1.55] text-ink-3">
+          {t("start.voiceDisclosure")}
+        </p>
+        <label className="mt-2.5 flex items-start gap-2 text-sm leading-snug text-ink-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={voiceConsent}
+            disabled={listening || busy}
+            onChange={(event) => setVoiceConsent(event.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--ink)]"
+          />
+          <span>{t("start.voiceConsent")}</span>
+        </label>
+      </div>
 
       {interim && (
         <p className="max-w-lg text-center text-[0.9375rem] text-ink-2 italic leading-snug">{interim}</p>

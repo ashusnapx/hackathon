@@ -6,6 +6,7 @@ import { Countdown } from "./Countdown";
 import { liveTracks, type LiveTrack } from "@/lib/case/tracks";
 import { useT } from "@/lib/i18n/context";
 import type { CaseFile, TrackId, TrackState } from "@/lib/case/types";
+import { parseBankNoticeDate, toLocalDateTimeInput } from "@/lib/case/bank-notice";
 import { cn, fmtDate } from "@/lib/utils";
 
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
@@ -28,11 +29,12 @@ const STATE_STYLE: Record<TrackState, string> = {
 
 interface Props {
   caseFile: CaseFile;
-  toggleTrack: (id: TrackId, done: boolean, extra?: { ref?: string }) => void;
+  toggleTrack: (id: TrackId, done: boolean, extra?: { ref?: string; doneAt?: string }) => void;
+  updateBank: (patch: Partial<CaseFile["bank"]>) => void;
   onGoToDocs: () => void;
 }
 
-export function TrackList({ caseFile, toggleTrack, onGoToDocs }: Props) {
+export function TrackList({ caseFile, toggleTrack, updateBank, onGoToDocs }: Props) {
   const t = useT();
   const tracks = liveTracks(caseFile);
   const [open, setOpen] = useState<TrackId | null>(tracks.find((x) => x.state === "due")?.def.id ?? null);
@@ -61,6 +63,8 @@ export function TrackList({ caseFile, toggleTrack, onGoToDocs }: Props) {
             open={open === track.def.id}
             onToggleOpen={() => setOpen((o) => (o === track.def.id ? null : track.def.id))}
             onMark={(done, extra) => toggleTrack(track.def.id, done, extra)}
+            bank={caseFile.bank}
+            onUpdateBank={updateBank}
             onGoToDocs={onGoToDocs}
             hasDoc={Boolean(track.def.doc && caseFile.docs[track.def.doc])}
           />
@@ -71,21 +75,84 @@ export function TrackList({ caseFile, toggleTrack, onGoToDocs }: Props) {
 }
 
 function TrackRow({
-  track, roman, open, onToggleOpen, onMark, onGoToDocs, hasDoc,
+  track, roman, open, onToggleOpen, onMark, bank, onUpdateBank, onGoToDocs, hasDoc,
 }: {
   track: LiveTrack;
   roman: string;
   open: boolean;
   onToggleOpen: () => void;
-  onMark: (done: boolean, extra?: { ref?: string }) => void;
+  onMark: (done: boolean, extra?: { ref?: string; doneAt?: string }) => void;
+  bank: CaseFile["bank"];
+  onUpdateBank: (patch: Partial<CaseFile["bank"]>) => void;
   onGoToDocs: () => void;
   hasDoc: boolean;
 }) {
   const t = useT();
   const { def, state, deadline } = track;
-  const [ackRef, setAckRef] = useState("");
+  const [ackRef, setAckRef] = useState(bank.ackRef ?? "");
+  const [bankNoticeAt, setBankNoticeAt] = useState(toLocalDateTimeInput(bank.notifiedAt));
+  const [noticeError, setNoticeError] = useState<"required" | "invalid" | "future" | null>(null);
+  const [responseDays, setResponseDays] = useState(
+    bank.ombudsmanResponseTimelineDays === undefined ? "" : String(bank.ombudsmanResponseTimelineDays),
+  );
+  const [replyAt, setReplyAt] = useState(toLocalDateTimeInput(bank.dissatisfiedReplyAt));
+  const [lastCommunicationAt, setLastCommunicationAt] = useState(toLocalDateTimeInput(bank.lastCommunicationAt));
+  const [ombudsmanDateError, setOmbudsmanDateError] = useState(false);
+  const [ombudsmanDaysError, setOmbudsmanDaysError] = useState(false);
 
   const muted = state === "na" || state === "upcoming";
+  const dateLabel = track.dateKind === "opens"
+    ? t("track.opensOn")
+    : def.id === "ombudsman" && track.dateKind === "deadline"
+      ? t("track.fileBy")
+      : null;
+
+  const markDone = () => {
+    if (def.id !== "bank-notice") {
+      onMark(true);
+      return;
+    }
+    const parsed = parseBankNoticeDate(bankNoticeAt);
+    if (!parsed.ok) {
+      setNoticeError(parsed.reason);
+      return;
+    }
+    setNoticeError(null);
+    onMark(true, { ...(ackRef ? { ref: ackRef } : {}), doneAt: parsed.iso });
+  };
+
+  const commitOmbudsmanDate = (
+    field: "dissatisfiedReplyAt" | "lastCommunicationAt",
+    value: string,
+  ) => {
+    if (!value) {
+      setOmbudsmanDateError(false);
+      onUpdateBank({ [field]: undefined });
+      return;
+    }
+    const parsed = parseBankNoticeDate(value);
+    if (!parsed.ok) {
+      setOmbudsmanDateError(true);
+      return;
+    }
+    setOmbudsmanDateError(false);
+    onUpdateBank({ [field]: parsed.iso });
+  };
+
+  const commitResponseDays = () => {
+    if (!responseDays.trim()) {
+      setOmbudsmanDaysError(false);
+      onUpdateBank({ ombudsmanResponseTimelineDays: undefined });
+      return;
+    }
+    const days = Number(responseDays);
+    if (!Number.isInteger(days) || days < 30) {
+      setOmbudsmanDaysError(true);
+      return;
+    }
+    setOmbudsmanDaysError(false);
+    onUpdateBank({ ombudsmanResponseTimelineDays: days });
+  };
 
   return (
     <li className={cn("border-b border-rule", muted && "opacity-60")}>
@@ -123,11 +190,16 @@ function TrackRow({
             <span>{t(def.dueKey)}</span>
             {deadline && state !== "done" && state !== "na" && (
               <>
-                <span className="num">{fmtDate(deadline.toISOString())}</span>
-                <Countdown target={deadline} />
+                <span className="num">
+                  {dateLabel ? `${dateLabel}: ` : ""}{fmtDate(deadline.toISOString())}
+                </span>
+                {!def.workingDayEstimate && <Countdown target={deadline} />}
               </>
             )}
           </span>
+          {deadline && def.workingDayEstimate && state !== "done" && state !== "na" && (
+            <span className="mt-1 block text-xs leading-snug text-ink-3">{t("track.calendarCaveat")}</span>
+          )}
         </span>
 
         <span
@@ -152,6 +224,113 @@ function TrackRow({
             <p className="mt-1.5 text-[0.9375rem] leading-[1.65] text-ink-2 max-w-2xl">{t(def.howKey)}</p>
           </div>
 
+          {def.source && (
+            <div className="border-s-2 border-rule-strong ps-3 text-xs leading-relaxed text-ink-3">
+              <p className="label">{t("track.source")}</p>
+              <a href={def.source.url} target="_blank" rel="noreferrer" className="mt-1 inline-block font-medium text-ink-2 underline underline-offset-4">
+                {def.source.title} ↗
+              </a>
+              <p className="mt-1 font-mono">
+                {def.source.id}
+                {def.source.provisions?.length ? ` · ${t("track.provisions")} ${def.source.provisions.join(", ")}` : ""}
+                {def.source.effectiveOn ? ` · ${t("track.effective")} ${fmtDate(def.source.effectiveOn)}` : ""}
+              </p>
+              {def.source.faqUrl && (
+                <a href={def.source.faqUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block underline underline-offset-4">
+                  {t("track.faq")} ↗
+                </a>
+              )}
+            </div>
+          )}
+
+          {def.id === "bank-notice" && state !== "done" && (
+            <div className="max-w-xl space-y-4 border-s-2 border-urgent/45 ps-4">
+              <div>
+                <label htmlFor={`bank-notice-at-${roman}`} className="label">
+                  {t("track.bank.noticeAt")}
+                </label>
+                <input
+                  id={`bank-notice-at-${roman}`}
+                  type="datetime-local"
+                  required
+                  value={bankNoticeAt}
+                  onChange={(event) => {
+                    setBankNoticeAt(event.target.value);
+                    setNoticeError(null);
+                  }}
+                  aria-invalid={Boolean(noticeError)}
+                  aria-describedby={`bank-notice-hint-${roman}`}
+                  className="mt-2 w-full max-w-sm h-11 px-3 bg-raised border border-rule-strong rounded-ctl num text-sm focus:outline-none focus:border-ink"
+                />
+                <p id={`bank-notice-hint-${roman}`} className="mt-2 text-xs leading-relaxed text-ink-3">
+                  {t("track.bank.noticeHint")}
+                </p>
+                {noticeError && (
+                  <p role="alert" className="mt-2 text-sm text-urgent">
+                    {t(noticeError === "future" ? "track.bank.noticeFuture" : "track.bank.noticeRequired")}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label htmlFor={`bank-ack-${roman}`} className="label">{t("track.bank.ackRef")}</label>
+                <input
+                  id={`bank-ack-${roman}`}
+                  value={ackRef}
+                  onChange={(event) => setAckRef(event.target.value)}
+                  className="mt-2 w-full max-w-sm h-11 px-3 bg-raised border border-rule-strong rounded-ctl num text-sm focus:outline-none focus:border-ink"
+                />
+              </div>
+            </div>
+          )}
+
+          {def.id === "ombudsman" && state !== "na" && (
+            <div className="max-w-2xl border border-rule rounded-ctl bg-sunk/45 p-4">
+              <p className="label">{t("track.ombudsman.timingTitle")}</p>
+              <p className="mt-2 text-sm leading-relaxed text-ink-3">{t("track.ombudsman.timingBody")}</p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <label className="text-sm text-ink-2">
+                  <span className="block">{t("track.ombudsman.replyAt")}</span>
+                  <input
+                    type="datetime-local"
+                    value={replyAt}
+                    onChange={(event) => setReplyAt(event.target.value)}
+                    onBlur={() => commitOmbudsmanDate("dissatisfiedReplyAt", replyAt)}
+                    className="mt-1.5 w-full h-11 px-3 bg-raised border border-rule-strong rounded-ctl num text-sm focus:outline-none focus:border-ink"
+                  />
+                </label>
+                <label className="text-sm text-ink-2">
+                  <span className="block">{t("track.ombudsman.lastCommunicationAt")}</span>
+                  <input
+                    type="datetime-local"
+                    value={lastCommunicationAt}
+                    onChange={(event) => setLastCommunicationAt(event.target.value)}
+                    onBlur={() => commitOmbudsmanDate("lastCommunicationAt", lastCommunicationAt)}
+                    className="mt-1.5 w-full h-11 px-3 bg-raised border border-rule-strong rounded-ctl num text-sm focus:outline-none focus:border-ink"
+                  />
+                </label>
+                <label className="text-sm text-ink-2 sm:col-span-2">
+                  <span className="block">{t("track.ombudsman.responseDays")}</span>
+                  <input
+                    type="number"
+                    min={30}
+                    step={1}
+                    inputMode="numeric"
+                    value={responseDays}
+                    onChange={(event) => setResponseDays(event.target.value)}
+                    onBlur={commitResponseDays}
+                    aria-describedby={`ombudsman-days-hint-${roman}`}
+                    className="mt-1.5 w-full max-w-[10rem] h-11 px-3 bg-raised border border-rule-strong rounded-ctl num text-sm focus:outline-none focus:border-ink"
+                  />
+                  <span id={`ombudsman-days-hint-${roman}`} className="mt-1.5 block text-xs leading-relaxed text-ink-3">
+                    {t("track.ombudsman.responseHint")}
+                  </span>
+                </label>
+              </div>
+              {ombudsmanDateError && <p role="alert" className="mt-3 text-sm text-urgent">{t("track.ombudsman.dateError")}</p>}
+              {ombudsmanDaysError && <p role="alert" className="mt-3 text-sm text-urgent">{t("track.ombudsman.daysError")}</p>}
+            </div>
+          )}
+
           {state !== "na" && (
             <div className="flex flex-wrap items-center gap-3">
               {def.action && (
@@ -173,23 +352,13 @@ function TrackRow({
                   {t("track.undo")}
                 </button>
               ) : (
-                <Button onClick={() => onMark(true, ackRef ? { ref: ackRef } : undefined)} size="sm">
+                <Button onClick={markDone} size="sm">
                   {t("track.markDone")}
                 </Button>
               )}
             </div>
           )}
 
-          {/* Completing this one starts the ten, thirty and ninety day clocks, so
-              we capture the acknowledgement number at exactly that moment. */}
-          {def.id === "bank-notice" && state !== "done" && (
-            <input
-              value={ackRef}
-              onChange={(e) => setAckRef(e.target.value)}
-              placeholder="Bank acknowledgement number (optional)"
-              className="w-full max-w-sm h-11 px-3 bg-raised border border-rule-strong rounded-ctl num text-sm focus:outline-none focus:border-ink"
-            />
-          )}
         </div>
       )}
     </li>

@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { CATEGORIES, findCategory } from "@/lib/case/categories";
-import { freezeChance } from "@/lib/case/time";
 import { useT } from "@/lib/i18n/context";
 import type { Entities, Triage } from "@/lib/case/types";
 import { cn, inr } from "@/lib/utils";
@@ -40,15 +39,19 @@ export function TriageResult({ triage, entities, source, onBack, onConfirm }: Pr
   const t = useT();
   const [edit, setEdit] = useState(false);
   const [categoryId, setCategoryId] = useState(triage.categoryId);
+  const [categoryChanged, setCategoryChanged] = useState(false);
   const [subcategoryId, setSubcategoryId] = useState(triage.subcategoryId ?? "");
   const [amount, setAmount] = useState(triage.amount ? String(triage.amount) : "");
   const [incidentAt, setIncidentAt] = useState(toLocalInput(triage.incidentAt));
+  const [reviewedEntities, setReviewedEntities] = useState<Entities>(() =>
+    Object.fromEntries(
+      Object.entries(entities).map(([key, values]) => [key, [...values]]),
+    ) as unknown as Entities,
+  );
 
   const category = findCategory(categoryId);
   const subs = category?.subcategories ?? [];
 
-  const minutes = incidentAt ? (Date.now() - new Date(incidentAt).getTime()) / 60_000 : 0;
-  const chance = freezeChance(minutes);
   const financial = category?.portalTrack === "financial";
 
   const confidence = triage.confidence;
@@ -57,24 +60,39 @@ export function TriageResult({ triage, entities, source, onBack, onConfirm }: Pr
   const confTone = confidence >= 0.75 ? "text-done" : confidence >= 0.5 ? "text-ink-2" : "text-urgent";
 
   const found = useMemo(
-    () => ENTITY_ROWS.map(([k, label]) => [label, entities[k] as string[]] as const).filter(([, v]) => v?.length),
-    [entities],
+    () => ENTITY_ROWS
+      .map(([field, label]) => ({ field, label, values: reviewedEntities[field] }))
+      .filter((item) => item.values.length),
+    [reviewedEntities],
   );
 
   const confirm = () => {
     const cat = findCategory(categoryId);
+    const confirmedIncidentAt = incidentAt ? new Date(incidentAt).toISOString() : undefined;
+    const numericAmount = Number(amount);
+    const confirmedAmount = amount && Number.isFinite(numericAmount) && numericAmount > 0
+      ? numericAmount
+      : undefined;
+    const cleanedEntities = Object.fromEntries(
+      (Object.entries(reviewedEntities) as [keyof Entities, string[]][]).map(([key, values]) => [
+        key,
+        [...new Set(values.map((value) => value.trim()).filter(Boolean))],
+      ]),
+    ) as unknown as Entities;
     onConfirm(
       {
         ...triage,
         categoryId,
-        subcategoryId: subcategoryId || undefined,
-        amount: amount ? Number(amount) : undefined,
-        incidentAt: incidentAt ? new Date(incidentAt).toISOString() : triage.incidentAt,
+        subcategoryId: cat?.subcategories.some((subcategory) => subcategory.id === subcategoryId)
+          ? subcategoryId
+          : undefined,
+        amount: confirmedAmount,
+        incidentAt: confirmedIncidentAt,
         applicableTracks: cat?.tracks ?? triage.applicableTracks,
       },
-      entities,
-      amount ? Number(amount) : undefined,
-      incidentAt ? new Date(incidentAt).toISOString() : triage.incidentAt,
+      cleanedEntities,
+      confirmedAmount,
+      confirmedIncidentAt,
     );
   };
 
@@ -89,7 +107,7 @@ export function TriageResult({ triage, entities, source, onBack, onConfirm }: Pr
 
       {/* The first action, before anything else on the screen. If the reader gets
           no further than this card, they have still got the one thing that matters. */}
-      {financial && minutes < 1440 && (
+      {financial && (
         <div className="mt-8 sheet border-urgent/40 bg-urgent-soft overflow-hidden">
           <div className="px-5 py-4">
             <p className="label !text-urgent-ink/70">{t("triage.firstAction")}</p>
@@ -99,9 +117,7 @@ export function TriageResult({ triage, entities, source, onBack, onConfirm }: Pr
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-4">
               <Button href="tel:1930" variant="urgent" size="md">{t("sos.call")}</Button>
-              <span className="num text-sm text-urgent-ink/75">
-                ≈ {Math.round(chance * 100)}% {t("window.chance")}
-              </span>
+              <span className="text-sm text-urgent-ink/75">{t("window.noOdds")}</span>
             </div>
           </div>
         </div>
@@ -111,9 +127,11 @@ export function TriageResult({ triage, entities, source, onBack, onConfirm }: Pr
         <div className="flex items-center justify-between px-5 py-3 border-b border-rule">
           <p className="label">{t("triage.category")}</p>
           <div className="flex items-center gap-4">
-            <span className={cn("text-sm", confTone)}>
-              {t("triage.confidence")}: {confLabel}
-            </span>
+            {!categoryChanged && (
+              <span className={cn("text-sm", confTone)}>
+                {t("triage.confidence")}: {confLabel}
+              </span>
+            )}
             <button
               onClick={() => setEdit((e) => !e)}
               className="text-sm text-ink-3 hover:text-ink underline underline-offset-4"
@@ -130,6 +148,7 @@ export function TriageResult({ triage, entities, source, onBack, onConfirm }: Pr
                 value={categoryId}
                 onChange={(e) => {
                   setCategoryId(e.target.value);
+                  setCategoryChanged(e.target.value !== triage.categoryId);
                   setSubcategoryId("");
                 }}
                 className="w-full h-11 px-3 bg-paper border border-rule-strong rounded-ctl focus:outline-none focus:border-ink"
@@ -180,6 +199,7 @@ export function TriageResult({ triage, entities, source, onBack, onConfirm }: Pr
               {edit ? (
                 <input
                   type="number"
+                  min="0"
                   inputMode="numeric"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
@@ -202,10 +222,41 @@ export function TriageResult({ triage, entities, source, onBack, onConfirm }: Pr
         <section className="mt-6 sheet">
           <p className="label px-5 pt-4">{t("triage.found")}</p>
           <dl className="mt-2 divide-y divide-rule">
-            {found.map(([label, values]) => (
-              <div key={label} className="px-5 py-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                <dt className="text-sm text-ink-3 w-32 shrink-0">{label}</dt>
-                <dd className="num text-[0.9375rem] break-all">{values.join(", ")}</dd>
+            {found.map(({ field, label, values }) => (
+              <div key={label} className="px-5 py-3 grid sm:grid-cols-[8rem_minmax(0,1fr)] gap-x-4 gap-y-2">
+                <dt className="text-sm text-ink-3">{label}</dt>
+                <dd className="num text-[0.9375rem] break-all">
+                  {edit ? (
+                    <div className="grid gap-2">
+                      {values.map((value, index) => (
+                        <div key={`${field}-${index}`} className="flex items-center gap-2">
+                          <input
+                            value={value}
+                            onChange={(event) => setReviewedEntities((current) => ({
+                              ...current,
+                              [field]: current[field].map((item, itemIndex) =>
+                                itemIndex === index ? event.target.value : item,
+                              ),
+                            }))}
+                            className="min-w-0 flex-1 rounded-ctl border border-rule-strong bg-paper px-2.5 py-2 text-sm focus:outline-none focus:border-ink"
+                            aria-label={`${label}: ${value}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setReviewedEntities((current) => ({
+                              ...current,
+                              [field]: current[field].filter((_, itemIndex) => itemIndex !== index),
+                            }))}
+                            className="text-xs text-ink-3 underline underline-offset-4 hover:text-ink"
+                            aria-label={`${t("rep.remove")}: ${value}`}
+                          >
+                            {t("rep.remove")}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : values.join(", ")}
+                </dd>
               </div>
             ))}
           </dl>

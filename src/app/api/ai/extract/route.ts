@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { jsonCall } from "@/lib/ai/provider";
+import { aiConfigured, jsonCall } from "@/lib/ai/provider";
 import { EXTRACT_SCHEMA, EXTRACT_SYSTEM } from "@/lib/ai/prompts";
 import { extractEntities } from "@/lib/ai/extract";
+import { claimAiProviderSlot, isJsonRecord, readAiJsonRequest } from "@/lib/ai/request-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -16,12 +17,20 @@ interface ModelExtract {
 const uniq = (a: string[], b: string[]) => Array.from(new Set([...a, ...b])).filter(Boolean);
 
 export async function POST(req: Request) {
-  const { text } = (await req.json()) as { text: string };
+  const parsed = await readAiJsonRequest(req);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+  }
+  if (!isJsonRecord(parsed.value) || typeof parsed.value.text !== "string") {
+    return NextResponse.json({ error: "bad-request" }, { status: 400 });
+  }
+  const text = parsed.value.text;
   if (!text?.trim()) return NextResponse.json({ error: "empty" }, { status: 400 });
 
   const regex = extractEntities(text);
 
-  const model = await jsonCall<ModelExtract>({
+  const limit = aiConfigured ? claimAiProviderSlot(req) : { allowed: true, retryAfterSeconds: 0 };
+  const model = limit.allowed ? await jsonCall<ModelExtract>({
     system: EXTRACT_SYSTEM,
     user: `Pasted evidence:
 """
@@ -32,7 +41,7 @@ What the regular-expression pass found:
 ${JSON.stringify(regex, null, 2)}`,
     schema: EXTRACT_SCHEMA,
     schemaName: "extract",
-  });
+  }) : null;
 
   if (!model) {
     // Without a model we cannot tell victim identifiers from suspect ones, so we
@@ -44,6 +53,7 @@ ${JSON.stringify(regex, null, 2)}`,
       },
       refs: regex.refs, amount: null, bankName: null, victimAccountLast4: null,
       summary: null, source: "rules", needsReview: true,
+      ...(limit.allowed ? {} : { rateLimited: true, retryAfterSeconds: limit.retryAfterSeconds }),
     });
   }
 

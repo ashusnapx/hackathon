@@ -198,7 +198,13 @@ function buildCasePack(c: CaseFile): jsPDF {
       { mono: true, size: 9 },
     );
     s.body(
-      `${track.deadline ? `Due ${fmt(track.deadline.toISOString())}` : "No fixed date"}`,
+      `${track.deadline
+        ? `${track.dateKind === "opens"
+          ? "Eligible to file from"
+          : def.id === "ombudsman"
+            ? "Ordinary filing limit"
+            : "Due"} ${fmt(track.deadline.toISOString())}`
+        : "No fixed date"}`,
       { size: 8.5 },
     );
     s.gap(3);

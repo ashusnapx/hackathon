@@ -63,7 +63,7 @@ export function Hero() {
           className="mt-9 flex flex-col sm:flex-row gap-3 justify-center rise"
           style={{ animationDelay: "300ms" }}
         >
-          <Button href="/report" size="lg" className="press">
+          <Button href="/assist" size="lg" className="press">
             {t("hero.cta")}
             <Arrow />
           </Button>

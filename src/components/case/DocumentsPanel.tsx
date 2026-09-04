@@ -1,16 +1,22 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { downloadCasePack } from "@/lib/case/pack";
 import { downloadLetter } from "@/lib/case/letter";
+import {
+  applicableDocumentKeys,
+  documentInputFingerprint,
+  parseDraftResponse,
+  type DocumentKey,
+} from "@/lib/case/documents";
 import { completeness } from "@/lib/case/tracks";
 import { useI18n } from "@/lib/i18n/context";
 import type { CaseDocs, CaseFile } from "@/lib/case/types";
 import { cn, writeToClipboard } from "@/lib/utils";
 import { useIsClient } from "@/lib/useIsClient";
 
-type DocKey = "ncrp" | "script" | "bank" | "fir" | "chakshu" | "mrm" | "ombudsman";
+type DocKey = DocumentKey;
 
 const DOCS: { key: DocKey; title: Parameters<ReturnType<typeof useI18n>["t"]>[0]; blurb: Parameters<ReturnType<typeof useI18n>["t"]>[0] }[] = [
   { key: "ncrp", title: "doc.ncrp.t", blurb: "doc.ncrp.b" },
@@ -30,20 +36,44 @@ interface Props {
 export function DocumentsPanel({ caseFile, update }: Props) {
   const { t, lang } = useI18n();
   const [busy, setBusy] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [active, setActive] = useState<DocKey>("ncrp");
+  const generationSequence = useRef(0);
+  const latestCase = useRef(caseFile);
+  useEffect(() => {
+    latestCase.current = caseFile;
+  }, [caseFile]);
+  const applicableKeys = applicableDocumentKeys(caseFile);
+  const visibleDocs = DOCS.filter((doc) => applicableKeys.includes(doc.key));
 
-  const has = Boolean(caseFile.docs.generatedAt);
+  const has = Boolean(
+    caseFile.docs.generatedAt
+    && visibleDocs.some((doc) => Boolean(caseFile.docs[doc.key])),
+  );
   const { score } = completeness(caseFile);
 
   const generate = useCallback(async () => {
+    const sequence = ++generationSequence.current;
+    const requestedKeys = applicableDocumentKeys(caseFile);
+    const requestedFingerprint = documentInputFingerprint(caseFile);
     setBusy(true);
+    setGenerateError(null);
     try {
       const res = await fetch("/api/ai/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ caseFile }),
       });
-      const data = await res.json();
+      if (!res.ok) throw new Error(`draft-${res.status}`);
+      const data = parseDraftResponse(await res.json(), requestedKeys);
+      if (!data) throw new Error("invalid-draft-response");
+      if (
+        sequence !== generationSequence.current
+        || documentInputFingerprint(latestCase.current) !== requestedFingerprint
+      ) {
+        setGenerateError("Your case changed while these drafts were being prepared. Nothing stale was saved—generate them again from the current facts.");
+        return;
+      }
       update((c) => ({
         docs: {
           ...(data.docs as CaseDocs),
@@ -52,11 +82,16 @@ export function DocumentsPanel({ caseFile, update }: Props) {
           // A regenerate invalidates the old translations rather than leaving a
           // stale vernacular copy next to fresh English.
           translated: {},
+          translatedLanguage: undefined,
         },
         events: [...c.events, { at: new Date().toISOString(), kind: "docs" as const, label: "Documents generated" }],
       }));
+    } catch {
+      if (sequence === generationSequence.current) {
+        setGenerateError("The drafts could not be generated. Your case facts are still saved; check the connection and try again.");
+      }
     } finally {
-      setBusy(false);
+      if (sequence === generationSequence.current) setBusy(false);
     }
   }, [caseFile, update]);
 
@@ -79,6 +114,14 @@ export function DocumentsPanel({ caseFile, update }: Props) {
         </div>
       </div>
 
+      <p className="mt-3 text-sm leading-snug text-ink-3 max-w-2xl">{t("doc.applicableOnly")}</p>
+
+      {generateError && (
+        <p role="alert" className="mt-4 rounded-ctl border border-urgent/30 bg-urgent-soft px-4 py-3 text-sm leading-[1.55] text-urgent-ink">
+          {generateError}
+        </p>
+      )}
+
       {score < 55 && (
         <p className="mt-5 sheet px-4 py-3 text-sm text-ink-2 bg-wait-soft border-wait/30">
           {t("doc.needsLabel")} — {t("case.completenessSub")}
@@ -97,12 +140,11 @@ export function DocumentsPanel({ caseFile, update }: Props) {
         </div>
       ) : (
         <>
-          <div className="mt-6 flex gap-1 border-b border-rule swipe-x no-bar no-print" role="tablist">
-            {DOCS.map((d) => (
+          <nav className="mt-6 flex gap-1 border-b border-rule swipe-x no-bar no-print" aria-label={t("case.docsTitle")}>
+            {visibleDocs.map((d) => (
               <button
                 key={d.key}
-                role="tab"
-                aria-selected={active === d.key}
+                aria-current={active === d.key ? "page" : undefined}
                 onClick={() => setActive(d.key)}
                 className={cn(
                   "px-3.5 py-2.5 text-sm whitespace-nowrap transition-colors -mb-px border-b-2",
@@ -112,9 +154,9 @@ export function DocumentsPanel({ caseFile, update }: Props) {
                 {t(d.title)}
               </button>
             ))}
-          </div>
+          </nav>
 
-          {DOCS.filter((d) => d.key === active).map((d) => (
+          {visibleDocs.filter((d) => d.key === active).map((d) => (
             <Document
               key={d.key}
               docKey={d.key}
@@ -122,11 +164,17 @@ export function DocumentsPanel({ caseFile, update }: Props) {
               title={t(d.title)}
               blurb={t(d.blurb)}
               body={caseFile.docs[d.key] ?? ""}
-              translated={caseFile.docs.translated?.[d.key]}
+              translated={caseFile.docs.translatedLanguage === lang.code
+                ? caseFile.docs.translated?.[d.key]
+                : undefined}
               targetLang={lang.code}
               onTranslated={(text) =>
                 update((c) => ({
-                  docs: { ...c.docs, translated: { ...(c.docs.translated ?? {}), [d.key]: text } },
+                  docs: {
+                    ...c.docs,
+                    translated: { ...(c.docs.translatedLanguage === lang.code ? c.docs.translated : {}), [d.key]: text },
+                    translatedLanguage: lang.code,
+                  },
                 }))
               }
             />
@@ -160,6 +208,12 @@ function Document({
   const canShare = useIsClient() && !!navigator.share;
   const [showTranslation, setShowTranslation] = useState(false);
   const [translating, setTranslating] = useState(false);
+  const [translationError, setTranslationError] = useState<string | null>(null);
+  const translationSequence = useRef(0);
+  const latestTranslationInput = useRef({ body, targetLang });
+  useEffect(() => {
+    latestTranslationInput.current = { body, targetLang };
+  }, [body, targetLang]);
 
   /**
    * Copying the complaint out is the single most important action on this
@@ -197,20 +251,39 @@ function Document({
       setShowTranslation((s) => !s);
       return;
     }
+    const sequence = ++translationSequence.current;
+    const requested = { body, targetLang };
     setTranslating(true);
+    setTranslationError(null);
     try {
       const res = await fetch("/api/ai/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: body, target: targetLang }),
       });
+      if (!res.ok) throw new Error(`translate-${res.status}`);
       const data = await res.json();
+      if (!data || typeof data.translated !== "string" || !data.translated.trim()) {
+        throw new Error("invalid-translation-response");
+      }
+      if (
+        sequence !== translationSequence.current
+        || latestTranslationInput.current.body !== requested.body
+        || latestTranslationInput.current.targetLang !== requested.targetLang
+      ) {
+        setTranslationError("The document or language changed while translation was running. The old result was not saved.");
+        return;
+      }
       if (data.translated) {
         onTranslated(data.translated);
         setShowTranslation(true);
       }
+    } catch {
+      if (sequence === translationSequence.current) {
+        setTranslationError("Translation is unavailable right now. The English draft has not changed.");
+      }
     } finally {
-      setTranslating(false);
+      if (sequence === translationSequence.current) setTranslating(false);
     }
   };
 
@@ -241,6 +314,12 @@ function Document({
           </Button>
         )}
       </div>
+
+      {translationError && (
+        <p role="alert" className="mx-5 mt-4 rounded-ctl border border-urgent/30 bg-urgent-soft px-3 py-2 text-sm text-urgent-ink">
+          {translationError}
+        </p>
+      )}
 
       {showTranslation && translated ? (
         <>

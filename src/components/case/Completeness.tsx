@@ -23,7 +23,7 @@ export function Completeness({ caseFile }: { caseFile: CaseFile }) {
         <p className="num text-2xl font-medium">{score}%</p>
       </div>
 
-      <div className="mt-3 h-1.5 bg-sunk rounded-full overflow-hidden" role="progressbar" aria-valuenow={score} aria-valuemin={0} aria-valuemax={100}>
+      <div className="mt-3 h-1.5 bg-sunk rounded-full overflow-hidden" role="progressbar" aria-label={t("case.completeness")} aria-valuenow={score} aria-valuemin={0} aria-valuemax={100}>
         <div className={cn("h-full rounded-full transition-[width] duration-500", tone)} style={{ width: `${score}%` }} />
       </div>
 

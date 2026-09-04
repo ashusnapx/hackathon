@@ -6,9 +6,10 @@ import { Field, TextArea } from "@/components/ui/Field";
 import { VoiceInput } from "@/components/start/VoiceInput";
 import { CATEGORIES, findCategory } from "@/lib/case/categories";
 import { OFFICERS, findOfficers } from "@/lib/case/officers";
-import { compressImage, formatBytes } from "@/lib/report/compress";
+import { formatBytes } from "@/lib/report/compress";
 import type { ReportDraft, SuspectId } from "@/lib/report/draft";
 import { useT } from "@/lib/i18n/context";
+import type { ChildContext } from "@/lib/intake/interview";
 
 type Patch = (p: Partial<ReportDraft>) => void;
 interface StageProps {
@@ -50,37 +51,43 @@ function PortalDemands({ children }: { children: React.ReactNode }) {
 export function StageIncident({ draft, patch, lang }: StageProps) {
   const t = useT();
   const [busy, setBusy] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const cat = findCategory(draft.categoryId);
 
   const understand = useCallback(async () => {
     if (draft.narrative.trim().length < 25) return;
     setBusy(true);
+    setAnalysisError(null);
     try {
       const r = await fetch("/api/ai/triage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: draft.narrative, lang }),
       });
+      if (!r.ok) throw new Error(`triage-${r.status}`);
       const d = await r.json();
-      if (d?.triage) {
-        patch({
+      if (!d?.triage || typeof d.triage.categoryId !== "string") {
+        throw new Error("invalid-triage-response");
+      }
+      patch({
+        categoryId: d.triage.categoryId,
+        subcategoryId: d.triage.subcategoryId,
+        incidentAt: d.triage.incidentAt ?? draft.incidentAt,
+        amount: d.triage.amount ?? draft.amount,
+        inferred: {
           categoryId: d.triage.categoryId,
           subcategoryId: d.triage.subcategoryId,
-          incidentAt: d.triage.incidentAt ?? draft.incidentAt,
-          amount: d.triage.amount ?? draft.amount,
-          inferred: {
-            categoryId: d.triage.categoryId,
-            subcategoryId: d.triage.subcategoryId,
-            incidentAt: d.triage.incidentAt,
-            amount: d.triage.amount,
-            confidence: d.triage.confidence,
-          },
-        });
-      }
+          incidentAt: d.triage.incidentAt,
+          amount: d.triage.amount,
+          confidence: d.triage.confidence,
+        },
+      });
+    } catch {
+      setAnalysisError(t("rep.i.readError"));
     } finally {
       setBusy(false);
     }
-  }, [draft.narrative, draft.incidentAt, draft.amount, lang, patch]);
+  }, [draft.narrative, draft.incidentAt, draft.amount, lang, patch, t]);
 
   /**
    * Read what they wrote without being asked.
@@ -140,68 +147,68 @@ export function StageIncident({ draft, patch, lang }: StageProps) {
         )}
         <Why text={t("f.narrative.why")} />
       </div>
+      {analysisError && <p role="alert" className="text-sm leading-[1.55] text-urgent-ink">{analysisError}</p>}
 
-      {draft.categoryId && (
-        <div className="sheet px-5 py-5 space-y-5">
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <p className="label">{t("rep.i.understood")}</p>
-            {draft.inferred?.confidence !== undefined && (
-              <p className="num text-sm text-ink-3">
-                {Math.round(draft.inferred.confidence * 100)}% {t("rep.i.confident")}
-              </p>
-            )}
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-5">
-            <label className="space-y-1.5">
-              <span className="block text-[0.9375rem] font-medium">{t("f.category")}</span>
-              <select
-                value={draft.categoryId ?? ""}
-                onChange={(e) => patch({ categoryId: e.target.value, subcategoryId: undefined })}
-                className="w-full h-12 px-3 bg-raised border border-rule-strong rounded-ctl focus:outline-none focus:border-ink"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c.id} value={c.id}>{c.label}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="space-y-1.5">
-              <span className="block text-[0.9375rem] font-medium">{t("f.subcategory")}</span>
-              <select
-                value={draft.subcategoryId ?? ""}
-                onChange={(e) => patch({ subcategoryId: e.target.value })}
-                className="w-full h-12 px-3 bg-raised border border-rule-strong rounded-ctl focus:outline-none focus:border-ink"
-              >
-                <option value="">—</option>
-                {cat?.subcategories.map((s) => (
-                  <option key={s.id} value={s.id}>{s.label}</option>
-                ))}
-              </select>
-            </label>
-
-            <Field
-              label={t("f.incidentAt")}
-              type="datetime-local"
-              value={toLocalInput(draft.incidentAt)}
-              onChange={(e) => patch({ incidentAt: fromLocalInput(e.target.value) })}
-              mono
-            />
-
-            <Field
-              label={t("f.amount")}
-              type="number"
-              inputMode="numeric"
-              optional
-              value={draft.amount ?? ""}
-              onChange={(e) => patch({ amount: e.target.value ? Number(e.target.value) : undefined })}
-              mono
-            />
-          </div>
-
-          <p className="text-sm leading-[1.6] text-ink-3 max-w-prose">{t("rep.i.correct")}</p>
+      <div className="sheet px-5 py-5 space-y-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <p className="label">{t("rep.i.understood")}</p>
+          {draft.inferred?.confidence !== undefined && draft.inferred.categoryId === draft.categoryId && (
+            <p className="num text-sm text-ink-3">
+              {Math.round(draft.inferred.confidence * 100)}% {t("rep.i.confident")}
+            </p>
+          )}
         </div>
-      )}
+
+        <div className="grid sm:grid-cols-2 gap-5">
+          <label className="space-y-1.5">
+            <span className="block text-[0.9375rem] font-medium">{t("f.category")}</span>
+            <select
+              value={draft.categoryId ?? ""}
+              onChange={(e) => patch({ categoryId: e.target.value || undefined, subcategoryId: undefined })}
+              className="w-full h-12 px-3 bg-raised border border-rule-strong rounded-ctl focus:outline-none focus:border-ink"
+            >
+              <option value="">—</option>
+              {CATEGORIES.map((c) => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1.5">
+            <span className="block text-[0.9375rem] font-medium">{t("f.subcategory")}</span>
+            <select
+              value={draft.subcategoryId ?? ""}
+              onChange={(e) => patch({ subcategoryId: e.target.value || undefined })}
+              className="w-full h-12 px-3 bg-raised border border-rule-strong rounded-ctl focus:outline-none focus:border-ink"
+            >
+              <option value="">—</option>
+              {cat?.subcategories.map((s) => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+          </label>
+
+          <Field
+            label={t("f.incidentAt")}
+            type="datetime-local"
+            value={toLocalInput(draft.incidentAt)}
+            onChange={(e) => patch({ incidentAt: fromLocalInput(e.target.value) })}
+            mono
+          />
+
+          <Field
+            label={t("f.amount")}
+            type="number"
+            inputMode="numeric"
+            optional
+            value={draft.amount ?? ""}
+            onChange={(e) => patch({ amount: e.target.value ? Number(e.target.value) : undefined })}
+            mono
+          />
+        </div>
+
+        <p className="text-sm leading-[1.6] text-ink-3 max-w-prose">{t("rep.i.correct")}</p>
+      </div>
 
       <details className="border-t border-rule pt-5">
         <summary className="cursor-pointer text-[0.9375rem] text-ink-2 hover:text-ink">
@@ -224,22 +231,40 @@ export function StageIncident({ draft, patch, lang }: StageProps) {
 
 // ── 2. Evidence ─────────────────────────────────────────────────────────────
 
-export function StageEvidence({ draft, patch }: StageProps) {
+export function StageEvidence({
+  draft,
+  patch,
+  childContext,
+}: StageProps & { childContext?: ChildContext }) {
   const t = useT();
   const [busy, setBusy] = useState(false);
   const [found, setFound] = useState<string[] | null>(null);
+  const [readError, setReadError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const childAttachmentRisk = childContext === "self-minor"
+    || childContext === "child-other"
+    || draft.subcategoryId === "csam";
+  const intimateAttachmentRisk = draft.subcategoryId === "sextortion"
+    || draft.subcategoryId === "morphed";
+  const attachmentBlocked = childAttachmentRisk || intimateAttachmentRisk;
+  const attachmentNotice = childAttachmentRisk
+    ? "Do not select, upload, forward or make another copy of sexual material involving anyone under 18. Preserve the source device, URL or account details without opening it again, and contact 1098, 112 or a trained safeguarding professional."
+    : "Do not select or forward intimate material here. Preserve the source device, URL or account details without making another copy.";
 
   const readPaste = useCallback(async () => {
     if (!draft.pastedText.trim()) return;
     setBusy(true);
+    setFound(null);
+    setReadError(null);
     try {
       const r = await fetch("/api/ai/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: draft.pastedText }),
       });
+      if (!r.ok) throw new Error(`extract-${r.status}`);
       const d = await r.json();
+      if (!d || typeof d !== "object") throw new Error("invalid-extract-response");
       const ids: SuspectId[] = [
         ...(d?.suspect?.upiIds ?? []).map((v: string) => ({ kind: "upi", value: v })),
         ...(d?.suspect?.phones ?? []).map((v: string) => ({ kind: "phone", value: v })),
@@ -250,32 +275,24 @@ export function StageEvidence({ draft, patch }: StageProps) {
       const merged = dedupe([...draft.suspectIds, ...ids]);
       patch({ suspectIds: merged, amount: draft.amount ?? d?.amount ?? undefined });
       setFound(ids.map((i) => i.value));
+    } catch {
+      setReadError(t("rep.e.readError"));
     } finally {
       setBusy(false);
     }
-  }, [draft.pastedText, draft.suspectIds, draft.amount, patch]);
+  }, [draft.pastedText, draft.suspectIds, draft.amount, patch, t]);
 
   const addFiles = useCallback(
-    async (list: FileList | null) => {
-      if (!list?.length) return;
-      setBusy(true);
-      try {
-        const added = [];
-        for (const f of Array.from(list)) {
-          const r = await compressImage(f);
-          added.push({
-            name: r.file.name,
-            size: r.bytes,
-            type: r.file.type,
-            compressedFrom: r.changed ? r.originalBytes : undefined,
-          });
-        }
-        patch({ files: [...draft.files, ...added] });
-      } finally {
-        setBusy(false);
-      }
+    (list: FileList | null) => {
+      if (!list?.length || attachmentBlocked) return;
+      const added = Array.from(list).map((file) => ({
+        name: file.name,
+        size: file.size,
+        type: file.type || "application/octet-stream",
+      }));
+      patch({ files: [...draft.files, ...added] });
     },
-    [draft.files, patch],
+    [attachmentBlocked, draft.files, patch],
   );
 
   return (
@@ -304,6 +321,7 @@ export function StageEvidence({ draft, patch }: StageProps) {
           )}
           {found && found.length === 0 && <p className="text-sm text-ink-3">{t("rep.e.foundNone")}</p>}
         </div>
+        {readError && <p role="alert" className="text-sm leading-[1.55] text-urgent-ink">{readError}</p>}
       </div>
 
       <div className="space-y-3">
@@ -313,17 +331,25 @@ export function StageEvidence({ draft, patch }: StageProps) {
         </div>
         <p className="text-sm leading-[1.6] text-ink-2 max-w-prose">{t("f.evidence.was")}</p>
 
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          accept="image/*,application/pdf"
-          onChange={(e) => addFiles(e.target.files)}
-          className="sr-only"
-        />
-        <Button onClick={() => inputRef.current?.click()} size="md" variant="secondary" disabled={busy}>
-          {busy ? `${t("rep.e.processing")}…` : t("rep.e.addFiles")}
-        </Button>
+        {attachmentBlocked ? (
+          <p role="alert" className="rounded-ctl border border-urgent/25 bg-urgent-soft px-4 py-3 text-sm leading-[1.6] text-urgent-ink">
+            {attachmentNotice} This form can still record that evidence is held elsewhere; it never stores file bytes.
+          </p>
+        ) : (
+          <>
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              accept="image/*,application/pdf"
+              onChange={(e) => addFiles(e.target.files)}
+              className="sr-only"
+            />
+            <Button onClick={() => inputRef.current?.click()} size="md" variant="secondary" disabled={busy}>
+              {busy ? `${t("rep.e.processing")}…` : t("rep.e.addFiles")}
+            </Button>
+          </>
+        )}
 
         {draft.files.length > 0 && (
           <ul className="divide-y divide-rule border-t border-rule">

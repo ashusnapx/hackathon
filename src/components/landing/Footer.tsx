@@ -46,7 +46,7 @@ export function Footer() {
             >
               {t("footer.ctaSub")}
             </p>
-            <Button href="/report" size="lg" className="mt-9 press">
+            <Button href="/assist" size="lg" className="mt-9 press">
               {t("hero.cta")}
             </Button>
           </div>

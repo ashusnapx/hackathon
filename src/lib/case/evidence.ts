@@ -11,6 +11,12 @@ export interface EvidenceAttachment {
   size: number;
   type: string;
   addedAt: string;
+  /** Key for the actual Blob in IndexedDB. Absent on legacy metadata-only records. */
+  storageKey?: string;
+  /** SHA-256 fingerprint of the exact stored bytes; useful for later integrity checks. */
+  sha256?: string;
+  /** True only after the IndexedDB transaction has completed successfully. */
+  storedLocally?: boolean;
 }
 
 export interface EvidenceItem {
@@ -31,6 +37,37 @@ export interface EvidenceItem {
 export const ALLOWED_EVIDENCE_TYPES = ["image/png", "image/jpeg", "application/pdf"] as const;
 export const MAX_EVIDENCE_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_EXTS = [".png", ".jpg", ".jpeg", ".pdf"];
+
+export type EvidenceAttachmentBlockReason =
+  | "child-sexual-content-risk"
+  | "intimate-content-risk";
+
+/**
+ * Local attachments are deliberately unavailable where an upload could create
+ * another copy of child sexual-abuse or non-consensual intimate material.
+ * Citizens can still record that evidence is held on the source device and
+ * preserve a URL/account identifier for an authorised investigator.
+ */
+export function evidenceAttachmentBlockReason(
+  c: CaseFile,
+): EvidenceAttachmentBlockReason | null {
+  const ageContext = c.victim?.ageContext;
+  const subcategory = c.triage?.subcategoryId;
+
+  if (
+    ageContext === "self-minor" ||
+    ageContext === "child-other" ||
+    subcategory === "csam"
+  ) {
+    return "child-sexual-content-risk";
+  }
+
+  if (subcategory === "sextortion" || subcategory === "morphed") {
+    return "intimate-content-risk";
+  }
+
+  return null;
+}
 
 export function validateEvidenceFile(file: { name: string; type: string; size: number }): string | null {
   const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
@@ -60,7 +97,7 @@ export const EVIDENCE_TEMPLATES: EvidenceTemplate[] = [
     typeKey: "txn_screenshot",
     title: "Transaction screenshot",
     description: "Screenshot of the debit from your bank app or UPI app.",
-    why: "Shows the exact amount, time and reference the officer will match to the bank ledger.",
+    why: "Helps record the displayed amount, time and transaction reference; keep the underlying bank record too.",
   },
   {
     id: "bank_statement",
@@ -68,7 +105,7 @@ export const EVIDENCE_TEMPLATES: EvidenceTemplate[] = [
     typeKey: "bank_statement",
     title: "Bank statement",
     description: "PDF or screenshot showing the disputed transaction line.",
-    why: "Proves the money left your account and is the base for your bank dispute.",
+    why: "Records how the debit appears on the account statement and can support a bank dispute.",
   },
   {
     id: "utr_reference",
@@ -76,7 +113,7 @@ export const EVIDENCE_TEMPLATES: EvidenceTemplate[] = [
     typeKey: "utr_reference",
     title: "UTR / transaction reference",
     description: "12-digit UTR, RRN or UPI reference number.",
-    why: "The only identifier that lets both banks trace the same payment.",
+    why: "Helps the relevant payment participants identify and trace the same transaction.",
   },
   {
     id: "sms_notification",
@@ -84,7 +121,7 @@ export const EVIDENCE_TEMPLATES: EvidenceTemplate[] = [
     typeKey: "sms_notification",
     title: "SMS / transaction notification",
     description: "Screenshot of the SMS or notification your bank sent.",
-    why: "Starts the 3-working-day clock — the date on this message matters.",
+    why: "Helps establish when you received the bank's communication, which can matter in the RBI's conditional liability analysis.",
   },
   // Communication evidence (5)
   {
@@ -93,7 +130,7 @@ export const EVIDENCE_TEMPLATES: EvidenceTemplate[] = [
     typeKey: "chat_screenshot",
     title: "WhatsApp / chat screenshots",
     description: "Screenshots of chats with the fraudster.",
-    why: "Captures promises, impersonation and instructions that link the person to the fraud.",
+    why: "Preserves the displayed promises, impersonation or instructions; a screenshot alone does not prove who controlled the account.",
   },
   {
     id: "email_correspondence",
@@ -101,7 +138,7 @@ export const EVIDENCE_TEMPLATES: EvidenceTemplate[] = [
     typeKey: "email_correspondence",
     title: "Email correspondence",
     description: "Any emails or letters from the fraudster.",
-    why: "Shows the pretext and headers that can be investigated.",
+    why: "Preserves the message content and, where available, technical headers that an investigator may examine.",
   },
   {
     id: "phone_number",
@@ -109,7 +146,7 @@ export const EVIDENCE_TEMPLATES: EvidenceTemplate[] = [
     typeKey: "phone_number",
     title: "Fraudster phone number",
     description: "Phone number that called or messaged you.",
-    why: "Can be checked against the I4C repository and asked to be blocked via Chakshu.",
+    why: "Can be included accurately in a suspect report or Chakshu lead; the displayed number is not proof of the caller's identity.",
   },
   {
     id: "upi_id",
@@ -117,7 +154,7 @@ export const EVIDENCE_TEMPLATES: EvidenceTemplate[] = [
     typeKey: "upi_id",
     title: "UPI ID / payment identifier",
     description: "UPI ID, QR code or payment link you were asked to pay.",
-    why: "Identifies the recipient account for the freeze request.",
+    why: "Records the payment destination and may help authorised institutions trace the transfer; it does not prove account ownership.",
   },
   {
     id: "website_url",
@@ -125,7 +162,7 @@ export const EVIDENCE_TEMPLATES: EvidenceTemplate[] = [
     typeKey: "website_url",
     title: "Website / app URL",
     description: "Link to fake website or app you visited.",
-    why: "Helps the portal route the case and lets sites be taken down.",
+    why: "Preserves the exact location for a report. A platform or authorised agency decides whether any restriction or takedown is appropriate.",
   },
   // Complaint & escalation evidence (3)
   {
@@ -134,7 +171,7 @@ export const EVIDENCE_TEMPLATES: EvidenceTemplate[] = [
     typeKey: "bank_ack",
     title: "Bank complaint acknowledgement",
     description: "Stamped or emailed acknowledgement from your bank.",
-    why: "Proof you notified in writing — required for zero-liability and 10/30/90-day clocks.",
+    why: "Proves when and how you notified the bank; timing is relevant to liability and later grievance escalation.",
   },
   {
     id: "ncrp_ack",
@@ -142,7 +179,7 @@ export const EVIDENCE_TEMPLATES: EvidenceTemplate[] = [
     typeKey: "ncrp_ack",
     title: "NCRP complaint acknowledgement",
     description: "14-digit NCRP acknowledgement number.",
-    why: "Needed for every escalation — MRM refund, investigating officer, Ombudsman.",
+    why: "Lets you track the portal complaint and helps police or the helpline connect follow-up to the same report.",
   },
   {
     id: "fir_ack",
@@ -150,7 +187,7 @@ export const EVIDENCE_TEMPLATES: EvidenceTemplate[] = [
     typeKey: "fir_ack",
     title: "FIR / police acknowledgement",
     description: "FIR copy or Zero-FIR acknowledgement, if obtained.",
-    why: "Mandatory before held money can be released when >₹50k is held in one account.",
+    why: "Records the police process separately from the NCRP portal complaint and may support later police, bank or court follow-up.",
   },
 ];
 
@@ -272,7 +309,15 @@ export function setEvidenceStatus(
 export function attachEvidenceFile(
   c: CaseFile,
   evidenceId: string,
-  file: { name: string; size: number; type: string },
+  file: {
+    name: string;
+    size: number;
+    type: string;
+    storageKey?: string;
+    sha256?: string;
+    storedLocally?: boolean;
+    storedAt?: string;
+  },
 ): CaseFile {
   const err = validateEvidenceFile(file);
   if (err) throw new Error(err);
@@ -283,7 +328,15 @@ export function attachEvidenceFile(
           ...e,
           status: "added" as EvidenceStatus,
           updatedAt: now,
-          attachment: { name: file.name, size: file.size, type: file.type, addedAt: now },
+          attachment: {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            addedAt: file.storedAt ?? now,
+            storageKey: file.storageKey,
+            sha256: file.sha256,
+            storedLocally: file.storedLocally,
+          },
         }
       : e,
   );
@@ -304,9 +357,18 @@ export function removeEvidenceAttachment(c: CaseFile, evidenceId: string): CaseF
 export type ReadinessLevel = "NOT_READY" | "PARTIALLY_READY" | "READY";
 
 export interface EvidenceReadiness {
+  /** Weighted completion of applicable checklist items, not legal sufficiency. */
   percentage: number; // 0-100
   level: ReadinessLevel;
-  counts: { added: number; missing: number; notApplicable: number; total: number; totalApplicable: number };
+  counts: {
+    added: number;
+    missing: number;
+    notApplicable: number;
+    total: number;
+    totalApplicable: number;
+    storedLocally: number;
+    heldElsewhere: number;
+  };
   recommendations: EvidenceItem[]; // top 3 missing, sorted by weight desc
   addedWeight: number;
   totalWeight: number;
@@ -319,6 +381,8 @@ export function calculateReadiness(c: CaseFile): EvidenceReadiness {
   let added = 0;
   let missing = 0;
   let notApplicable = 0;
+  let storedLocally = 0;
+  let heldElsewhere = 0;
 
   for (const e of evidence) {
     if (e.status === "not_applicable") {
@@ -330,12 +394,14 @@ export function calculateReadiness(c: CaseFile): EvidenceReadiness {
     if (e.status === "added") {
       added += 1;
       addedWeight += w;
+      if (e.attachment?.storedLocally && e.attachment.storageKey) storedLocally += 1;
+      else heldElsewhere += 1;
     } else {
       missing += 1;
     }
   }
 
-  const percentage = totalWeight === 0 ? 100 : Math.round((addedWeight / totalWeight) * 100);
+  const percentage = totalWeight === 0 ? 0 : Math.round((addedWeight / totalWeight) * 100);
   let level: ReadinessLevel = "NOT_READY";
   if (percentage >= 80) level = "READY";
   else if (percentage >= 40) level = "PARTIALLY_READY";
@@ -348,7 +414,15 @@ export function calculateReadiness(c: CaseFile): EvidenceReadiness {
   return {
     percentage,
     level,
-    counts: { added, missing, notApplicable, total: evidence.length, totalApplicable: evidence.length - notApplicable },
+    counts: {
+      added,
+      missing,
+      notApplicable,
+      total: evidence.length,
+      totalApplicable: evidence.length - notApplicable,
+      storedLocally,
+      heldElsewhere,
+    },
     recommendations,
     addedWeight,
     totalWeight,
@@ -364,7 +438,14 @@ export interface EvidenceSummaryData {
   utr?: string;
   transactionAt?: string;
   paymentMethod?: string;
-  evidenceCollected: Array<{ category: EvidenceCategory; title: string; status: EvidenceStatus; fileName?: string }>;
+  evidenceCollected: Array<{
+    category: EvidenceCategory;
+    title: string;
+    status: EvidenceStatus;
+    fileName?: string;
+    sha256?: string;
+    storedLocally?: boolean;
+  }>;
   missing: EvidenceItem[];
   notApplicable: EvidenceItem[];
   events: CaseFile["events"];
@@ -374,7 +455,7 @@ export function buildEvidenceSummaryData(c: CaseFile): EvidenceSummaryData {
   const evidence = getEvidence(c);
   return {
     caseRef: c.ref,
-    incidentAt: c.incidentAt || c.triage?.incidentAt || c.createdAt,
+    incidentAt: c.incidentAt || c.triage?.incidentAt,
     categoryLabel: c.triage?.categoryId,
     amount: c.amount,
     utr: c.entities.refs[0] || c.txns[0]?.ref,
@@ -385,6 +466,8 @@ export function buildEvidenceSummaryData(c: CaseFile): EvidenceSummaryData {
       title: e.title,
       status: e.status,
       fileName: e.attachment?.name,
+      sha256: e.attachment?.sha256,
+      storedLocally: e.attachment?.storedLocally,
     })),
     missing: evidence.filter((e) => e.status === "missing"),
     notApplicable: evidence.filter((e) => e.status === "not_applicable"),
@@ -525,15 +608,25 @@ export function downloadEvidenceSummary(c: CaseFile) {
     ["Payment method", c.bank.name || c.txns[0]?.bank || "—"],
   ]);
 
-  // 3. Evidence collected
+  // 3. User-maintained evidence checklist
   s.gap(4);
-  s.label(`3. Evidence collected — ${readiness.percentage}% ready (${readiness.level.replace("_", " ")})`);
+  s.label(`3. Evidence checklist — ${readiness.percentage}% of weighted applicable items marked held`);
   for (const e of evidence) {
     s.body(
-      `${e.status === "added" ? "[ADDED]" : e.status === "not_applicable" ? "[N/A]" : "[MISSING]"}  ${e.category.toUpperCase()} — ${e.title}${e.attachment ? ` — ${e.attachment.name}` : ""}`,
+      `${e.status === "added" ? "[MARKED HELD]" : e.status === "not_applicable" ? "[N/A]" : "[MISSING]"}  ${e.category.toUpperCase()} — ${e.title}${e.attachment ? ` — ${e.attachment.name}` : ""}`,
       { mono: true, size: 8 },
     );
-    s.body(`Status: ${e.status}${e.status === "added" && e.attachment ? ` — ${e.attachment.name} (${(e.attachment.size / 1024).toFixed(0)} KB)` : ""}`, { size: 7.5 });
+    s.body(
+      e.status === "added"
+        ? e.attachment?.storedLocally
+          ? `User marked held; local browser file: ${e.attachment.name} (${(e.attachment.size / 1024).toFixed(0)} KB)`
+          : "User marked held elsewhere; Kavach has no verified local file bytes."
+        : `Status: ${e.status}`,
+      { size: 7.5 },
+    );
+    if (e.attachment?.sha256) {
+      s.body(`SHA-256: ${e.attachment.sha256}`, { mono: true, size: 6.5 });
+    }
     s.gap(2);
   }
 
@@ -544,7 +637,7 @@ export function downloadEvidenceSummary(c: CaseFile) {
   if (missing.length) {
     missing.forEach((e, i) => s.body(`${i + 1}. ${e.title} — ${e.description}`, { mono: true, size: 8 }));
   } else {
-    s.body("None — all applicable evidence has been added.", { size: 8.5 });
+    s.body("No applicable item is currently marked missing. This does not establish possession, authenticity, admissibility or legal sufficiency.", { size: 8.5 });
   }
 
   // 5. Not applicable
@@ -569,7 +662,10 @@ export function downloadEvidenceSummary(c: CaseFile) {
     "This summary is generated locally from information you entered. It is an organizational aid and not a government document. The reference numbers inside are not official complaint numbers. Verify all dates, amounts and references against your bank records before submitting to the police, your bank or the regulator.",
     { size: 8 },
   );
-  s.body("Stored locally in this browser. Evidence files are not uploaded to any server or AI model.", { size: 7.5 });
+  s.body(
+    "Files attached in the Evidence Vault are stored in this browser only and are not included in this PDF. Clearing site data can delete them. A SHA-256 value is an integrity fingerprint, not proof of origin or authenticity.",
+    { size: 7.5 },
+  );
 
   s.save(`kavach-evidence-${c.ref}.pdf`);
 }

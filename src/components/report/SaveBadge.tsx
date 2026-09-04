@@ -31,7 +31,7 @@ export function SaveBadge({
 
   if (state === "error") {
     return (
-      <span className="inline-flex items-center gap-2 text-sm text-urgent">
+      <span role="alert" aria-live="assertive" className="inline-flex items-center gap-2 text-sm text-urgent">
         <Dot className="bg-urgent" />
         {t("rep.save.error")}
       </span>
@@ -40,7 +40,7 @@ export function SaveBadge({
 
   if (!online) {
     return (
-      <span className="inline-flex items-center gap-2 text-sm text-wait">
+      <span role="status" aria-live="polite" className="inline-flex items-center gap-2 text-sm text-wait">
         <Dot className="bg-wait" />
         {t("rep.save.offline")}
       </span>
@@ -49,7 +49,7 @@ export function SaveBadge({
 
   if (state === "saving") {
     return (
-      <span className="inline-flex items-center gap-2 text-sm text-ink-3">
+      <span role="status" aria-live="polite" className="inline-flex items-center gap-2 text-sm text-ink-3">
         <Dot className="bg-ink-3 animate-pulse" />
         {t("rep.save.saving")}
       </span>
@@ -58,7 +58,7 @@ export function SaveBadge({
 
   if (state === "saved" && savedAt) {
     return (
-      <span className="inline-flex items-center gap-2 text-sm text-done">
+      <span role="status" aria-live="polite" className="inline-flex items-center gap-2 text-sm text-done">
         <Dot className="bg-done" />
         {t("rep.save.saved")} {ago(savedAt, t("rep.save.justNow"))}
       </span>

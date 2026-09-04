@@ -7,6 +7,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { en, type Dict, type DictKey } from "./dict/en";
 import {
@@ -35,6 +36,26 @@ function readCookie(): string | null {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
+function readSavedLanguage(): string {
+  let saved = readCookie();
+  if (!saved) {
+    try {
+      saved = localStorage.getItem(LANG_COOKIE);
+    } catch {
+      /* private mode — use the server-selected/default language */
+    }
+  }
+  return getLanguage(saved).code;
+}
+
+function subscribeSavedLanguage(onStoreChange: () => void) {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === LANG_COOKIE) onStoreChange();
+  };
+  window.addEventListener("storage", onStorage);
+  return () => window.removeEventListener("storage", onStorage);
+}
+
 export function I18nProvider({
   initial,
   children,
@@ -42,34 +63,36 @@ export function I18nProvider({
   initial?: string;
   children: React.ReactNode;
 }) {
-  const [code, setCode] = useState(initial || DEFAULT_LANGUAGE);
-  const [dict, setDict] = useState<Dict>(en as unknown as Dict);
-  const [loading, setLoading] = useState(false);
-
-  // Pick up a previous choice before first paint of the client tree.
-  useEffect(() => {
-    const saved = readCookie() || localStorage.getItem(LANG_COOKIE);
-    if (saved && saved !== code) setCode(saved);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const serverCode = getLanguage(initial || DEFAULT_LANGUAGE).code;
+  const persistedCode = useSyncExternalStore(
+    subscribeSavedLanguage,
+    readSavedLanguage,
+    () => serverCode,
+  );
+  const [chosenCode, setChosenCode] = useState<string | null>(null);
+  const code = chosenCode ?? persistedCode;
+  const [loaded, setLoaded] = useState<{ code: string; dict: Dict }>({
+    code: DEFAULT_LANGUAGE,
+    dict: en as unknown as Dict,
+  });
 
   useEffect(() => {
     let cancelled = false;
-    if (code === DEFAULT_LANGUAGE) {
-      setDict(en as unknown as Dict);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
+    if (code === DEFAULT_LANGUAGE) return;
     loadDict(code).then((d) => {
       if (cancelled) return;
-      setDict(d);
-      setLoading(false);
+      setLoaded({ code, dict: d });
     });
     return () => {
       cancelled = true;
     };
   }, [code]);
+
+  // English is already in the bundle. Other dictionaries retain the previous
+  // copy during their code-split load, matching the existing no-blank-screen
+  // behaviour; `loading` is derived instead of synchronously set in an effect.
+  const dict = code === DEFAULT_LANGUAGE ? (en as unknown as Dict) : loaded.dict;
+  const loading = code !== DEFAULT_LANGUAGE && loaded.code !== code;
 
   const lang = useMemo(() => getLanguage(code), [code]);
 
@@ -84,7 +107,7 @@ export function I18nProvider({
   }, [lang]);
 
   const setLang = useCallback((next: string) => {
-    setCode(next);
+    setChosenCode(getLanguage(next).code);
     try {
       localStorage.setItem(LANG_COOKIE, next);
       document.cookie = `${LANG_COOKIE}=${encodeURIComponent(next)}; path=/; max-age=31536000; samesite=lax`;

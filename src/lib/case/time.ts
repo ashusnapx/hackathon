@@ -1,9 +1,8 @@
 /**
- * Indian banking calendar. Scheduled commercial banks are shut on Sundays and
- * on the second and fourth Saturday of each month, so "three working days"
- * from a Thursday is not the same as three calendar days. Getting this wrong
- * is exactly the kind of error that costs a citizen their zero-liability claim,
- * so we compute it rather than approximating.
+ * A partial Indian banking-calendar estimate: it knows only Sundays and the
+ * standard second/fourth-Saturday closure. State, local, branch and ad-hoc bank
+ * holidays are intentionally not guessed, so every consumer must label the
+ * result as an estimate and ask the user to verify the relevant bank calendar.
  */
 export function isBankHoliday(d: Date): boolean {
   const day = d.getDay();
@@ -20,8 +19,10 @@ export function addWorkingDays(from: Date, days: number): Date {
     d.setDate(d.getDate() + 1);
     if (!isBankHoliday(d)) left -= 1;
   }
-  // Deadlines land at the close of the working day, not the same clock time.
-  d.setHours(17, 0, 0, 0);
+  // `Date` has no date-only type. Use the last instant of the estimated local
+  // date so the UI never invents a 17:00 branch cutoff or marks it missed early.
+  // This is a representation detail, not a legal filing time.
+  d.setHours(23, 59, 59, 999);
   return d;
 }
 
@@ -61,20 +62,6 @@ export function formatCountdown(c: Countdown): string {
   if (c.days > 0) return `${c.days}d ${c.hours}h`;
   if (c.hours > 0) return `${c.hours}h ${c.minutes}m`;
   return `${Math.max(c.minutes, 0)}m`;
-}
-
-/**
- * Probability of getting funds frozen, as a function of delay. Anchored on the
- * figures police and I4C quote publicly: reporting inside the first hour is
- * roughly an even chance, and it collapses through the first day.
- */
-export function freezeChance(minutesSinceIncident: number): number {
-  const m = Math.max(minutesSinceIncident, 0);
-  if (m <= 60) return 0.52 - (m / 60) * 0.11;      // 52% → 41%
-  if (m <= 360) return 0.41 - ((m - 60) / 300) * 0.16;  // → 25%
-  if (m <= 1440) return 0.25 - ((m - 360) / 1080) * 0.19; // → 6%
-  if (m <= 4320) return 0.06 - ((m - 1440) / 2880) * 0.03; // → 3%
-  return 0.02;
 }
 
 export function windowPhase(minutes: number): "strong" | "fading" | "late" | "expired" {

@@ -1,5 +1,5 @@
-import type { DictKey } from "@/lib/i18n";
 import type { EvidenceItem } from "./evidence";
+import type { RbiEligibilityAssessment, RbiEligibilityInput } from "@/lib/legal/rbi";
 
 export type TrackId =
   | "helpline"
@@ -72,6 +72,8 @@ export interface CaseDocs {
   ombudsman?: string;
   /** Same documents rendered in the citizen's language, so they can read what they sign. */
   translated?: Partial<Record<"ncrp" | "script" | "bank" | "fir" | "chakshu" | "mrm" | "ombudsman", string>>;
+  /** Language shared by the cached translations; absent legacy values are not displayed. */
+  translatedLanguage?: string;
   generatedAt?: string;
   generatedBy?: "openai" | "rules";
 }
@@ -94,7 +96,9 @@ export interface CaseFile {
   entities: Entities;
 
   incidentAt?: string;
-  /** When the bank's SMS reached them — the RBI three-day clock starts here. */
+  /** Coarse answer retained when no exact incident timestamp is confirmed. */
+  incidentTimingRange?: "last-hour" | "today" | "older" | "unsure";
+  /** When the bank's transaction communication reached them; relevant to the conditional RBI three-working-day route. */
   bankAlertAt?: string;
   amount?: number;
   txns: Txn[];
@@ -102,8 +106,20 @@ export interface CaseFile {
   victim: {
     name?: string; phone?: string; email?: string;
     state?: string; district?: string; address?: string;
+    ageContext?: "adult-or-no-child" | "self-minor" | "child-other" | "unknown";
   };
-  bank: { name?: string; last4?: string; ackRef?: string; notifiedAt?: string };
+  bank: {
+    name?: string;
+    last4?: string;
+    ackRef?: string;
+    notifiedAt?: string;
+    /** Verified longer RBI/NPCI/card-network response period, if one applies. */
+    ombudsmanResponseTimelineDays?: number;
+    /** Actual reply that the citizen considers unsatisfactory. */
+    dissatisfiedReplyAt?: string;
+    /** Latest communication from the bank about this grievance. */
+    lastCommunicationAt?: string;
+  };
   suspect: { phones: string[]; upiIds: string[]; accounts: string[]; urls: string[]; handles: string[] };
 
   evidenceText: string;
@@ -112,6 +128,14 @@ export interface CaseFile {
   tracks: TrackProgress[];
   docs: CaseDocs;
   events: CaseEvent[];
+  /** Answer-backed legal screens. These are guidance, never findings of fact. */
+  legal?: {
+    rbi?: {
+      input: RbiEligibilityInput;
+      assessment: RbiEligibilityAssessment;
+      assessedAt: string;
+    };
+  };
   /** Evidence Vault — checklist per case, stored locally. Optional for backwards compat. */
   evidence?: EvidenceItem[];
 }

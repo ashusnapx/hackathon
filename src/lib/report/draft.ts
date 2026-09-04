@@ -19,7 +19,6 @@ import type { Stage } from "./schema";
  */
 
 const KEY = "kavach.report.draft.v1";
-const QUEUE = "kavach.report.queue.v1";
 const DEBOUNCE_MS = 400;
 
 export interface SuspectId {
@@ -68,8 +67,8 @@ export interface ReportDraft {
   policeStation?: string;
   pincode?: string;
 
+  /** Legacy migration marker from builds that used submission-like wording. */
   submittedAt?: string;
-  acknowledgement?: string;
 }
 
 export function emptyDraft(): ReportDraft {
@@ -246,47 +245,4 @@ export function useOnline(): boolean {
     };
   }, []);
   return online;
-}
-
-// ── Outbox ──────────────────────────────────────────────────────────────────
-
-/**
- * A complaint submitted with no connection is not an error, it is a complaint
- * waiting for a signal. It goes to a durable outbox and leaves on reconnect,
- * which is the difference between "try again later" and being filed.
- */
-export function queueSubmission(d: ReportDraft) {
-  try {
-    const q = JSON.parse(localStorage.getItem(QUEUE) || "[]") as ReportDraft[];
-    q.push(d);
-    localStorage.setItem(QUEUE, JSON.stringify(q));
-  } catch {
-    /* the caller surfaces the failure */
-  }
-}
-
-export function pendingSubmissions(): ReportDraft[] {
-  try {
-    return JSON.parse(localStorage.getItem(QUEUE) || "[]") as ReportDraft[];
-  } catch {
-    return [];
-  }
-}
-
-export function dropSubmission(id: string) {
-  try {
-    const q = pendingSubmissions().filter((d) => d.id !== id);
-    localStorage.setItem(QUEUE, JSON.stringify(q));
-  } catch {
-    /* ignore */
-  }
-}
-
-/**
- * Acknowledgement numbers are shaped like the portal's fourteen digits so the
- * flow is realistic, and prefixed so nobody can mistake one for the real thing.
- */
-export function mockAcknowledgement(): string {
-  const n = Array.from({ length: 12 }, () => Math.floor(Math.random() * 10)).join("");
-  return `KV${n}`;
 }

@@ -54,24 +54,24 @@ describe("isBankHoliday — Indian banking calendar", () => {
 
 describe("addWorkingDays — 3 working days (RBI clock)", () => {
   // A. Normal weekday cases
-  it("A: incident on Monday 5 Jan 2026 10:00 +3wd lands Thu 8 Jan 17:00", () => {
+  it("A: incident on Monday 5 Jan 2026 10:00 +3wd lands at the end of Thu 8 Jan", () => {
     const from = d(2026, 1, 5, 10, 0);
     const result = addWorkingDays(from, 3);
     expect(result.getFullYear()).toBe(2026);
     expect(result.getMonth()).toBe(0);
     expect(result.getDate()).toBe(8);
-    expect(result.getHours()).toBe(17);
-    expect(result.getMinutes()).toBe(0);
+    expect(result.getHours()).toBe(23);
+    expect(result.getMinutes()).toBe(59);
   });
 
-  it("A: incident on Wednesday 7 Jan 2026 10:00 +3wd lands Mon 12 Jan 17:00 (skips Sat-Sun)", () => {
+  it("A: incident on Wednesday 7 Jan 2026 10:00 +3wd lands at the end of Mon 12 Jan (skips Sat-Sun)", () => {
     // Wed7 +3wd: Thu8=1, Fri9=2, Mon12=3 (skips Sat10 holiday+Sun11)
     const result = addWorkingDays(d(2026, 1, 7, 10, 0), 3);
     expect(result.getDate()).toBe(12);
-    expect(result.getHours()).toBe(17);
+    expect(result.getHours()).toBe(23);
   });
 
-  it("A: incident on Friday 9 Jan 2026 10:00 +3wd lands Wed 14 Jan 17:00", () => {
+  it("A: incident on Friday 9 Jan 2026 10:00 +3wd lands at the end of Wed 14 Jan", () => {
     // Fri9 start, Sat10 holiday skip, Sun11 skip, Mon12=1, Tue13=2, Wed14=3
     const result = addWorkingDays(d(2026, 1, 9, 10, 0), 3);
     expect(result.getDate()).toBe(14);
@@ -79,23 +79,23 @@ describe("addWorkingDays — 3 working days (RBI clock)", () => {
   });
 
   // B. Weekend boundaries
-  it("B: incident on Saturday (1st working Sat 3 Jan) +3wd lands Wed 7 Jan 17:00", () => {
+  it("B: incident on Saturday (1st working Sat 3 Jan) +3wd lands Wed 7 Jan", () => {
     // Sat3 is working, but clock still counts from next day: Sun4 skip, Mon5=1, Tue6=2, Wed7=3
     const result = addWorkingDays(d(2026, 1, 3, 10, 0), 3);
     expect(result.getDate()).toBe(7);
   });
 
-  it("B: incident on Saturday (2nd holiday Sat 10 Jan) +3wd lands Wed 14 Jan 17:00", () => {
+  it("B: incident on Saturday (2nd holiday Sat 10 Jan) +3wd lands Wed 14 Jan", () => {
     const result = addWorkingDays(d(2026, 1, 10, 10, 0), 3);
     expect(result.getDate()).toBe(14);
   });
 
-  it("B: incident on Sunday 11 Jan +3wd lands Wed 14 Jan 17:00", () => {
+  it("B: incident on Sunday 11 Jan +3wd lands Wed 14 Jan", () => {
     const result = addWorkingDays(d(2026, 1, 11, 10, 0), 3);
     expect(result.getDate()).toBe(14);
   });
 
-  it("B: incident on Sunday 4 Jan +3wd lands Wed 7 Jan 17:00", () => {
+  it("B: incident on Sunday 4 Jan +3wd lands Wed 7 Jan", () => {
     const result = addWorkingDays(d(2026, 1, 4, 10, 0), 3);
     expect(result.getDate()).toBe(7);
   });
@@ -131,11 +131,11 @@ describe("addWorkingDays — 3 working days (RBI clock)", () => {
   });
 
   // D. Month boundaries
-  it("D: month boundary — Sat 31 Jan (5th Sat working) +3wd lands Wed 4 Feb 17:00", () => {
+  it("D: month boundary — Sat 31 Jan (5th Sat working) +3wd lands Wed 4 Feb", () => {
     const result = addWorkingDays(d(2026, 1, 31, 10, 0), 3);
     expect(result.getMonth()).toBe(1); // Feb
     expect(result.getDate()).toBe(4);
-    expect(result.getHours()).toBe(17);
+    expect(result.getHours()).toBe(23);
   });
 
   it("D: month boundary — Fri 30 Jan +3wd lands Wed 4 Feb", () => {
@@ -149,19 +149,19 @@ describe("addWorkingDays — 3 working days (RBI clock)", () => {
   });
 
   // E. Year boundaries
-  it("E: year boundary — Mon 29 Dec 2025 +3wd lands Thu 1 Jan 2026 17:00", () => {
+  it("E: year boundary — Mon 29 Dec 2025 +3wd lands Thu 1 Jan 2026", () => {
     const result = addWorkingDays(d(2025, 12, 29, 10, 0), 3);
     expect(result.getFullYear()).toBe(2026);
     expect(result.getMonth()).toBe(0);
     expect(result.getDate()).toBe(1);
   });
 
-  it("E: year boundary — Wed 31 Dec 2025 +3wd lands Sat 3 Jan 2026 17:00 (1st Sat working)", () => {
+  it("E: year boundary — Wed 31 Dec 2025 +3wd lands Sat 3 Jan 2026 (1st Sat working)", () => {
     const result = addWorkingDays(d(2025, 12, 31, 10, 0), 3);
     expect(result.getFullYear()).toBe(2026);
     expect(result.getMonth()).toBe(0);
     expect(result.getDate()).toBe(3);
-    expect(result.getHours()).toBe(17);
+    expect(result.getHours()).toBe(23);
   });
 
   it("E: year boundary — Thu 1 Jan 2026 is Thursday, +3wd lands Tue 6 Jan (no holiday between)", () => {
@@ -172,14 +172,14 @@ describe("addWorkingDays — 3 working days (RBI clock)", () => {
   });
 
   // F. Longer deadlines — 10 working days
-  it("F: 10 working days from Mon 5 Jan lands Sat 17 Jan 17:00 (includes working Saturday)", () => {
+  it("F: 10 working days from Mon 5 Jan lands Sat 17 Jan (includes working Saturday)", () => {
     const result = addWorkingDays(d(2026, 1, 5, 10, 0), 10);
     expect(result.getDate()).toBe(17);
     expect(result.getMonth()).toBe(0);
-    expect(result.getHours()).toBe(17);
+    expect(result.getHours()).toBe(23);
   });
 
-  it("F: 10 working days from Fri 9 Jan lands Thu 22 Jan 17:00 (skips two holidays + Sun)", () => {
+  it("F: 10 working days from Fri 9 Jan lands Thu 22 Jan (skips two holidays + Sun)", () => {
     const result = addWorkingDays(d(2026, 1, 9, 10, 0), 10);
     expect(result.getDate()).toBe(22);
   });
@@ -188,29 +188,29 @@ describe("addWorkingDays — 3 working days (RBI clock)", () => {
     const result = addWorkingDays(d(2026, 1, 31, 10, 0), 10);
     expect(result.getMonth()).toBe(1); // Feb
     expect(result.getDate()).toBe(12);
-    expect(result.getHours()).toBe(17);
+    expect(result.getHours()).toBe(23);
   });
 
   // G. Boundary behavior — midnight
-  it("G: incident at 23:50 on Mon 5 Jan still +3wd lands Thu 8 Jan 17:00 (normalized to close of day)", () => {
+  it("G: incident at 23:50 on Mon 5 Jan still +3wd lands at the end of Thu 8 Jan", () => {
     const late = d(2026, 1, 5, 23, 50);
     const result = addWorkingDays(late, 3);
     expect(result.getDate()).toBe(8);
-    expect(result.getHours()).toBe(17);
-    expect(result.getMinutes()).toBe(0);
+    expect(result.getHours()).toBe(23);
+    expect(result.getMinutes()).toBe(59);
   });
 
-  it("G: incident at 00:05 on Tue 6 Jan +3wd lands Fri 9 Jan 17:00", () => {
+  it("G: incident at 00:05 on Tue 6 Jan +3wd lands Fri 9 Jan", () => {
     const early = d(2026, 1, 6, 0, 5);
     const result = addWorkingDays(early, 3);
     expect(result.getDate()).toBe(9);
   });
 
-  it("G: addWorkingDays always normalizes to 17:00 regardless of input time", () => {
+  it("G: addWorkingDays represents the estimated date at its last instant", () => {
     const a = addWorkingDays(d(2026, 1, 5, 8, 15), 3);
     const b = addWorkingDays(d(2026, 1, 5, 23, 59), 3);
-    expect(a.getHours()).toBe(17);
-    expect(b.getHours()).toBe(17);
+    expect(a.getHours()).toBe(23);
+    expect(b.getHours()).toBe(23);
     expect(a.getTime()).toBe(b.getTime());
   });
 

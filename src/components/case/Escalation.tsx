@@ -11,11 +11,8 @@ import { fmtDate } from "@/lib/utils";
 /**
  * What to do when nothing happens.
  *
- * Filing is the part everybody writes about. Being ignored afterwards is the
- * part every victim actually experiences, and the escalation path — a named
- * Nodal Officer and a named Grievance Officer in every state — is published
- * but never put in front of the person who needs it. This turns that table
- * into two buttons.
+ * This surfaces the published state/UT Nodal and Grievance contact table while
+ * keeping an NCRP acknowledgement, police assignment and FIR as distinct facts.
  */
 
 /** A letter is only worth sending if it carries the numbers that identify the case. */
@@ -24,25 +21,31 @@ function escalationLetter(c: CaseFile, officer: string): string {
   const days = filed
     ? Math.max(0, Math.floor((Date.now() - new Date(filed).getTime()) / 86_400_000))
     : null;
+  const incidentWhen = c.incidentAt || c.triage?.incidentAt;
+  const coarseTiming = c.incidentTimingRange === "last-hour" ? "within the hour before I began this draft"
+    : c.incidentTimingRange === "today" ? "earlier on the day I began this draft"
+      : c.incidentTimingRange === "older" ? "before the day I began this draft"
+        : "not yet confirmed";
 
   return `Respected ${officer},
 
-I am a victim of cybercrime and I am writing because my complaint has not moved.
+I am reporting that I have not received a clear status update on my cybercrime complaint.
 
 Complainant: ${c.victim.name || "[your full name]"}
 Mobile: ${c.victim.phone || "[your mobile]"}
 District and State: ${[c.victim.district, c.victim.state].filter(Boolean).join(", ") || "[district, state]"}
 NCRP acknowledgement number: [your 14-digit number]
-Date of incident: ${fmtDate(c.incidentAt || c.createdAt)}
+Date of incident: ${incidentWhen ? fmtDate(incidentWhen) : `[exact date/time ${coarseTiming}]`}
 ${c.amount ? `Amount lost: Rs. ${c.amount.toLocaleString("en-IN")}\n` : ""}${filed ? `Complaint filed on NCRP: ${fmtDate(filed)}${days !== null ? ` (${days} days ago)` : ""}\n` : ""}
-I have received no communication about the progress of my complaint, and I have not been told the name of the Investigating Officer handling it.
+I have not received the following status information: [describe what is missing, and delete this line if not applicable].
 
 I request that you kindly:
-1. inform me of the status of my complaint and the officer to whom it has been assigned;
-2. direct that the beneficiary account be traced and the amount held be restored to me through the Money Restoration Module;
-3. direct registration of an FIR if one has not already been registered.
+1. confirm the receiving office and current status of my complaint;
+2. tell me whether an FIR or other police record has been created and provide its official details, if so;
+3. tell me whether an officer has been assigned and provide the official designation or contact that may be shared;
+4. if any funds are recorded as held, confirm the amount and the applicable restoration process without treating a hold as a refund.
 
-I am willing to provide every document and to appear before the Investigating Officer as required.
+I can provide the relevant records I actually hold and respond through a verified official channel.
 
 Yours faithfully,
 ${c.victim.name || "[your full name]"}

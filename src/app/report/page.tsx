@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Wordmark } from "@/components/Wordmark";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -9,16 +9,12 @@ import { SaveBadge } from "@/components/report/SaveBadge";
 import { StageIncident, StageEvidence, StageSuspect, StageYou } from "@/components/report/Stages";
 import { StageReview } from "@/components/report/StageReview";
 import { STAGES, type Stage } from "@/lib/report/schema";
-import {
-  mockAcknowledgement,
-  queueSubmission,
-  useDraft,
-  useOnline,
-  type ReportDraft,
-} from "@/lib/report/draft";
+import { useDraft, useOnline } from "@/lib/report/draft";
+import { reportDraftToCase } from "@/lib/report/handoff";
 import { newCase, saveCase } from "@/lib/case/store";
-import { EMPTY_ENTITIES } from "@/lib/case/types";
 import { useI18n } from "@/lib/i18n/context";
+import { hasCompletedSafetyGate, type ChildContext } from "@/lib/intake/interview";
+import { loadBrowserIntakeDraft } from "@/lib/intake/persistence";
 import { cn } from "@/lib/utils";
 
 /**
@@ -37,8 +33,33 @@ export default function ReportPage() {
   const { draft, patch, flush, reset, saveState, savedAt, hydrating } = useDraft();
 
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState<{ ack: string; queued: boolean } | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [done, setDone] = useState<{ caseRef: string } | null>(null);
   const [resumed, setResumed] = useState(false);
+  const [safetyGate, setSafetyGate] = useState<{
+    status: "checking" | "allowed" | "blocked";
+    childContext?: ChildContext;
+  }>({ status: "checking" });
+
+  useEffect(() => {
+    let cancelled = false;
+    const verify = () => {
+      const restored = loadBrowserIntakeDraft();
+      const allowed = Boolean(restored.draft && hasCompletedSafetyGate(restored.draft));
+      const next = allowed
+        ? { status: "allowed" as const, childContext: restored.draft?.childContext }
+        : { status: "blocked" as const };
+      if (cancelled) return;
+      setSafetyGate(next);
+      if (!allowed) router.replace("/assist");
+    };
+    queueMicrotask(verify);
+    const timer = setInterval(verify, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [router]);
 
   const index = STAGES.findIndex((s) => s.id === draft.stage);
   const stage = index < 0 ? 0 : index;
@@ -70,57 +91,58 @@ export default function ReportPage() {
 
   const submit = useCallback(async () => {
     setSubmitting(true);
+    setSubmitError(null);
     try {
-      const ack = mockAcknowledgement();
-      const submitted: ReportDraft = { ...draft, submittedAt: new Date().toISOString(), acknowledgement: ack };
+      const caseData = reportDraftToCase(
+        draft,
+        lang.code,
+        new Date(),
+        { ageContext: safetyGate.childContext },
+      );
+      // Review normally prevents this path. Keep the guard here as well so a
+      // stale click or a malformed restored draft cannot create an unroutable
+      // case while pretending it has been classified.
+      if (!caseData) return;
 
-      // Offline is not a failure state. The complaint goes to a durable outbox
-      // and leaves when there is a signal.
-      if (!online) {
-        queueSubmission(submitted);
-        setDone({ ack, queued: true });
+      // This prototype cannot file with NCRP. It creates only a local case draft
+      // that carries the citizen's facts into the official-channel checklist.
+      const c = newCase(caseData);
+      c.events.push({
+        at: new Date().toISOString(),
+        kind: "edit",
+        label: `Local case draft saved · ${c.ref} · not filed with NCRP`,
+      });
+      if (!saveCase(c)) {
+        setSubmitError(t("rep.save.error"));
         return;
       }
 
-      // The case file is what carries the citizen through the ninety days after
-      // this screen, so filing opens one rather than ending the journey.
-      const c = newCase({
-        language: lang.code,
-        rawStatement: draft.narrative,
-        entities: { ...EMPTY_ENTITIES },
-        amount: draft.amount,
-        incidentAt: draft.incidentAt,
-        victim: {
-          name: draft.name,
-          phone: draft.mobile,
-          email: draft.email,
-          state: draft.state,
-          district: draft.district,
-          address: draft.address,
-        },
-        suspect: {
-          phones: draft.suspectIds.filter((s) => s.kind === "phone").map((s) => s.value),
-          upiIds: draft.suspectIds.filter((s) => s.kind === "upi").map((s) => s.value),
-          accounts: draft.suspectIds.filter((s) => s.kind === "account").map((s) => s.value),
-          urls: draft.suspectIds.filter((s) => s.kind === "url").map((s) => s.value),
-          handles: draft.suspectIds.filter((s) => s.kind === "handle").map((s) => s.value),
-        },
-        files: draft.files.map((f) => ({ name: f.name, size: f.size, type: f.type })),
-        tracks: [{ id: "ncrp", doneAt: new Date().toISOString() }],
-      });
-      c.events.push({ at: new Date().toISOString(), kind: "track", label: `Complaint filed · ${ack}` });
-      saveCase(c);
-
-      setDone({ ack, queued: false });
+      setDone({ caseRef: c.ref });
       reset();
       setTimeout(() => router.push(`/case/${c.id}`), 2600);
     } finally {
       setSubmitting(false);
     }
-  }, [draft, online, lang.code, reset, router]);
+  }, [draft, lang.code, reset, router, safetyGate.childContext, t]);
 
-  if (hydrating) {
+  if (hydrating || safetyGate.status === "checking") {
     return <main className="mx-auto max-w-2xl px-5 py-24" aria-busy />;
+  }
+
+  if (safetyGate.status === "blocked") {
+    return (
+      <>
+        <Header />
+        <main id="main" className="mx-auto max-w-2xl px-5 sm:px-8 py-16">
+          <p className="label">Safety check required</p>
+          <h1 className="mt-3 text-3xl sm:text-4xl">Start with the short safety questions.</h1>
+          <p className="mt-4 max-w-prose text-ink-2 leading-relaxed">
+            Kavach checks immediate danger and child-safety needs before opening any screen that accepts an incident narrative.
+          </p>
+          <Button href="/assist" size="lg" className="mt-7">Continue safely</Button>
+        </main>
+      </>
+    );
   }
 
   if (done) {
@@ -128,15 +150,13 @@ export default function ReportPage() {
       <>
         <Header />
         <main id="main" className="mx-auto max-w-2xl px-5 sm:px-8 py-16 sm:py-24">
-          <p className="label">{done.queued ? t("rep.done.queuedLabel") : t("rep.done.label")}</p>
-          <h1 className="mt-3 text-4xl sm:text-5xl">
-            {done.queued ? t("rep.done.queuedH") : t("rep.done.h")}
-          </h1>
-          <p className="mt-6 num text-2xl">{done.ack}</p>
+          <p className="label">{t("build.saved")}</p>
+          <h1 className="mt-3 text-4xl sm:text-5xl">{t("case.ref")}</h1>
+          <p className="mt-6 num text-2xl">{done.caseRef}</p>
           <p className="mt-4 text-[1.0625rem] leading-[1.65] text-ink-2 max-w-prose">
-            {done.queued ? t("rep.done.queuedBody") : t("rep.done.body")}
+            {t("case.mock")}
           </p>
-          <p className="mt-6 sheet px-4 py-3 text-sm leading-[1.6] text-ink-2">{t("rep.done.notFir")}</p>
+          <p className="mt-6 sheet px-4 py-3 text-sm leading-[1.6] text-ink-2">{t("honesty.m1")}</p>
         </main>
       </>
     );
@@ -151,7 +171,12 @@ export default function ReportPage() {
       <main id="main" className="mx-auto max-w-2xl px-5 sm:px-8 py-8 sm:py-12">
         {!online && (
           <p role="status" className="mb-6 sheet px-4 py-3 text-sm leading-[1.6] bg-wait-soft border-wait/30">
-            {t("rep.offlineBanner")}
+            {t("rep.save.offline")}
+          </p>
+        )}
+        {submitError && (
+          <p role="alert" className="mb-6 rounded-ctl border border-urgent/35 bg-urgent-soft px-4 py-3 text-sm leading-[1.55] text-urgent-ink">
+            {submitError}
           </p>
         )}
 
@@ -201,11 +226,18 @@ export default function ReportPage() {
         </div>
 
         {draft.stage === "incident" && <StageIncident draft={draft} patch={patch} lang={lang.code} />}
-        {draft.stage === "evidence" && <StageEvidence draft={draft} patch={patch} lang={lang.code} />}
+        {draft.stage === "evidence" && (
+          <StageEvidence
+            draft={draft}
+            patch={patch}
+            lang={lang.code}
+            childContext={safetyGate.childContext}
+          />
+        )}
         {draft.stage === "suspect" && <StageSuspect draft={draft} patch={patch} lang={lang.code} />}
         {draft.stage === "you" && <StageYou draft={draft} patch={patch} lang={lang.code} />}
         {draft.stage === "review" && (
-          <StageReview draft={draft} goTo={goTo} onSubmit={submit} submitting={submitting} online={online} />
+          <StageReview draft={draft} goTo={goTo} onSubmit={submit} submitting={submitting} />
         )}
 
         {draft.stage !== "review" && (

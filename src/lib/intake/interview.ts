@@ -1,0 +1,229 @@
+import type { Entities, Triage } from "@/lib/case/types";
+import type {
+  RbiInitiation,
+  RbiReportTiming,
+  RbiYesNoUnknown,
+} from "@/lib/legal/rbi";
+
+/**
+ * The interview is deliberately a state machine rather than a stack of form
+ * pages. WhatsApp, a browser chat and a Vaani call can all pause and resume the
+ * same state without translating UI screens into three different products.
+ */
+export type IntakeChannel = "web" | "whatsapp" | "voice";
+export type SafetyAnswer = "safe" | "danger" | "prefer-not";
+export type ChildContext = "adult-or-no-child" | "self-minor" | "child-other" | "unknown";
+export type MoneyAnswer = "yes" | "no" | "unsure";
+export type IncidentTiming = "last-hour" | "today" | "older" | "unsure";
+
+export type EvidenceKind =
+  | "transaction"
+  | "bank-message"
+  | "payment-reference"
+  | "chat"
+  | "call-log"
+  | "email"
+  | "link"
+  | "none";
+
+export interface IntakeAnalysis {
+  triage: Triage;
+  entities: Entities;
+  source: "openai" | "rules";
+}
+
+export interface IntakeDraft {
+  version: 1;
+  channel: IntakeChannel;
+  acceptedBoundaries: boolean;
+  safety?: SafetyAnswer;
+  /** Immediate-danger answers expire; an old "safe" answer must not unlock a resumed narrative. */
+  safetyCheckedAt?: string;
+  emergencyAcknowledged?: boolean;
+  childContext?: ChildContext;
+  childSafetyAcknowledged?: boolean;
+  moneyMoved?: MoneyAnswer;
+  incidentTiming?: IncidentTiming;
+  /** Exact receipt time of the bank's transaction communication, if known. */
+  bankAlertAt?: string;
+  narrative: string;
+  analysis?: IntakeAnalysis;
+  analysisConfirmed: boolean;
+  /** Material facts for the RBI unauthorised-transaction screening. */
+  transactionInitiation?: RbiInitiation;
+  credentialsShared?: RbiYesNoUnknown;
+  suspectedBankFault?: RbiYesNoUnknown;
+  bankReportTiming?: RbiReportTiming;
+  rbiAssessmentReviewed: boolean;
+  evidence?: EvidenceKind[];
+  /** In-progress checklist choices, persisted without advancing the interview. */
+  pendingEvidence?: EvidenceKind[];
+  files: { name: string; size: number; type: string }[];
+  state?: string;
+  district?: string;
+  routingAnswered: boolean;
+}
+
+export type IntakeStep =
+  | "boundaries"
+  | "safety"
+  | "emergency"
+  | "age"
+  | "child-safety"
+  | "money"
+  | "timing"
+  | "story"
+  | "verify"
+  | "rbi-initiation"
+  | "rbi-credentials"
+  | "rbi-bank-fault"
+  | "rbi-report-timing"
+  | "rbi-review"
+  | "evidence"
+  | "routing"
+  | "ready";
+
+export function emptyIntake(channel: IntakeChannel = "web"): IntakeDraft {
+  return {
+    version: 1,
+    channel,
+    acceptedBoundaries: false,
+    narrative: "",
+    analysisConfirmed: false,
+    rbiAssessmentReviewed: false,
+    files: [],
+    routingAnswered: false,
+  };
+}
+
+/** One shared definition for every route that can accept a victim narrative. */
+export const SAFETY_GATE_TTL_MS = 30 * 60 * 1000;
+
+export function hasCurrentSafetyAnswer(
+  draft: IntakeDraft,
+  now = new Date(),
+): boolean {
+  if (!draft.safety || !draft.safetyCheckedAt) return false;
+  const checkedAt = new Date(draft.safetyCheckedAt).getTime();
+  const age = now.getTime() - checkedAt;
+  return Number.isFinite(checkedAt) && age >= 0 && age < SAFETY_GATE_TTL_MS;
+}
+
+export function hasCompletedSafetyGate(draft: IntakeDraft, now = new Date()): boolean {
+  return Boolean(
+    draft.acceptedBoundaries
+    && hasCurrentSafetyAnswer(draft, now)
+    && (draft.safety !== "danger" || draft.emergencyAcknowledged)
+    && draft.childContext
+    && (
+      (draft.childContext !== "self-minor" && draft.childContext !== "child-other")
+      || draft.childSafetyAcknowledged
+    ),
+  );
+}
+
+export function nextIntakeStep(draft: IntakeDraft): IntakeStep {
+  if (!draft.acceptedBoundaries) return "boundaries";
+  if (!hasCurrentSafetyAnswer(draft)) return "safety";
+  if (draft.safety === "danger" && !draft.emergencyAcknowledged) return "emergency";
+  if (!draft.childContext) return "age";
+  if (
+    (draft.childContext === "self-minor" || draft.childContext === "child-other")
+    && !draft.childSafetyAcknowledged
+  ) return "child-safety";
+  if (!draft.moneyMoved) return "money";
+  if (draft.moneyMoved === "yes" && !draft.incidentTiming) return "timing";
+  if (draft.narrative.trim().length < 25 || !draft.analysis) return "story";
+  if (!draft.analysisConfirmed) return "verify";
+  if (draft.moneyMoved === "yes") {
+    if (!draft.transactionInitiation) return "rbi-initiation";
+    if (draft.transactionInitiation === "not-victim") {
+      if (!draft.credentialsShared) return "rbi-credentials";
+      if (!draft.suspectedBankFault) return "rbi-bank-fault";
+      if (!draft.bankReportTiming) return "rbi-report-timing";
+    }
+    if (!draft.rbiAssessmentReviewed) return "rbi-review";
+  }
+  if (draft.evidence === undefined) return "evidence";
+  if (!draft.routingAnswered) return "routing";
+  return "ready";
+}
+
+/** Honest progress: material questions answered, not screens visited. */
+export function intakeProgress(draft: IntakeDraft): { answered: number; total: number; percent: number } {
+  const checks = [
+    draft.acceptedBoundaries,
+    hasCurrentSafetyAnswer(draft),
+    Boolean(draft.childContext),
+    draft.childContext !== "self-minor" && draft.childContext !== "child-other"
+      ? true
+      : Boolean(draft.childSafetyAcknowledged),
+    Boolean(draft.moneyMoved),
+    draft.moneyMoved !== "yes" || Boolean(draft.incidentTiming),
+    draft.narrative.trim().length >= 25,
+    Boolean(draft.analysis && draft.analysisConfirmed),
+    draft.moneyMoved !== "yes" || Boolean(draft.transactionInitiation),
+    draft.moneyMoved !== "yes" || draft.transactionInitiation !== "not-victim" || Boolean(draft.credentialsShared),
+    draft.moneyMoved !== "yes" || draft.transactionInitiation !== "not-victim" || Boolean(draft.suspectedBankFault),
+    draft.moneyMoved !== "yes" || draft.transactionInitiation !== "not-victim" || Boolean(draft.bankReportTiming),
+    draft.moneyMoved !== "yes" || draft.rbiAssessmentReviewed,
+    draft.evidence !== undefined,
+    draft.routingAnswered,
+  ];
+  const answered = checks.filter(Boolean).length;
+  return { answered, total: checks.length, percent: Math.round((answered / checks.length) * 100) };
+}
+
+export function needsFastFinancialAction(draft: IntakeDraft): boolean {
+  return draft.moneyMoved === "yes" && (draft.incidentTiming === "last-hour" || draft.incidentTiming === "today");
+}
+
+export function timingLabel(timing?: IncidentTiming): string {
+  switch (timing) {
+    case "last-hour": return "Within the last hour";
+    case "today": return "Earlier today";
+    case "older": return "Before today";
+    default: return "Time not confirmed";
+  }
+}
+
+/** A coarse answer is not an exact timestamp. Keep only an extracted timestamp
+ * for explicit review; the separate range answer remains available as context.
+ */
+export function timingEstimate(
+  _timing: IncidentTiming | undefined,
+  extracted: string | undefined,
+): string | undefined {
+  return extracted;
+}
+
+const EVIDENCE_IDS: Record<Exclude<EvidenceKind, "none">, string[]> = {
+  transaction: ["txn_screenshot", "bank_statement"],
+  "bank-message": ["sms_notification"],
+  "payment-reference": ["utr_reference"],
+  chat: ["chat_screenshot"],
+  "call-log": ["phone_number"],
+  email: ["email_correspondence"],
+  link: ["website_url"],
+};
+
+export function evidenceIdsFor(kinds: EvidenceKind[] = []): string[] {
+  return Array.from(
+    new Set(kinds.flatMap((kind) => (kind === "none" ? [] : EVIDENCE_IDS[kind]))),
+  );
+}
+
+/** Convert Vaani's labelled transcript into the victim's own account only. */
+export function victimTurnsFromTranscript(transcript: string): string {
+  if (!transcript.trim()) return "";
+  const chunks = transcript.split(/\b(AGENT|USER|ASSISTANT|VICTIM)\s*:\s*/gi);
+  const turns: string[] = [];
+  for (let i = 1; i < chunks.length; i += 2) {
+    const speaker = chunks[i].toLowerCase();
+    const text = (chunks[i + 1] || "").replace(/\s+/g, " ").trim();
+    if ((speaker === "user" || speaker === "victim") && text) turns.push(text);
+  }
+  // Some deployments return an unlabelled transcript. Preserve it for review
+  // rather than silently returning an empty case, but never claim who said it.
+  return turns.length ? turns.join(" ") : transcript.replace(/\s+/g, " ").trim();
+}

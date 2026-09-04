@@ -1,6 +1,7 @@
 import { CATEGORIES, findCategory, findSubcategory } from "@/lib/case/categories";
+import { pickApplicableDocuments } from "@/lib/case/documents";
 import type { CaseFile, Triage } from "@/lib/case/types";
-import { extractAmount, extractEntities, extractIncidentTime } from "./extract";
+import { extractAmount, extractIncidentTime } from "./extract";
 
 /**
  * Everything the model does, done deterministically.
@@ -29,8 +30,10 @@ export function ruleTriage(text: string, now = new Date()): Triage {
   if (best.score === 0 && (amount || moneyWords)) best = { catId: "financial-fraud", subId: "upi", score: 2 };
 
   const cat = findCategory(best.catId) ?? findCategory("other")!;
-  const incidentAt = extractIncidentTime(text, now) || now.toISOString();
-  const minutesSince = (now.getTime() - new Date(incidentAt).getTime()) / 60_000;
+  const incidentAt = extractIncidentTime(text, now) || undefined;
+  const minutesSince = incidentAt
+    ? (now.getTime() - new Date(incidentAt).getTime()) / 60_000
+    : Number.POSITIVE_INFINITY;
 
   return {
     categoryId: cat.id,
@@ -56,11 +59,15 @@ const inr = (n?: number) => (n ? `Rs. ${n.toLocaleString("en-IN")}` : "the amoun
 
 function fmtDate(iso?: string) {
   if (!iso) return "[date]";
-  return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "[date]";
+  return date.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
 }
 function fmtDateTime(iso?: string) {
   if (!iso) return "[date and time]";
-  return new Date(iso).toLocaleString("en-IN", {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "[date and time]";
+  return date.toLocaleString("en-IN", {
     day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
   });
 }
@@ -85,6 +92,45 @@ function narrative(c: CaseFile): string {
   return (c.triage?.englishNarrative || c.rawStatement || "").trim();
 }
 
+function incidentAt(c: CaseFile): string | undefined {
+  return c.incidentAt || c.triage?.incidentAt;
+}
+
+/** Describe the recorded money movement without converting deception into an
+ * unauthorised debit, or an unknown transaction into a proved one.
+ */
+function paymentFact(c: CaseFile): string {
+  const amount = inr(c.amount);
+  const initiation = c.legal?.rbi?.input.initiation;
+  if (initiation === "victim") {
+    return `I initiated or approved a payment of ${amount} in the circumstances described above.`;
+  }
+  if (initiation === "not-victim") {
+    return `I did not initiate or approve the disputed transaction of ${amount}.`;
+  }
+  return `The case concerns a payment or debit recorded as ${amount}. [Before using this draft, state whether you initiated or approved it.]`;
+}
+
+function verifiedCyberReportStatement(c: CaseFile): string {
+  const reportLabels = {
+    ncrp: "the National Cyber Crime Reporting Portal",
+    helpline: "cybercrime helpline 1930",
+  } as const;
+  const reports = c.tracks
+    .filter(
+      (track): track is typeof track & { id: keyof typeof reportLabels; doneAt: string } =>
+        (track.id === "ncrp" || track.id === "helpline") && Boolean(track.doneAt),
+    )
+    .map(
+      (track) =>
+        `I reported the matter through ${reportLabels[track.id]} on ${fmtDateTime(track.doneAt)}${track.ref ? ` (reference ${track.ref})` : ""}.`,
+    );
+
+  return reports.length
+    ? reports.join("\n   ")
+    : "[No completed NCRP or 1930 report is recorded in this case file. Add one here only after you have actually reported it, using the date and official acknowledgement number.]";
+}
+
 /**
  * The NCRP description box rejects # $ @ ^ * ' ~ | ! and demands at least 200
  * characters. Getting bounced by that rule after twenty minutes of typing is
@@ -100,10 +146,13 @@ export function sanitiseForNcrp(text: string): string {
 
 export function padToMinimum(text: string, c: CaseFile, min = 220): string {
   let out = text;
+  const financial = findCategory(c.triage?.categoryId)?.portalTrack === "financial";
   const filler = [
     c.victim.state ? `The incident is reported from ${c.victim.district ? c.victim.district + ", " : ""}${c.victim.state}.` : "",
-    `I request that the matter be investigated and that the amount involved be traced and frozen at the earliest.`,
-    `I am willing to provide all supporting documents and to appear before the investigating officer as required.`,
+    financial
+      ? "I request that the transaction trail be examined and that any lawful preservation or fund-interdiction step available on the facts be considered."
+      : "I request that the reported facts be examined and that any appropriate preservation step be considered.",
+    "I can provide the supporting records I actually hold through a verified official channel.",
   ].filter(Boolean);
   let i = 0;
   while (out.length < min && i < filler.length) out += " " + filler[i++];
@@ -114,15 +163,17 @@ export function ruleNcrp(c: CaseFile): string {
   const cat = findCategory(c.triage?.categoryId);
   const sub = findSubcategory(c.triage?.categoryId, c.triage?.subcategoryId);
   const body = [
-    `On ${fmtDateTime(c.incidentAt || c.triage?.incidentAt)}, I was subjected to ${sub?.label?.toLowerCase() || "a cybercrime"}${cat ? ` falling under ${cat.label.toLowerCase()}` : ""}.`,
+    `On ${fmtDateTime(incidentAt(c))}, I experienced what I understand to be ${sub?.label?.toLowerCase() || "a cybercrime"}${cat ? ` falling under ${cat.label.toLowerCase()}` : ""}.`,
     narrative(c),
-    c.amount ? `A total of ${inr(c.amount)} was debited from my account without my authorisation.` : "",
+    c.amount ? paymentFact(c) : "",
     c.bank.name ? `The account affected is held with ${c.bank.name}${c.bank.last4 ? ` and ends with ${c.bank.last4}` : ""}.` : "",
     refList(c) !== "not available" ? `The transaction reference numbers are ${refList(c)}.` : "",
-    c.suspect.phones.length ? `The suspect contacted me from ${c.suspect.phones.join(" and ")}.` : "",
-    c.suspect.upiIds.length ? `The funds were received at UPI ID ${c.suspect.upiIds.join(" and ")}.` : "",
-    c.suspect.accounts.length ? `The beneficiary account number is ${c.suspect.accounts.join(" and ")}.` : "",
-    `I request registration of this complaint and immediate action to freeze and recover the amount.`,
+    c.suspect.phones.length ? `The contact numbers I recorded are ${c.suspect.phones.join(" and ")}.` : "",
+    c.suspect.upiIds.length ? `The payment destination shown to me includes UPI ID ${c.suspect.upiIds.join(" and ")}.` : "",
+    c.suspect.accounts.length ? `The reported recipient account identifiers include ${c.suspect.accounts.join(" and ")}.` : "",
+    cat?.portalTrack === "financial"
+      ? "I request that this complaint be recorded, the transaction trail examined and any lawful step available to prevent onward movement considered. I understand that a hold or refund is not guaranteed."
+      : "I request that this complaint be recorded and the facts and available digital records examined.",
   ]
     .filter(Boolean)
     .join(" ");
@@ -132,30 +183,30 @@ export function ruleNcrp(c: CaseFile): string {
 
 export function ruleScript(c: CaseFile): string {
   return `WHAT TO SAY WHEN 1930 ANSWERS
-Speak slowly. Give the facts in this order. Do not let them put you off with "file it online first" — insist that this is a live fraud and a freeze request is needed now.
+Use this only for a cyber-financial-fraud report. Speak slowly, give only facts you have checked, and follow the official operator's instructions.
 
 1. WHO YOU ARE
-   "My name is ${c.victim.name || "[your name]"}. My registered mobile number is ${c.victim.phone || "[your mobile]"}. I am calling to report an ongoing financial fraud."
+   "My name is ${c.victim.name || "[your name]"}. My registered mobile number is ${c.victim.phone || "[your mobile]"}. I am calling to report suspected cyber financial fraud."
 
 2. WHAT HAPPENED
-   "${fmtDateTime(c.incidentAt)}, ${inr(c.amount)} was debited from my ${c.bank.name || "[bank]"} account${c.bank.last4 ? ` ending ${c.bank.last4}` : ""} without my authorisation."
+   "The incident was on ${fmtDateTime(incidentAt(c))}. ${paymentFact(c)} The affected bank is ${c.bank.name || "[bank]"}${c.bank.last4 ? `, account ending ${c.bank.last4}` : ""}."
 
 3. THE NUMBERS THEY NEED
    Transaction reference / UTR: ${refList(c)}
-   ${c.suspect.upiIds.length ? `Beneficiary UPI ID: ${c.suspect.upiIds.join(", ")}` : ""}
-   ${c.suspect.accounts.length ? `Beneficiary account: ${c.suspect.accounts.join(", ")}` : ""}
-   ${c.suspect.phones.length ? `Number the fraudster called from: ${c.suspect.phones.join(", ")}` : ""}
+   ${c.suspect.upiIds.length ? `Reported payment-destination UPI ID: ${c.suspect.upiIds.join(", ")}` : ""}
+   ${c.suspect.accounts.length ? `Reported recipient account: ${c.suspect.accounts.join(", ")}` : ""}
+   ${c.suspect.phones.length ? `Contact number recorded: ${c.suspect.phones.join(", ")}` : ""}
 
 4. WHAT TO ASK FOR, IN THESE WORDS
-   "Please raise a freeze request with the beneficiary bank immediately and give me the acknowledgement number for this call."
+   "Please record this report, alert the participating institutions through the applicable process, and give me the official acknowledgement number. I understand that a hold or refund is not guaranteed."
 
 5. WRITE DOWN BEFORE YOU HANG UP
    Acknowledgement number: ______________________
    Name of the person you spoke to: ______________________
    Time of call: ______________________
 
-IF THEY ASK FOR ANYTHING SUSPICIOUS
-No genuine 1930 operator will ever ask for your OTP, your card PIN, your CVV, your internet banking password, or ask you to install any app. If they do, hang up — you are being defrauded a second time.`.replace(/\n\s+\n/g, "\n\n");
+SAFETY
+Never disclose an OTP, card PIN, CVV or banking password, and do not install a remote-access app. If a call asks for one, end it and dial 1930 yourself rather than using a number supplied in a message.`.replace(/\n\s+\n/g, "\n\n");
 }
 
 export function ruleBankLetter(c: CaseFile): string {
@@ -169,37 +220,39 @@ Copy to: The Nodal Officer / Principal Nodal Officer, ${c.bank.name || "[bank]"}
 
 Date: ${today}
 
-Subject: Notification of unauthorised electronic banking transaction and request for
-         reversal under the Reserve Bank of India circular on limiting the liability
-         of customers in unauthorised electronic banking transactions
+Subject: Report of disputed electronic banking transaction and request for investigation
+         under the Reserve Bank of India customer-protection circular
 
 Sir / Madam,
 
 1. I, ${c.victim.name || "[your full name]"}, hold a savings account with your branch${c.bank.last4 ? ` bearing the last four digits ${c.bank.last4}` : ""}. My registered mobile number is ${c.victim.phone || "[your mobile]"}${c.victim.email ? ` and my registered email is ${c.victim.email}` : ""}.
 
-2. On ${fmtDateTime(c.incidentAt)}, ${inr(c.amount)} was debited from the said account in a transaction that I did not authorise, did not initiate, and had no knowledge of until the debit message reached me.
+2. I dispute a transaction recorded as ${inr(c.amount)} on ${fmtDateTime(incidentAt(c))}.
+   [Before sending: state whether you personally initiated or approved this transaction. Do not describe a payment you approved under deception as unauthorised without explaining those facts.]
 
 3. The circumstances are as follows:
    ${narrative(c) || "[describe what happened]"}
 
 4. The particulars of the disputed transaction are:
    Amount: ${inr(c.amount)}
-   Date and time: ${fmtDateTime(c.incidentAt)}
+   Date and time: ${fmtDateTime(incidentAt(c))}
    Transaction reference / UTR: ${refList(c)}
 ${c.suspect.accounts.length ? `   Beneficiary account: ${c.suspect.accounts.join(", ")}\n` : ""}${c.suspect.upiIds.length ? `   Beneficiary UPI ID: ${c.suspect.upiIds.join(", ")}\n` : ""}
-5. This is a third party breach in which the deficiency lies neither with me nor in my custody of credentials. I am giving you this notification in writing within three working days of receiving the communication regarding the transaction. In terms of the Reserve Bank of India circular on limiting the liability of customers in unauthorised electronic banking transactions, my liability in these circumstances is nil.
+5. I request a fact-based liability assessment under RBI/2017-18/15. This draft does not establish whether I initiated or approved the transaction, whether any payment credential was shared, whether there was bank-side fraud, negligence or deficiency, or the applicable working-day reporting window. Please investigate those facts and provide a reasoned written determination under paragraphs 6 and 7 of the circular. Paragraph 12 places the burden of proving customer liability on the bank.
 
-6. I accordingly call upon the bank to:
-   a. reverse the disputed amount of ${inr(c.amount)} and credit it to my account within ten working days of this notification, as required by the said circular;
-   b. raise a freeze and lien request with the beneficiary bank forthwith;
-   c. share with me the transaction trail and beneficiary details to the extent permissible, for production before the police;
-   d. record this letter as a formal complaint and issue me a written acknowledgement bearing a complaint number and today's date.
+6. I accordingly request the bank to:
+   a. record this letter as my report of the disputed transaction and issue a written acknowledgement bearing a complaint number and date;
+   b. secure the affected account and stop any further unauthorised transactions;
+   c. raise a freeze or lien request with the beneficiary bank, where legally and operationally available;
+   d. preserve and investigate the authentication records, transaction trail and beneficiary details, and share what may lawfully be disclosed;
+   e. if the investigation finds that the circular's unauthorised-transaction protection applies, provide the shadow reversal and final resolution required by paragraphs 9 and 10, subject to the liability route established from the facts.
 
-7. I have also reported this matter on the National Cyber Crime Reporting Portal${c.docs?.ncrp ? "" : ""} and to the helpline 1930.
+7. Other cybercrime reports recorded in this case:
+   ${verifiedCyberReportStatement(c)}
 
-8. Please note that if the matter is not resolved within ninety days I shall be constrained to approach the Reserve Bank of India Ombudsman under the Reserve Bank Integrated Ombudsman Scheme, and to seek compensation for the delay.
+8. If the bank rejects this complaint, or does not reply within the period required for an RBI Ombudsman complaint, I may seek review through the Reserve Bank's Complaint Management System.
 
-Enclosures: bank statement showing the disputed entry, screenshots of the fraudulent communication, copy of the acknowledgement generated on the National Cyber Crime Reporting Portal.
+Enclosures (attach only what is actually available): bank statement showing the disputed entry; relevant communications or screenshots; bank complaint acknowledgement; and any official cybercrime-report acknowledgement.
 
 Yours faithfully,
 
@@ -216,9 +269,14 @@ Complaint number: ______________________     Branch seal:`;
 export function ruleFir(c: CaseFile): string {
   const cat = findCategory(c.triage?.categoryId);
   const financial = cat?.portalTrack === "financial";
-  const sections = financial
-    ? "Sections 66C and 66D of the Information Technology Act, 2000 and Section 318 of the Bharatiya Nyaya Sanhita, 2023"
-    : "the relevant provisions of the Information Technology Act, 2000 and the Bharatiya Nyaya Sanhita, 2023";
+  const incident = incidentAt(c);
+  const incidentTime = incident ? new Date(incident).getTime() : Number.NaN;
+  const newCodesFrom = Date.parse("2024-07-01T00:00:00+05:30");
+  const lawNote = !Number.isFinite(incidentTime)
+    ? "The exact incident date is not confirmed. Please determine the applicable substantive and procedural law from the verified date and facts; this draft does not assign offence sections."
+    : incidentTime < newCodesFrom
+      ? "The recorded incident predates 1 July 2024. Please determine the applicable pre-commencement substantive law and the correct transitional/procedural position; this draft does not retroactively assign BNS or BNSS sections."
+      : "For an incident recorded on or after 1 July 2024, the Bharatiya Nyaya Sanhita and Bharatiya Nagarik Suraksha Sanhita may be relevant alongside the Information Technology Act. Please select provisions only from the proved facts. If those facts disclose a cognizable offence, BNSS section 173 contains the current information-recording route, including jurisdiction-neutral receipt.";
 
   return `To,
 The Station House Officer
@@ -227,42 +285,44 @@ ${c.victim.district ? `${c.victim.district}, ` : ""}${c.victim.state || "[State]
 
 Date: ${fmtDate(new Date().toISOString())}
 
-Subject: Application for registration of a First Information Report in respect of
-         a cognizable offence of cyber fraud
+Subject: Information concerning suspected cybercrime and request for action under
+         the law applicable to the verified facts and incident date
 
 Sir / Madam,
 
 I, ${c.victim.name || "[your full name]"}, aged ___ years, resident of ${c.victim.address || "[your address]"}, respectfully submit as follows.
 
-1. On ${fmtDateTime(c.incidentAt)} I was the victim of ${findSubcategory(c.triage?.categoryId, c.triage?.subcategoryId)?.label?.toLowerCase() || "a cybercrime"}.
+1. I report an incident on ${fmtDateTime(incident)} that I understand to concern ${findSubcategory(c.triage?.categoryId, c.triage?.subcategoryId)?.label?.toLowerCase() || "suspected cybercrime"}.
 
 2. The facts are these:
    ${narrative(c) || "[describe what happened, in order]"}
 
-${financial ? `3. As a consequence, ${inr(c.amount)} was fraudulently transferred out of my account${c.bank.name ? ` held with ${c.bank.name}` : ""}${c.bank.last4 ? ` ending ${c.bank.last4}` : ""}. The transaction reference numbers are ${refList(c)}.\n` : "3. As a consequence I have suffered the harm described above.\n"}
+${financial ? `3. ${paymentFact(c)} The affected bank recorded in this draft is ${c.bank.name || "[bank]"}${c.bank.last4 ? `, account ending ${c.bank.last4}` : ""}. The transaction references available to me are ${refList(c)}.\n` : "3. I experienced the harm described above.\n"}
 4. The particulars of the suspect available to me are:
 ${suspectLines(c)
   .split("\n")
   .map((l) => "   " + l)
   .join("\n")}
 
-5. I have reported the matter on the National Cyber Crime Reporting Portal and on the helpline 1930. I am given to understand that a complaint registered on the portal is not a First Information Report, and I am therefore approaching this station for registration of an FIR.
+5. Other cybercrime reports recorded in this case:
+   ${verifiedCyberReportStatement(c)}
+   I understand that an NCRP acknowledgement, if any, is not itself an FIR.
 
-6. The acts described disclose a cognizable offence punishable under ${sections}. In terms of Section 173 of the Bharatiya Nagarik Suraksha Sanhita, 2023, this station is obliged to register a First Information Report on receipt of information disclosing a cognizable offence. If the offence is found to have been committed outside the territorial jurisdiction of this station, I request that a Zero FIR be registered and transferred to the station having jurisdiction.
+6. ${lawNote}
 
-7. I therefore pray that this Hon'ble office be pleased to:
-   a. register a First Information Report on the basis of this application;
-   b. issue me a free copy of the First Information Report as required by law;
-   c. cause an investigation to be made and the amount involved to be traced, frozen and restored to me;
-   d. furnish me with the name and contact details of the Investigating Officer.
+7. I therefore request that the receiving police authority:
+   a. give me an official receipt and record this information under the procedure applicable to the verified facts;
+   b. if the information discloses a cognizable offence and the law requires an FIR, register it and provide the free copy required by the applicable procedure;
+   c. preserve and investigate relevant records and consider any lawful transaction-tracing or asset-preservation step that applies, without treating a hold as a refund;
+   d. if an officer is assigned, tell me the official designation or contact that may be shared.
 
 I undertake to produce all documents and to render every assistance in the investigation. The facts stated above are true to the best of my knowledge and belief.
 
-Enclosures:
-   1. Copy of the acknowledgement generated on the National Cyber Crime Reporting Portal
+Enclosures (attach only what is actually available and safe to share):
+   1. Any official NCRP or 1930 acknowledgement
    2. Bank statement showing the disputed entries
-   3. Screenshots of the fraudulent calls, messages or web pages
-   4. Copy of my identity proof
+   3. Relevant screenshots or communications
+   4. Identity proof, if the receiving authority requires it
 ${c.files.length ? c.files.map((f, i) => `   ${i + 5}. ${f.name}`).join("\n") : ""}
 
 Yours faithfully,
@@ -277,11 +337,16 @@ Received by ______________________  Diary / FIR number ______________________`;
 }
 
 export function ruleChakshu(c: CaseFile): string {
+  const ncrp = c.tracks.find((track) => track.id === "ncrp" && track.doneAt);
+  const ncrpStatement = ncrp
+    ? ` I also filed an NCRP complaint${ncrp.ref ? ` under acknowledgement ${ncrp.ref}` : ""}.`
+    : "";
   return `CHAKSHU REPORT — sancharsaathi.gov.in
 
 Chakshu is run by the Department of Telecommunications and is separate from the
-police complaint. Reporting the number here gets the connection disconnected and
-the handset blacklisted, which protects whoever the same fraudster calls next.
+police complaint. A report supplies a lead for verification and possible action;
+it does not guarantee disconnection and does not replace a bank, 1930, NCRP or
+police report where those routes apply.
 
 Category to select: ${findCategory(c.triage?.categoryId)?.portalTrack === "financial" ? "Fraud in the name of KYC / bank / payment" : "Impersonation or other suspected fraud communication"}
 
@@ -289,11 +354,11 @@ Medium: ${c.entities.apps.includes("whatsapp") ? "WhatsApp" : c.suspect.phones.l
 
 Number to report: ${c.suspect.phones.join(", ") || "[the number that contacted you]"}
 
-Date and time received: ${fmtDateTime(c.incidentAt)}
+Date and time received: ${fmtDateTime(incidentAt(c))}
 
 What to write in the description box:
 ${sanitiseForNcrp(
-  `I received a fraudulent communication from the above number on ${fmtDateTime(c.incidentAt)}. ${narrative(c)} ${c.amount ? `An amount of ${inr(c.amount)} was fraudulently taken from me as a result.` : ""} I have also filed a complaint on the National Cyber Crime Reporting Portal.`,
+  `I received a suspected fraudulent communication from the above number on ${fmtDateTime(incidentAt(c))}. ${narrative(c)} ${c.amount ? `The case records ${inr(c.amount)} connected to the reported incident.` : ""}${ncrpStatement}`,
 )}
 
 Attach: a screenshot of the call log or the message.`;
@@ -301,41 +366,29 @@ Attach: a screenshot of the call log or the message.`;
 
 export function ruleMrm(c: CaseFile): string {
   const officer = c.victim.district ? `${c.victim.district} Cyber Police Station` : "[your police station]";
-  return `MONEY RESTORATION REQUEST — mrm-ncrp.mha.gov.in
+  return `MONEY RESTORATION PREPARATION — official portal: mrm-ncrp.mha.gov.in
 
-A freeze is not a refund. This is the step that turns money stopped in the
-fraudster's account into money back in yours.
+A complaint acknowledgement, a fund hold, a recoverable balance, an order and a
+completed credit are different states. Continue only after an official bank,
+1930/NCRP update or investigating officer confirms that funds are actually held
+and that this case can use the restoration route.
 
-WAIT FOR THE SMS FIRST
-Your bank has to examine what it put on hold and tell the portal how much is
-actually recoverable. When it does, you get an SMS and an email carrying a date.
-Applying before that date will not work.
+VERIFY AGAINST THE CURRENT OFFICIAL PORTAL
+   NCRP acknowledgement number   [copy from the official acknowledgement]
+   Confirmed amount held          [do not copy the total loss unless confirmed]
+   Hold confirmation source/date  [bank / police / portal and date]
+   Mobile for verification        ${c.victim.phone || "[your registered mobile]"}
+   Destination bank              ${c.bank.name || "[bank]"}${c.bank.last4 ? `, ending ${c.bank.last4}` : ""}
+   Other fields/documents         [follow only the current official portal]
 
-WHAT THE PORTAL ASKS FOR, IN ORDER
-   NCRP acknowledgement number   [your 14-digit number from cybercrime.gov.in]
-   Mobile for the OTP            ${c.victim.phone || "[your registered mobile]"}
-   Account to be credited        ${c.bank.name || "[bank]"}${c.bank.last4 ? `, ending ${c.bank.last4}` : ""}
-                                 [account number]  [IFSC]
-   PAN                           [your PAN, copied from the card — do not
-                                 write it down anywhere else]
-   Court order                   [only if you already have one]
+Never send PAN, OTP, full account credentials or identity documents through an
+unverified link or to a caller. Record any official restoration reference here:
+____________________
 
-You will also sign an undertaking to produce the amount before the court if it
-is later directed. Read it before you sign it.
-
-When you submit, the portal gives you a 14-digit number beginning MR. Write it
-here and keep it:  MR __________________
-
-THE Rs. 50,000 LINE
-   Below Rs. 50,000 held in any one account — no FIR and no court order needed.
-   Above Rs. 50,000 held in one account — an FIR is mandatory before the money
-   can be released. This is the practical reason to get the FIR registered.
-
-WHAT HAPPENS NEXT
-Your request goes to ${officer}
-for the Investigating Officer to verify. If the officer is satisfied the money is
-yours, they pass an order and the bank has fifteen calendar days to credit it. Where several victims paid into the same
-account and the money cannot be told apart, it is shared out in proportion.
+NEXT OFFICIAL CONTACT
+Ask ${officer} which police, bank or court step applies to this case. Do not
+assume a monetary threshold, an FIR waiver, an order or a payment timeline from
+this preparation sheet.
 
 NOTE FOR THE INVESTIGATING OFFICER
 (print this, sign it, and hand it in with your FIR papers)
@@ -343,32 +396,35 @@ NOTE FOR THE INVESTIGATING OFFICER
    Sir / Madam,
 
    I, ${c.victim.name || "[your full name]"}, mobile ${c.victim.phone || "[your mobile]"}, am the complainant in the
-   above matter, in which ${inr(c.amount)} was fraudulently taken from my account
-   on ${fmtDateTime(c.incidentAt)}${refList(c) !== "not available" ? ` (transaction reference ${refList(c)})` : ""}.
+   above matter. ${paymentFact(c)} The recorded incident time is ${fmtDateTime(incidentAt(c))}${refList(c) !== "not available" ? ` and the available transaction reference is ${refList(c)}` : ""}.
 
-   I am informed that a part of the said amount stands held in the beneficiary
-   account${c.suspect.accounts.length ? ` ${c.suspect.accounts.join(", ")}` : ""}. I have raised a restoration request on the Money Restoration
-   Module of the National Cyber Crime Reporting Portal.
+   [State the official source, date and exact amount—if any—that was confirmed
+   as held. Do not use the total loss as the held amount.] ${c.suspect.accounts.length ? `The available beneficiary identifiers include ${c.suspect.accounts.join(", ")}.` : ""}
 
-   I respectfully request that the held amount be ordered to be released to me
-   under Section 106(3) of the Bharatiya Nagarik Suraksha Sanhita, 2023. I
-   undertake to produce the said amount before the Hon'ble Court as and when
-   directed, and to abide by any further orders of the Court.
+   I respectfully request written guidance on the restoration process and any
+   police, bank or court requirement applicable to the confirmed held amount.
+   I will provide an undertaking or comply with an order only after reading the
+   official requirement that applies to my case.
 
    ${c.victim.name || "[your full name]"}
    ${c.victim.address || "[your address]"}
    Date: ${fmtDate(new Date().toISOString())}
 
-Nothing here guarantees a refund. Money the fraudster has already withdrawn
-cannot be restored through this route.`;
+This is an unfiled preparation sheet. Nothing here proves that money is held or
+recoverable, and nothing here guarantees a refund.`;
 }
 
 export function ruleOmbudsman(c: CaseFile): string {
   return `COMPLAINT TO THE RESERVE BANK OF INDIA OMBUDSMAN
-Filed online at cms.rbi.org.in under the Reserve Bank Integrated Ombudsman Scheme
+Filed online at cms.rbi.org.in under the Reserve Bank – Integrated Ombudsman Scheme, 2026
 
-Only file this after thirty days have passed since you complained to your bank,
-or after the bank has rejected your complaint, whichever is earlier.
+Before filing, confirm that you first complained to the covered regulated entity.
+You may file if its reply or resolution is unsatisfactory, or if it has not replied
+within thirty days or a verified longer RBI, NPCI or card-network response period,
+whichever is higher. The ordinary final limit is ninety days after the later of
+that response period expiring or the regulated entity's last communication.
+Do not rely on the old one-year rule for a complaint under the 2026 Scheme, and
+do not file this draft until the applicable precondition is actually met.
 
 Complainant: ${c.victim.name || "[your full name]"}
 Address: ${c.victim.address || "[your address]"}
@@ -379,31 +435,33 @@ Account: ${c.bank.last4 ? `ending ${c.bank.last4}` : "[account]"}
 Complaint made to the bank on: ${c.bank.notifiedAt ? fmtDate(c.bank.notifiedAt) : "[date]"}
 Bank's complaint reference: ${c.bank.ackRef || "[acknowledgement number]"}
 
-Nature of complaint: Non-reversal of an unauthorised electronic banking transaction
-and failure to comply with the Reserve Bank of India circular limiting customer
-liability.
+Nature of complaint: Request for review of the bank's handling of a disputed
+electronic banking transaction and its liability determination under the Reserve
+Bank of India customer-protection circular.
 
 Facts:
-1. On ${fmtDateTime(c.incidentAt)}, ${inr(c.amount)} was debited from my account without my authorisation, in a third party breach.
-2. I notified the bank in writing on ${c.bank.notifiedAt ? fmtDate(c.bank.notifiedAt) : "[date]"}, within three working days of receiving the transaction communication, and obtained acknowledgement ${c.bank.ackRef || "[number]"}.
-3. In terms of the said circular my liability is nil and the bank was required to credit the disputed amount to my account within ten working days of my notification.
-4. The bank has neither credited the amount nor communicated any finding fixing my liability. More than thirty days have elapsed since my complaint.
-5. I have separately reported the matter on the National Cyber Crime Reporting Portal and to the helpline 1930.
+1. I dispute a transaction recorded as ${inr(c.amount)} on ${fmtDateTime(incidentAt(c))}.
+   [State whether you initiated or approved the transaction, whether any credential was shared, and what the bank says happened.]
+2. ${c.bank.notifiedAt ? `I notified the bank on ${fmtDate(c.bank.notifiedAt)}${c.bank.ackRef ? ` and received acknowledgement ${c.bank.ackRef}` : ". [Add the acknowledgement number if one was issued.]"}` : "[State the date and method of your complaint to the bank. A bank complaint is required before approaching the Ombudsman.]"}
+3. RBI/2017-18/15 provides different liability outcomes for bank fault, customer negligence and qualifying third-party breaches. I request review of the bank's reasoned application of those rules to the evidence; this draft does not presume zero liability.
+4. [Describe the bank's reply or resolution and why it is unsatisfactory. If there was no reply, state the complaint date and confirm that the applicable thirty-day-or-longer response period has elapsed. Add the bank's last communication date and verify the separate ninety-day filing limit. Do not claim delay or rejection unless true.]
+5. Other cybercrime reports recorded in this case:
+   ${verifiedCyberReportStatement(c)}
 
 Relief sought:
-   a. Credit of ${inr(c.amount)} to my account;
-   b. Compensation for the delay in resolution as provided under the circular;
-   c. Such other relief as the Ombudsman considers just.
+   a. A direction requiring the bank to investigate the disputed transaction and issue a reasoned liability determination supported by its authentication records;
+   b. If the evidence establishes protection under RBI/2017-18/15, the applicable shadow credit, reversal or limited-liability treatment;
+   c. Any compensation or other relief the Ombudsman finds due on the established facts.
 
-Documents to upload:
+Documents to upload (only if actually available):
    1. The letter sent to the bank and its acknowledgement
    2. Bank statement showing the disputed debit
-   3. Acknowledgement from the National Cyber Crime Reporting Portal
+   3. Any official NCRP or 1930 acknowledgement
    4. Any reply received from the bank`;
 }
 
 export function ruleDocs(c: CaseFile) {
-  return {
+  return pickApplicableDocuments(c, {
     ncrp: ruleNcrp(c),
     script: ruleScript(c),
     bank: ruleBankLetter(c),
@@ -411,5 +469,5 @@ export function ruleDocs(c: CaseFile) {
     chakshu: ruleChakshu(c),
     mrm: ruleMrm(c),
     ombudsman: ruleOmbudsman(c),
-  };
+  });
 }

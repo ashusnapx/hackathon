@@ -41,7 +41,7 @@ export default function ComparePage() {
           <Wordmark />
           <div className="ms-auto flex items-center gap-3">
             <LanguageSwitcher compact />
-            <Button href="/report" size="sm">{t("nav.start")}</Button>
+            <Button href="/assist" size="sm">{t("nav.start")}</Button>
           </div>
         </div>
       </header>
@@ -140,7 +140,7 @@ export default function ComparePage() {
         </section>
 
         <div className="mt-14 flex flex-wrap gap-3">
-          <Button href="/report" size="lg">{t("cmp.cta")}</Button>
+          <Button href="/assist" size="lg">{t("cmp.cta")}</Button>
           <Button href="https://cybercrime.gov.in" size="lg" variant="secondary" external>
             {t("cmp.ctaOfficial")}
           </Button>
