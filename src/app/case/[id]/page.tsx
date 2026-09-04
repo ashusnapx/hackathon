@@ -15,6 +15,7 @@ import { Completeness } from "@/components/case/Completeness";
 import { Escalation } from "@/components/case/Escalation";
 import { Aftercare } from "@/components/case/Aftercare";
 import { CaseHeader } from "@/components/case/CaseHeader";
+import { EmailReminder } from "@/components/case/EmailReminder";
 import { useCase } from "@/lib/case/store";
 import { isFinancial } from "@/lib/case/tracks";
 import { useT } from "@/lib/i18n/context";
@@ -110,6 +111,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
               <Completeness caseFile={caseFile} />
               <Escalation caseFile={caseFile} />
               <Aftercare />
+              <EmailReminder caseFile={caseFile} />
               <CaseBuilder caseFile={caseFile} update={update} />
             </>
           )}

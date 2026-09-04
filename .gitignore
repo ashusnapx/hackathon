@@ -52,3 +52,6 @@ next-env.d.ts
 # generated case packs and sample documents (test output)
 kavach-*.pdf
 sample-*.pdf
+
+# Kavach runtime data
+.kavach-data/
