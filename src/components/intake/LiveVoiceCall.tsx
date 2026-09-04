@@ -156,9 +156,15 @@ export function LiveVoiceCall({
       <audio ref={audioRef} autoPlay className="hidden" />
 
       {(phase === "idle" || phase === "ended" || phase === "error") && (
-        <Button onClick={start} disabled={!ready} size="sm" variant="secondary" className="mt-3">
-          {phase === "ended" ? t("intake.vaaniBrowserAgain") : t("intake.vaaniBrowserOpen")}
-        </Button>
+        <>
+          <Button onClick={start} disabled={!ready} size="sm" variant="secondary" className="mt-3">
+            {phase === "ended" ? t("intake.vaaniBrowserAgain") : t("intake.vaaniBrowserOpen")}
+          </Button>
+          {/* A disabled button with no stated reason reads as a broken one. */}
+          {!ready && (
+            <p className="mt-2 text-xs leading-[1.55] text-ink-3">{t("intake.vaaniBrowserNeedsConsent")}</p>
+          )}
+        </>
       )}
       {phase === "connecting" && (
         <p className="mt-3 text-sm text-ink-2">{t("intake.vaaniBrowserOpening")}…</p>

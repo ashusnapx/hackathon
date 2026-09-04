@@ -973,7 +973,7 @@ function VaaniPanel({
   const [restoredSession] = useState<StoredVaaniSession | null>(() => readStoredVaaniSession());
   const [canStoreDispatchReceipt, setCanStoreDispatchReceipt] = useState<boolean | null>(null);
   const [configured, setConfigured] = useState<boolean | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [manualExpanded, setManualExpanded] = useState<boolean | null>(null);
   const [phone, setPhone] = useState("+91");
   const [safeToSpeak, setSafeToSpeak] = useState(false);
   const [callConsent, setCallConsent] = useState(false);
@@ -996,7 +996,6 @@ function VaaniPanel({
   }, []);
 
   useEffect(() => {
-    if (!unlocked) return;
     let active = true;
     fetch("/api/vaani/status")
       .then((response) => response.json())
@@ -1014,13 +1013,14 @@ function VaaniPanel({
         setBrowserVoice({ available: false, recordingRequired: true });
       });
     return () => { active = false; };
-  }, [unlocked]);
+  }, []);
 
 
   // Telephony and browser calling fail for different reasons, so they are gated
   // separately: a callback needs an allowlisted number, a browser call needs
   // nothing but a microphone.
   const liveVoiceAvailable = configured === true || browserVoice?.available === true;
+  const expanded = manualExpanded ?? browserVoice?.available === true;
 
   const startCall = async () => {
     if (!unlocked || state !== "idle" || canStoreDispatchReceipt !== true) return;
@@ -1201,8 +1201,8 @@ function VaaniPanel({
       )}
       {unlocked && liveVoiceAvailable && canStoreDispatchReceipt === true && (state === "idle" || state === "calling") && (
         <div className="mt-3">
-          <button onClick={() => setExpanded((value) => !value)} className="text-sm font-semibold underline underline-offset-4">
-            {t("intake.vaaniLive")} {expanded ? "−" : "+"}
+          <button onClick={() => setManualExpanded(!expanded)} className="text-sm font-semibold underline underline-offset-4">
+            {browserVoice?.available ? t("intake.vaaniLiveBrowser") : t("intake.vaaniLive")} {expanded ? "−" : "+"}
           </button>
           {expanded && (
             <div className="mt-4 grid gap-3 max-w-xl">
