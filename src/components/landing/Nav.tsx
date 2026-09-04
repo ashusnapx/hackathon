@@ -44,6 +44,7 @@ export function Nav() {
   const caseId = useActiveCaseId();
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -78,7 +79,14 @@ export function Nav() {
     };
     const onDown = (e: PointerEvent) => {
       const target = e.target as Node;
-      if (menuRef.current?.contains(target) || buttonRef.current?.contains(target)) return;
+      // Both cards, not just the desktop one. The phone menu is a separate
+      // element, and leaving it out closed the menu on pointerdown — unmounting
+      // the link before its click could land, so every item did nothing.
+      if (
+        menuRef.current?.contains(target)
+        || mobileMenuRef.current?.contains(target)
+        || buttonRef.current?.contains(target)
+      ) return;
       setMenu(false);
     };
     document.addEventListener("keydown", onKey);
@@ -195,7 +203,7 @@ export function Nav() {
       {/* On a phone it drops in under the pill as a second card — more room for
           a thumb than a 240px menu hung off the button would give. */}
       {menu && (
-        <div className="pointer-events-auto sm:hidden mx-auto mt-2 max-w-6xl rounded-card border border-ink/20 bg-paper/95 backdrop-blur-xl shadow-[0_16px_44px_-18px_rgba(26,26,26,0.5)] rise">
+        <div ref={mobileMenuRef} className="pointer-events-auto sm:hidden mx-auto mt-2 max-w-6xl rounded-card border border-ink/20 bg-paper/95 backdrop-blur-xl shadow-[0_16px_44px_-18px_rgba(26,26,26,0.5)] rise">
           <nav className="px-4 py-1">{items}</nav>
         </div>
       )}
