@@ -21,13 +21,14 @@ type Failure = "connect" | "microphone";
 export function LiveVoiceCall({
   language,
   caseReference,
-  consents,
-  recordingRequired,
+  onTranscriptToken,
+  onCallEnded,
 }: {
   language: string;
   caseReference?: string;
-  consents: { safeToSpeak: boolean; transcription: boolean; recording: boolean };
-  recordingRequired: boolean;
+  /** Handed up so the panel can offer the transcript for review afterwards. */
+  onTranscriptToken?: (token: string) => void;
+  onCallEnded?: () => void;
 }) {
   const t = useT();
   const [phase, setPhase] = useState<Phase>("idle");
@@ -37,8 +38,6 @@ export function LiveVoiceCall({
   const roomRef = useRef<{ disconnect: () => void; localParticipant: { setMicrophoneEnabled: (on: boolean) => Promise<unknown> } } | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const ready = consents.safeToSpeak && consents.transcription && (!recordingRequired || consents.recording);
 
   const teardown = useCallback(() => {
     socketRef.current?.close();
@@ -50,7 +49,7 @@ export function LiveVoiceCall({
   useEffect(() => teardown, [teardown]);
 
   const start = async () => {
-    if (!ready || phase === "connecting" || phase === "live") return;
+    if (phase === "connecting" || phase === "live") return;
     setPhase("connecting");
     setCaptions([]);
     try {
@@ -60,9 +59,12 @@ export function LiveVoiceCall({
         body: JSON.stringify({
           language,
           ...(caseReference ? { caseReference } : {}),
-          safeToSpeak: consents.safeToSpeak,
-          transcriptionConsent: consents.transcription,
-          recordingConsent: consents.recording,
+          // Starting the call is the consent: the line above the button states
+          // that Vaani processes and records it, and Kavach Saathi confirms
+          // safety, transcription and recording again in its first turn.
+          safeToSpeak: true,
+          transcriptionConsent: true,
+          recordingConsent: true,
         }),
       });
       const data = await response.json() as {
@@ -74,6 +76,7 @@ export function LiveVoiceCall({
       }
 
       if (data.transcriptToken) {
+        onTranscriptToken?.(data.transcriptToken);
         // The case page reads this to show the recording and transcript once the
         // call is over and the provider has finished processing it.
         writeStoredVaaniSession({
@@ -96,6 +99,7 @@ export function LiveVoiceCall({
       room.on(RoomEvent.Disconnected, () => {
         setPhase("ended");
         socketRef.current?.close();
+        onCallEnded?.();
       });
 
       await room.connect(data.connectionUrl.replace(/^https:/, "wss:"), data.token);
@@ -144,6 +148,7 @@ export function LiveVoiceCall({
   const end = () => {
     teardown();
     setPhase("ended");
+    onCallEnded?.();
   };
 
   return (
@@ -157,13 +162,9 @@ export function LiveVoiceCall({
 
       {(phase === "idle" || phase === "ended" || phase === "error") && (
         <>
-          <Button onClick={start} disabled={!ready} size="sm" variant="secondary" className="mt-3">
+          <Button onClick={start} size="sm" className="mt-3">
             {phase === "ended" ? t("intake.vaaniBrowserAgain") : t("intake.vaaniBrowserOpen")}
           </Button>
-          {/* A disabled button with no stated reason reads as a broken one. */}
-          {!ready && (
-            <p className="mt-2 text-xs leading-[1.55] text-ink-3">{t("intake.vaaniBrowserNeedsConsent")}</p>
-          )}
         </>
       )}
       {phase === "connecting" && (

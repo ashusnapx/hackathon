@@ -45,7 +45,6 @@ import {
   type RbiYesNoUnknown,
 } from "@/lib/legal/rbi";
 import {
-  canPersistVaaniSession,
   clearStoredVaaniSession,
   readStoredVaaniSession,
   writeStoredVaaniSession,
@@ -971,14 +970,6 @@ function VaaniPanel({
   unlocked: boolean;
 }) {
   const [restoredSession] = useState<StoredVaaniSession | null>(() => readStoredVaaniSession());
-  const [canStoreDispatchReceipt, setCanStoreDispatchReceipt] = useState<boolean | null>(null);
-  const [configured, setConfigured] = useState<boolean | null>(null);
-  const [manualExpanded, setManualExpanded] = useState<boolean | null>(null);
-  const [phone, setPhone] = useState("+91");
-  const [safeToSpeak, setSafeToSpeak] = useState(false);
-  const [callConsent, setCallConsent] = useState(false);
-  const [dataConsent, setDataConsent] = useState(false);
-  const [recordingConsent, setRecordingConsent] = useState(false);
   const [state, setState] = useState<
     "idle" | "calling" | "requested" | "not-ready" | "reviewing" | "accepted" | "unknown" | "error"
   >(() => restoredVaaniUiState(restoredSession));
@@ -988,12 +979,9 @@ function VaaniPanel({
   const [stagedTranscript, setStagedTranscript] = useState("");
   const [reviewSource, setReviewSource] = useState<"sample" | "live" | null>(null);
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
-  const [browserVoice, setBrowserVoice] = useState<{ available: boolean; recordingRequired: boolean } | null>(null);
   const requestIdRef = useRef<string | null>(restoredSession?.requestId ?? null);
+  const [browserVoice, setBrowserVoice] = useState<{ available: boolean; recordingRequired: boolean } | null>(null);
 
-  useEffect(() => {
-    queueMicrotask(() => setCanStoreDispatchReceipt(canPersistVaaniSession()));
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -1001,7 +989,6 @@ function VaaniPanel({
       .then((response) => response.json())
       .then((data) => {
         if (!active) return;
-        setConfigured(Boolean(data.configured));
         setBrowserVoice({
           available: Boolean(data?.browserSession?.available),
           recordingRequired: data?.recording?.consentRequired !== false,
@@ -1009,98 +996,13 @@ function VaaniPanel({
       })
       .catch(() => {
         if (!active) return;
-        setConfigured(false);
         setBrowserVoice({ available: false, recordingRequired: true });
       });
     return () => { active = false; };
   }, []);
 
 
-  // Telephony and browser calling fail for different reasons, so they are gated
-  // separately: a callback needs an allowlisted number, a browser call needs
-  // nothing but a microphone.
-  const liveVoiceAvailable = configured === true || browserVoice?.available === true;
-  const expanded = manualExpanded ?? browserVoice?.available === true;
 
-  const startCall = async () => {
-    if (!unlocked || state !== "idle" || canStoreDispatchReceipt !== true) return;
-    const requestId = requestIdRef.current || globalThis.crypto.randomUUID();
-    requestIdRef.current = requestId;
-    const receiptSaved = writeStoredVaaniSession({
-      version: 1,
-      requestId,
-      state: "calling",
-      createdAt: new Date().toISOString(),
-    });
-    if (!receiptSaved) {
-      requestIdRef.current = null;
-      setState("error");
-      return;
-    }
-    setState("calling");
-    try {
-      const response = await fetch("/api/vaani/dispatch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contactNumber: phone,
-          language,
-          requestId,
-          safeToSpeak,
-          callbackConsent: callConsent,
-          transcriptionConsent: dataConsent,
-          recordingConsent,
-        }),
-      });
-      const data = await response.json() as { error?: string; transcriptToken?: string };
-      if (!response.ok) {
-        if (data.error === "dispatch-state-unknown") {
-          writeStoredVaaniSession({
-            version: 1,
-            requestId,
-            state: "unknown",
-            createdAt: new Date().toISOString(),
-          });
-          setState("unknown");
-        } else {
-          // The server gave a definite rejection, so no provider call can be duplicated.
-          clearStoredVaaniSession();
-          requestIdRef.current = null;
-          setState("error");
-        }
-        return;
-      }
-      if (!data.transcriptToken) {
-        writeStoredVaaniSession({
-          version: 1,
-          requestId,
-          state: "unknown",
-          createdAt: new Date().toISOString(),
-        });
-        setState("error");
-        return;
-      }
-      setTranscriptToken(data.transcriptToken);
-      writeStoredVaaniSession({
-        version: 1,
-        requestId,
-        state: "requested",
-        transcriptToken: data.transcriptToken,
-        createdAt: new Date().toISOString(),
-      });
-      setState("requested");
-    } catch {
-      // The provider may have accepted a request before the network failed.
-      // Preserve the idempotency ID and never invite another automatic call.
-      writeStoredVaaniSession({
-        version: 1,
-        requestId,
-        state: "unknown",
-        createdAt: new Date().toISOString(),
-      });
-      setState("unknown");
-    }
-  };
 
   const importCall = async () => {
     if (!unlocked || !transcriptToken) return;
@@ -1187,66 +1089,20 @@ function VaaniPanel({
           {t("intake.vaaniLocked")}
         </p>
       )}
-      {unlocked && liveVoiceAvailable === false && state === "idle" && (
+      {unlocked && browserVoice?.available === false && state === "idle" && (
         <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-3">
           <p className="text-sm text-ink-2 flex-1">{t("intake.vaaniDemo")}</p>
           <Button onClick={loadSample} size="sm" variant="secondary">{t("intake.vaaniSample")}</Button>
         </div>
       )}
-      {unlocked && configured && canStoreDispatchReceipt === false && state === "idle" && (
-        <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-3">
-          <p role="alert" className="text-sm leading-[1.55] text-urgent-ink flex-1">{t("intake.vaaniStorageRequired")}</p>
-          <Button onClick={loadSample} size="sm" variant="secondary">{t("intake.vaaniSample")}</Button>
-        </div>
-      )}
-      {unlocked && liveVoiceAvailable && canStoreDispatchReceipt === true && (state === "idle" || state === "calling") && (
-        <div className="mt-3">
-          <button onClick={() => setManualExpanded(!expanded)} className="text-sm font-semibold underline underline-offset-4">
-            {browserVoice?.available ? t("intake.vaaniLiveBrowser") : t("intake.vaaniLive")} {expanded ? "−" : "+"}
-          </button>
-          {expanded && (
-            <div className="mt-4 grid gap-3 max-w-xl">
-              {configured && (
-                <label className="space-y-1.5">
-                  <span className="text-sm text-ink-2">{t("intake.vaaniPhone")}</span>
-                  <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" className="w-full h-12 px-3 bg-raised border border-rule-strong rounded-ctl num" />
-                </label>
-              )}
-              <label className="flex items-start gap-2 text-sm leading-snug">
-                <input type="checkbox" checked={safeToSpeak} onChange={(e) => setSafeToSpeak(e.target.checked)} className="mt-0.5 w-5 h-5 accent-[var(--ink)]" />
-                <span>{t("intake.vaaniSafe")}</span>
-              </label>
-              {configured && (
-                <label className="flex items-start gap-2 text-sm leading-snug">
-                  <input type="checkbox" checked={callConsent} onChange={(e) => setCallConsent(e.target.checked)} className="mt-0.5 w-5 h-5 accent-[var(--ink)]" />
-                  <span>{t("intake.vaaniConsent")}</span>
-                </label>
-              )}
-              <label className="flex items-start gap-2 text-sm leading-snug">
-                <input type="checkbox" checked={dataConsent} onChange={(e) => setDataConsent(e.target.checked)} className="mt-0.5 w-5 h-5 accent-[var(--ink)]" />
-                <span>{t("intake.vaaniDataConsent")}</span>
-              </label>
-              <label className="flex items-start gap-2 text-sm leading-snug">
-                <input type="checkbox" checked={recordingConsent} onChange={(e) => setRecordingConsent(e.target.checked)} className="mt-0.5 w-5 h-5 accent-[var(--ink)]" />
-                <span>{t("intake.vaaniRecordingConsent")}</span>
-              </label>
-              <p className="text-xs leading-[1.55] text-ink-3">{t("intake.vaaniPrivacy")}</p>
-              {configured && (
-                <Button onClick={startCall} disabled={!safeToSpeak || !callConsent || !dataConsent || !recordingConsent || state === "calling"} size="sm">
-                  {state === "calling" ? `${t("intake.vaaniCalling")}…` : t("intake.vaaniCall")}
-                </Button>
-              )}
-
-              {browserVoice?.available && (
-                <LiveVoiceCall
-                  language={language}
-                  consents={{ safeToSpeak, transcription: dataConsent, recording: recordingConsent }}
-                  recordingRequired={browserVoice.recordingRequired}
-                />
-              )}
-            </div>
-          )}
-        </div>
+      {/* Stays mounted once the call ends, so ending it does not tear down the
+          room mid-conversation and the review prompt can appear beneath it. */}
+      {unlocked && browserVoice?.available && (state === "idle" || state === "requested") && (
+        <LiveVoiceCall
+          language={language}
+          onTranscriptToken={setTranscriptToken}
+          onCallEnded={() => setState("requested")}
+        />
       )}
       {unlocked && state === "requested" && (
         <div className="mt-3 flex flex-wrap items-center gap-3">
