@@ -1,0 +1,369 @@
+{
+  "_comment": [
+    "The Vaani console configuration for the Kavach Saathi voice agent, kept in the repo so it is",
+    "versioned and reviewable rather than living only in a vendor dashboard.",
+    "scripts/gen-vaani-kb.mjs reads this file to generate docs/vaani-knowledge-base.txt.",
+    "Values marked exampleOnly are console placeholders, NOT facts about any caller: the agent",
+    "must read them from the live session variables and must never speak a default back to a caller.",
+    "dynamicVariables carries every {{placeholder}} the agent can be given. website_session variables come from the Kavach web flow; trusted_runtime_config variables are server-generated from configuration and consent records and never have a console default."
+  ],
+  "schemaVersion": "1",
+  "agent": {
+    "name": "Kavach Saathi",
+    "service": "Kavach",
+    "targetLanguage": "hi",
+    "welcomeMessage": "Hello, I'm Kavach Saathi, an AI voice assistant from Kavach, an independent support service—not the police or government. This call uses Vaani for voice processing. Is it safe for you to speak right now? You can say stop, skip, repeat, human or end call at any point.",
+    "greeting": {
+      "interruptible": true,
+      "letUserSpeakFirst": false,
+      "note": "The disclosure must be spoken before anything else, so the agent speaks first; the caller may still interrupt it."
+    },
+    "welcomeNote": "The greeting no longer names the case reference. A live call proved that with {{case_id}} empty the agent said \"helping you with .\" out loud — and the reference is not what a frightened caller needs in the first sentence. The prompt still receives it and uses it when it is present.",
+    "perCallLanguage": "primary_language is sent per call from the language the caller chose on the website, so a Hindi caller is not read English text by a Hindi voice."
+  },
+  "dynamicVariables": [
+    {
+      "name": "case_id",
+      "meaning": "Opaque Kavach case reference inherited from the website session.",
+      "source": "website_session",
+      "consoleDefault": "KVC-2024-00123",
+      "exampleOnly": true
+    },
+    {
+      "name": "consented_fields",
+      "meaning": "Comma-separated list of the purposes the caller has already consented to on the web flow.",
+      "source": "website_session",
+      "consoleDefault": "voice_processing,transcription,recording",
+      "exampleOnly": true
+    },
+    {
+      "name": "summarised_problem",
+      "meaning": "One-line summary of the problem the caller already described on the website.",
+      "source": "website_session",
+      "consoleDefault": "Caller reported suspected UPI fraud via Paytm link, money left account, seeks help recovering funds.",
+      "exampleOnly": true
+    },
+    {
+      "name": "preferred_language",
+      "meaning": "Language code the caller chose on the website, e.g. hi.",
+      "source": "website_session"
+    },
+    {
+      "name": "channel",
+      "meaning": "How this call is carried: webrtc, pstn or whatsapp_sip.",
+      "source": "trusted_runtime_config"
+    },
+    {
+      "name": "recording_state",
+      "meaning": "The verified provider recording state for this call.",
+      "source": "trusted_runtime_config"
+    },
+    {
+      "name": "recording_disclosure",
+      "meaning": "The exact recording sentence for that verified state. Never generic.",
+      "source": "trusted_runtime_config"
+    },
+    {
+      "name": "human_transfer_available",
+      "meaning": "Whether a trained human can actually take a transfer right now.",
+      "source": "trusted_runtime_config"
+    },
+    {
+      "name": "consent_policy_version",
+      "meaning": "Version of the consent notice the caller accepted.",
+      "source": "trusted_runtime_config"
+    }
+  ],
+  "experience": {
+    "eagernessToSpeak": "balanced",
+    "backgroundSound": "none",
+    "fillerWords": "off",
+    "idleWarningMessage": "Are you still there? You can say stop, human or end call any time.",
+    "idleHangupMessage": "Since I couldn't reach you, I'll end the call now. You're welcome to try the secure typed support flow at kavach.app anytime.",
+    "endCallPhrase": "Take care, and remember to reach out again if you need more help. Goodbye!",
+    "idleWarningTimeoutSeconds": 15,
+    "idleHangupTimeoutSeconds": 30,
+    "maxCallDurationMinutes": 30,
+    "voicemailAction": "hang_up",
+    "voicemailNote": "Never leave a detailed voicemail: a message a third party can hear can expose the caller."
+  },
+  "dispositions": {
+    "category": "Call Disposition",
+    "classificationInstructions": "Classify the final call outcome according to policy. Identify: completed, urgent_1930, emergency_112, human_transfer, consent_declined, stopped, callback_needed, safeguarding_required, technical_failure.",
+    "tags": [
+      {
+        "tag": "completed",
+        "prompt": "Caller completed the process and confirmed the summary."
+      },
+      {
+        "tag": "urgent_1930",
+        "prompt": "Caller needed to contact 1930 emergency cyber-financial-fraud helpline."
+      },
+      {
+        "tag": "emergency_112",
+        "prompt": "Caller faced immediate physical emergency and was advised to call 112."
+      },
+      {
+        "tag": "human_transfer",
+        "prompt": "Escalated/handed off to a trained human as per request or required situation."
+      },
+      {
+        "tag": "consent_declined",
+        "prompt": "Caller declined required transcription or recording consent."
+      },
+      {
+        "tag": "stopped",
+        "prompt": "Caller requested to stop/end the call."
+      },
+      {
+        "tag": "callback_needed",
+        "prompt": "Caller not available or requires a callback."
+      },
+      {
+        "tag": "safeguarding_required",
+        "prompt": "Children/sexual/immediate safeguarding required."
+      },
+      {
+        "tag": "technical_failure",
+        "prompt": "Call failed due to technical issue."
+      }
+    ],
+    "fieldName": "call_disposition",
+    "conversationEvaluationPrompt": "Evaluate compliance with Kavach policy and the agent guidelines only — never the caller's truthfulness. Check: AI identity disclosed in the first sentence; safety-to-speak confirmed before intake; transcription and recording consent taken separately; immediate danger routed to 112; recent financial loss routed to the bank and 1930 before a long narrative; no OTP, PIN, CVV, password or full card, account, Aadhaar or PAN value requested, repeated or stored; unknowns preserved; no claim that anything was filed, saved, transferred, deleted, frozen or recovered without a verified tool result; summary confirmed by the caller before it was treated as a draft."
+  },
+  "extractedFields": [
+    {
+      "field": "call_outcome",
+      "prompt": "Final call outcome as per disposition policy."
+    },
+    {
+      "field": "language",
+      "prompt": "Detected caller language or language preference."
+    },
+    {
+      "field": "safe_to_speak",
+      "prompt": "Whether caller confirmed it was safe to proceed."
+    },
+    {
+      "field": "transcript_consent",
+      "prompt": "Did user give consent for transcription?"
+    },
+    {
+      "field": "recording_consent",
+      "prompt": "Did user give consent for call recording?"
+    },
+    {
+      "field": "immediate_danger",
+      "prompt": "Is the caller or someone else in immediate physical danger?"
+    },
+    {
+      "field": "child_context",
+      "prompt": "Any children (<18) involved or safeguarding concern."
+    },
+    {
+      "field": "money_moved",
+      "prompt": "Whether money moved, is moving, or was lost."
+    },
+    {
+      "field": "incident_timing",
+      "prompt": "When incident happened/discovered."
+    },
+    {
+      "field": "chronology_draft",
+      "prompt": "Chronological summary of events as understood."
+    },
+    {
+      "field": "possible_category",
+      "prompt": "Suggested possible incident category (never as legal/final)."
+    },
+    {
+      "field": "amount_inr",
+      "prompt": "Amount lost/stated (do not convert from other currencies)."
+    },
+    {
+      "field": "payment_method",
+      "prompt": "Payment method or app used."
+    },
+    {
+      "field": "bank_name",
+      "prompt": "Bank name involved in the transaction."
+    },
+    {
+      "field": "transaction_reference",
+      "prompt": "Any reference given for a transaction."
+    },
+    {
+      "field": "transaction_authorisation",
+      "prompt": "What action the caller performed for transaction (approved, scanned, pressured, etc)."
+    },
+    {
+      "field": "suspect_phone",
+      "prompt": "Suspect's phone or contact number."
+    },
+    {
+      "field": "suspect_upi",
+      "prompt": "Suspect's UPI ID."
+    },
+    {
+      "field": "suspect_email",
+      "prompt": "Suspect's email address."
+    },
+    {
+      "field": "suspect_url",
+      "prompt": "Suspect's website or link."
+    },
+    {
+      "field": "compromised_account",
+      "prompt": "Any account/device/email/profile still compromised."
+    },
+    {
+      "field": "evidence_available",
+      "prompt": "What evidence the caller holds (messages, receipts etc)."
+    },
+    {
+      "field": "prior_reporting_status",
+      "prompt": "Any prior report to 1930, bank, cybercrime site or police."
+    },
+    {
+      "field": "state",
+      "prompt": "State (for routing)."
+    },
+    {
+      "field": "district",
+      "prompt": "District (for routing)."
+    },
+    {
+      "field": "desired_help",
+      "prompt": "What help the caller seeks."
+    },
+    {
+      "field": "unknown_or_conflicting",
+      "prompt": "Any points caller states as unknown, unclear or conflict."
+    },
+    {
+      "field": "caller_corrections",
+      "prompt": "Corrections/changes made to the summary."
+    },
+    {
+      "field": "summary_confirmed",
+      "prompt": "Explicit caller confirmation of the final summary."
+    },
+    {
+      "field": "human_requested",
+      "prompt": "User requested handoff to human or not."
+    },
+    {
+      "field": "restricted_data_detected",
+      "prompt": "If restricted (PIN/OTP/secret) data was spoken."
+    },
+    {
+      "field": "emergency_112_advised",
+      "prompt": "If caller was advised to contact 112."
+    },
+    {
+      "field": "helpline_1930_advised",
+      "prompt": "If caller was referred to 1930 cyberfraud helpline."
+    },
+    {
+      "field": "safeguarding_required",
+      "prompt": "If minor/sexual/intimate threats or safeguarding arose."
+    }
+  ],
+  "stack": {
+    "_comment": "Processors the caller may be told about. Verify against the deployed configuration before every release; never name a processor that is not actually in the call path.",
+    "stt": {
+      "provider": "deepgram",
+      "model": "nova-3"
+    },
+    "sttFallback": {
+      "provider": "sarvam",
+      "model": "saaras:v3"
+    },
+    "llm": {
+      "provider": "google",
+      "model": "gemini-3.5-flash",
+      "parameters": {
+        "temperature": 0.3,
+        "top_p": 1,
+        "max_tokens": 500
+      }
+    },
+    "llmFallback": {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "parameters": {
+        "temperature": 0.3,
+        "top_p": 1,
+        "max_tokens": 500
+      }
+    },
+    "tts": {
+      "provider": "cartesia",
+      "model": "sonic-3-2025-10-27",
+      "voiceId": "9cebb910-d4b7-4a4a-85a4-12c79137724c",
+      "config": {
+        "language": "hi",
+        "speed": 1,
+        "emotion": []
+      }
+    },
+    "ttsFallback": {
+      "provider": "sarvam",
+      "model": "bulbul:v3",
+      "voice": "aayan",
+      "voiceId": "aayan",
+      "_note": "Sarvam addresses speakers by name, so voice_id is the speaker. Sending only voice_name leaves the previous provider's voice_id in place and the API rejects the mismatch.",
+      "config": {
+        "language": "hi"
+      }
+    },
+    "_shapeNote": "The live API nests these one level deeper than the published docs: ears.stt.{primary,fallback}, brain.llm.{primary,fallback}, mouth.tts.{primary,fallback}. A payload in the documented shape is accepted with 200 and silently ignored, so scripts/vaani-agent.mjs verify reads the agent back.",
+    "_temperatureNote": "0.3, not the 0.7 default: this agent reads deadlines, liability routes and helpline numbers aloud, where variation is a defect rather than personality.",
+    "_emotionNote": "Cartesia's default carries positivity:highest and curiosity:highest. Delight and curiosity aimed at someone who has just been defrauded is the wrong register, so emotion is cleared.",
+    "sttKeywords": {
+      "source": "src/lib/case/categories.ts",
+      "note": "Boost the fraud and payment vocabulary the taxonomy already lists, so UPI, NCRP and app names survive a noisy 2G call.",
+      "limit": 100
+    }
+  },
+  "functionTools": [
+    {
+      "name": "agent_transfer",
+      "purpose": "Transfer the call to one of multiple agents or departments based on user intent.",
+      "prompt": "Transfer the caller to a trained human agent due to either user request or an urgent safety/consent situation that cannot be handled by the AI. Only share the minimum necessary summary: {{summarised_problem}}, case reference: {{case_id}}, and the fields confirmed by {{consented_fields}}.",
+      "requiresVerification": false,
+      "targets": [],
+      "playDialTone": false,
+      "interruptPermission": false,
+      "dtmfDigit": null,
+      "status": "no transfer targets configured yet"
+    }
+  ],
+  "knowledgeBase": {
+    "requirement": "Agent must use only the official, versioned Kavach knowledge base containing current guidance from RBI, cybercrime.gov.in, Indian helplines and no user-contributed or unofficial sources.",
+    "uploadFormat": "txt",
+    "maxBytes": 1048576,
+    "generatedFile": "docs/vaani-knowledge-base.txt"
+  },
+  "systemPrompt": {
+    "file": "docs/VAANI_AGENT_PROMPT.md",
+    "block": "Copy-ready system prompt",
+    "note": "Pushed to persona.identity.system_prompt. The repo prompt is the source of truth; it is stricter than the console copy (it reads the recording disclosure from trusted config and requires consent tools before intake)."
+  },
+  "guardrails": {
+    "level": "strict",
+    "customRules": [
+      "Never request, repeat, read back, confirm or store an OTP, UPI/ATM/card/banking PIN, CVV, password, bank login, recovery code, seed phrase, remote-access code, or a full card, account, Aadhaar or PAN number. If the caller starts to say one, interrupt politely, do not repeat it, and exclude it from every field and summary.",
+      "Never state that a complaint, FIR, bank dispute, transfer, save or deletion happened unless a tool returned a verified result state.",
+      "Never promise a freeze, refund, zero liability, recovery, takedown or any outcome from an authority.",
+      "Never claim to be the police, government, a bank, a lawyer, a doctor or an emergency dispatcher.",
+      "Answer factual questions only from the uploaded Kavach knowledge base. If it is not there, say the rule cannot be verified and offer a human or official route."
+    ],
+    "contentFlagsNote": "level and custom_rules are pushed. The sexual/violence/threatning booleans are deliberately not pushed: the API docs do not define whether they block a topic or only refuse to generate it, and a filter that stops a caller describing sextortion or assault would break the service. Decide these in the console after a test call."
+  },
+  "deployment": {
+    "inboundNumber": null,
+    "outboundNumbers": [],
+    "note": "No telephony number is provisioned yet; the deployment call is skipped while both are empty."
+  }
+}

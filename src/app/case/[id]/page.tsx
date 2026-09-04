@@ -1,10 +1,12 @@
 "use client";
 
 import { use, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Wordmark } from "@/components/Wordmark";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { RecoveryWindow } from "@/components/case/RecoveryWindow";
+import { RbiProtectionCard } from "@/components/case/RbiProtectionCard";
 import { NextAction } from "@/components/case/NextAction";
 import { TrackList } from "@/components/case/TrackList";
 import { EvidenceVault } from "@/components/case/EvidenceVault";
@@ -15,18 +17,20 @@ import { Completeness } from "@/components/case/Completeness";
 import { Escalation } from "@/components/case/Escalation";
 import { Aftercare } from "@/components/case/Aftercare";
 import { CaseHeader } from "@/components/case/CaseHeader";
+import { CallRecord } from "@/components/case/CallRecord";
 import { useCase } from "@/lib/case/store";
 import { isFinancial } from "@/lib/case/tracks";
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
-import { calculateReadiness, getEvidence } from "@/lib/case/evidence";
+import { calculateReadiness } from "@/lib/case/evidence";
 
-type Tab = "overview" | "tracks" | "evidence" | "docs" | "ask";
+type Tab = "overview" | "tracks" | "evidence" | "call" | "docs" | "ask";
 
 const TABS: { id: Tab; key: Parameters<ReturnType<typeof useT>>[0] }[] = [
   { id: "overview", key: "case.tabOverview" },
   { id: "tracks", key: "case.tabTracks" },
   { id: "evidence", key: "case.tabEvidence" },
+  { id: "call", key: "call.tab" },
   { id: "docs", key: "case.tabDocs" },
   { id: "ask", key: "case.tabAsk" },
 ];
@@ -34,8 +38,21 @@ const TABS: { id: Tab; key: Parameters<ReturnType<typeof useT>>[0] }[] = [
 export default function CasePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const t = useT();
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("overview");
-  const { caseFile, ready, saving, update, toggleTrack } = useCase(id);
+  const {
+    caseFile,
+    ready,
+    saving,
+    saveError,
+    externalConflict,
+    retrySave,
+    resolveExternalConflict,
+    update,
+    persistUpdate,
+    toggleTrack,
+    deleteCurrentCase,
+  } = useCase(id);
 
   if (!ready) {
     return <Centered>{t("g.loading")}…</Centered>;
@@ -45,12 +62,12 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     return (
       <Centered>
         <p className="text-lg">No case file with that reference exists in this browser.</p>
-        <Link href="/start" className="link mt-4 inline-block">Start a new one →</Link>
+        <Link href="/assist" className="link mt-4 inline-block">Start a new one →</Link>
       </Centered>
     );
   }
 
-  const incidentAt = caseFile.incidentAt || caseFile.triage?.incidentAt || caseFile.createdAt;
+  const incidentAt = caseFile.incidentAt || caseFile.triage?.incidentAt;
 
   return (
     <>
@@ -71,20 +88,48 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       </header>
 
       <main id="main" className="mx-auto max-w-5xl px-5 sm:px-8 py-8 sm:py-10">
-        <CaseHeader caseFile={caseFile} />
+        {externalConflict && (
+          <div role="alert" className="mb-6 sheet border-wait/40 bg-wait-soft px-4 py-3 text-sm text-ink-2">
+            <p>This case changed in another tab. Your unsaved edits are still on this screen and will not overwrite the other version until you choose.</p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <button onClick={() => resolveExternalConflict("keep-local")} className="font-semibold underline underline-offset-4">
+                Keep this tab&apos;s edits
+              </button>
+              <button onClick={() => resolveExternalConflict("load-stored")} className="underline underline-offset-4">
+                Load the other tab&apos;s version
+              </button>
+            </div>
+          </div>
+        )}
+        {saveError && (
+          <div role="alert" className="mb-6 sheet border-urgent/40 bg-urgent-soft px-4 py-3 text-sm text-urgent-ink">
+            <p>{t("case.saveError")}</p>
+            <button onClick={retrySave} className="mt-2 font-semibold underline underline-offset-4">
+              {t("case.retrySave")}
+            </button>
+          </div>
+        )}
+
+        <CaseHeader
+          caseFile={caseFile}
+          onDelete={async () => {
+            const result = await deleteCurrentCase();
+            if (result.evidenceCleanup !== "incomplete") router.replace("/cases");
+            return result;
+          }}
+        />
 
         {/* The strip scrolls on a phone. `no-bar` matters: the styled 10px
             scrollbar used to sit inside this 48px-tall strip and clip the
             label of whichever tab was active. */}
         <nav
           className="mt-8 flex gap-1 border-b border-rule swipe-x no-bar no-print"
-          role="tablist"
+          aria-label={t("case.ref")}
         >
           {TABS.map(({ id: tid, key }) => (
             <button
               key={tid}
-              role="tab"
-              aria-selected={tab === tid}
+              aria-current={tab === tid ? "page" : undefined}
               onClick={(e) => {
                 setTab(tid);
                 e.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -104,7 +149,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         <div className="mt-8 space-y-8">
           {tab === "overview" && (
             <>
-              {isFinancial(caseFile) && <RecoveryWindow incidentAt={incidentAt} />}
+              {isFinancial(caseFile) && incidentAt && <RecoveryWindow incidentAt={incidentAt} />}
+              <RbiProtectionCard caseFile={caseFile} />
               <NextAction caseFile={caseFile} onGoToTracks={() => setTab("tracks")} />
               <EvidenceOverviewCard caseFile={caseFile} onGoEvidence={() => setTab("evidence")} />
               <Completeness caseFile={caseFile} />
@@ -114,8 +160,18 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
             </>
           )}
 
-          {tab === "tracks" && <TrackList caseFile={caseFile} toggleTrack={toggleTrack} onGoToDocs={() => setTab("docs")} />}
-          {tab === "evidence" && <EvidenceVault caseFile={caseFile} update={update} />}
+          {tab === "tracks" && (
+            <TrackList
+              caseFile={caseFile}
+              toggleTrack={toggleTrack}
+              updateBank={(patch) => update((current) => ({ bank: { ...current.bank, ...patch } }))}
+              onGoToDocs={() => setTab("docs")}
+            />
+          )}
+          {tab === "evidence" && (
+            <EvidenceVault caseFile={caseFile} update={update} persistUpdate={persistUpdate} />
+          )}
+          {tab === "call" && <CallRecord />}
           {tab === "docs" && <DocumentsPanel caseFile={caseFile} update={update} />}
           {tab === "ask" && <AskPanel caseFile={caseFile} />}
         </div>
@@ -128,14 +184,20 @@ function EvidenceOverviewCard({ caseFile, onGoEvidence }: { caseFile: import("@/
   const readiness = calculateReadiness(caseFile);
   const tone =
     readiness.level === "READY" ? "bg-done" : readiness.level === "PARTIALLY_READY" ? "bg-wait" : "bg-urgent";
-  const label = readiness.level === "READY" ? "Ready" : readiness.level === "PARTIALLY_READY" ? "Partially ready" : "Not ready";
+  const label = readiness.counts.totalApplicable === 0
+    ? "No applicable items"
+    : readiness.level === "READY"
+      ? "Most items addressed"
+      : readiness.level === "PARTIALLY_READY"
+        ? "Checklist in progress"
+        : "Checklist just started";
   return (
     <section className="sheet px-5 py-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <p className="label">Evidence readiness</p>
-        <p className="num text-2xl font-medium">{readiness.percentage}%</p>
+        <p className="label">Evidence checklist</p>
+        <p className="num text-2xl font-medium">{readiness.percentage}% addressed</p>
       </div>
-      <div className="mt-3 h-1.5 bg-sunk rounded-full overflow-hidden" role="progressbar" aria-valuenow={readiness.percentage} aria-valuemin={0} aria-valuemax={100}>
+      <div className="mt-3 h-1.5 bg-sunk rounded-full overflow-hidden" role="progressbar" aria-label="Weighted evidence checklist completion" aria-valuenow={readiness.percentage} aria-valuemin={0} aria-valuemax={100}>
         <div className={cn("h-full rounded-full transition-[width] duration-500", tone)} style={{ width: `${readiness.percentage}%` }} />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -143,7 +205,7 @@ function EvidenceOverviewCard({ caseFile, onGoEvidence }: { caseFile: import("@/
           {label}
         </span>
         <span className="text-sm text-ink-3">
-          {readiness.counts.added} added · {readiness.counts.missing} missing
+          {readiness.counts.added} marked held · {readiness.counts.storedLocally} local files · {readiness.counts.missing} missing
         </span>
       </div>
       {readiness.recommendations.length > 0 && (
@@ -151,6 +213,7 @@ function EvidenceOverviewCard({ caseFile, onGoEvidence }: { caseFile: import("@/
           Next: {readiness.recommendations.map((r) => r.title).join(" · ")}
         </p>
       )}
+      <p className="mt-3 text-xs leading-snug text-ink-3">Checklist completion is not proof that evidence is authentic, sufficient or stored in Kavach.</p>
       <button onClick={onGoEvidence} className="mt-4 text-sm font-medium underline underline-offset-4 hover:text-ink">
         Open Evidence Vault →
       </button>
