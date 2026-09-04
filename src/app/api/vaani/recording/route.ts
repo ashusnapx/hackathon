@@ -2,6 +2,7 @@ import {
   getVaaniWebConfiguration,
   getVaaniRecordingStream,
   readVaaniTranscriptToken,
+  VAANI_CAPABILITY_PATTERN,
   requestHasSameOrigin,
   VaaniProviderError,
 } from "@/lib/integrations/vaani";
@@ -11,7 +12,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
 /**
  * Play back the recording of the caller's own call.
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
   if (!getVaaniWebConfiguration().ready) return json({ error: "live-voice-unavailable" }, 503);
 
   const token = new URL(req.url).searchParams.get("token") || "";
-  if (!TOKEN_PATTERN.test(token)) return json({ error: "invalid-transcript-capability" }, 400);
+  if (!VAANI_CAPABILITY_PATTERN.test(token)) return json({ error: "invalid-transcript-capability" }, 400);
 
   const browserSessionId = readBrowserSessionId(req);
   const callId = browserSessionId && readVaaniTranscriptToken(token, browserSessionId);

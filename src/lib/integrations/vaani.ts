@@ -1,11 +1,10 @@
 import "server-only";
 
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 const VAANI_ENDPOINT = "https://api.vaanivoice.ai/api";
 const E164_PATTERN = /^\+[1-9]\d{7,14}$/;
 const REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const OPAQUE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const TRANSCRIPT_CAPABILITY_TTL_MS = 60 * 60 * 1000;
 const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
 const ONE_HOUR_MS = 60 * 60 * 1000;
@@ -196,28 +195,35 @@ export async function readSmallJson(req: Request, maxBytes = 4_096): Promise<Sma
   }
 }
 
-interface TranscriptCapability {
-  callId: string;
-  sessionId: string;
-  expiresAt: number;
+/**
+ * Capabilities are signed, not stored.
+ *
+ * A Map worked on one machine and failed quietly on serverless: the instance
+ * that issued a token is rarely the one asked to honour it, so the case page
+ * lost its recording at random. Signing carries the same guarantees — opaque to
+ * the browser, bound to one session, expiring, tamper-evident — with no shared
+ * store and no state to prune.
+ *
+ * The key is derived from the provider API key, which every path that issues a
+ * capability already requires, so this adds nothing to configure.
+ */
+export const VAANI_CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{8,256}\.[A-Za-z0-9_-]{43}$/;
+
+function capabilitySecret(): Buffer | null {
+  const apiKey = process.env.VAANI_API_KEY?.trim();
+  if (!apiKey) return null;
+  return createHash("sha256").update(`kavach-capability-v1:${apiKey}`).digest();
 }
 
-const transcriptCapabilities = new Map<string, TranscriptCapability>();
+function capabilityMac(payload: string, sessionId: string, secret: Buffer): string {
+  return createHmac("sha256", secret).update(`${payload}\u0000${sessionId}`).digest("base64url");
+}
 
-/**
- * The browser receives only a random, short-lived, session-bound capability.
- * Provider call IDs and API-key-derived values never appear in the token.
- * This map is intentionally process-local and is not production session state.
- */
 export function issueVaaniTranscriptToken(callId: string, sessionId: string, now = Date.now()): string {
-  pruneTranscriptCapabilities(now);
-  const token = randomBytes(32).toString("base64url");
-  transcriptCapabilities.set(token, {
-    callId,
-    sessionId,
-    expiresAt: now + TRANSCRIPT_CAPABILITY_TTL_MS,
-  });
-  return token;
+  const secret = capabilitySecret();
+  if (!secret) throw new VaaniProviderError("provider-auth");
+  const payload = Buffer.from(`${callId}\u0000${now + TRANSCRIPT_CAPABILITY_TTL_MS}`).toString("base64url");
+  return `${payload}.${capabilityMac(payload, sessionId, secret)}`;
 }
 
 export function readVaaniTranscriptToken(
@@ -225,20 +231,21 @@ export function readVaaniTranscriptToken(
   sessionId: string,
   now = Date.now(),
 ): string | null {
-  if (!OPAQUE_TOKEN_PATTERN.test(token) || !sessionId) return null;
-  const capability = transcriptCapabilities.get(token);
-  if (!capability) return null;
-  if (capability.expiresAt <= now) {
-    transcriptCapabilities.delete(token);
-    return null;
-  }
-  return capability.sessionId === sessionId ? capability.callId : null;
-}
+  if (!VAANI_CAPABILITY_PATTERN.test(token) || !sessionId) return null;
+  const secret = capabilitySecret();
+  if (!secret) return null;
 
-function pruneTranscriptCapabilities(now: number) {
-  for (const [token, capability] of transcriptCapabilities) {
-    if (capability.expiresAt <= now) transcriptCapabilities.delete(token);
-  }
+  const [payload, mac] = token.split(".");
+  const expected = capabilityMac(payload, sessionId, secret);
+  const given = Buffer.from(mac, "base64url");
+  const want = Buffer.from(expected, "base64url");
+  // Compared in constant time: a length check first, because timingSafeEqual
+  // throws on a mismatch rather than returning false.
+  if (given.length !== want.length || !timingSafeEqual(given, want)) return null;
+
+  const [callId, expiresAt] = Buffer.from(payload, "base64url").toString("utf8").split("\u0000");
+  if (!callId || !expiresAt || Number(expiresAt) <= now) return null;
+  return callId;
 }
 
 type IdempotencyStatus = "pending" | "complete" | "ambiguous" | "failed";
@@ -565,7 +572,6 @@ function parseRetryAfter(value: string | null): number | undefined {
 
 /** Tests only: production correctness must never rely on these process-local maps. */
 export function resetVaaniPrototypeStateForTests(): void {
-  transcriptCapabilities.clear();
   idempotencyRecords.clear();
   ipAttempts.clear();
   numberAttempts.clear();

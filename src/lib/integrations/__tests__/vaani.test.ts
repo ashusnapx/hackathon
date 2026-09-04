@@ -117,18 +117,33 @@ describe("Vaani dispatch validation", () => {
 });
 
 describe("Vaani transcript capabilities", () => {
-  beforeEach(resetVaaniPrototypeStateForTests);
+  // The signing key is derived from the provider key, so these need one present.
+  const previousKey = process.env.VAANI_API_KEY;
+  beforeEach(() => {
+    resetVaaniPrototypeStateForTests();
+    process.env.VAANI_API_KEY = "test-provider-key";
+  });
+  afterEach(() => {
+    if (previousKey === undefined) delete process.env.VAANI_API_KEY;
+    else process.env.VAANI_API_KEY = previousKey;
+  });
 
-  it("uses a random opaque token bound to one session", () => {
+  it("issues an opaque capability bound to one session", () => {
     const now = Date.parse("2026-09-04T10:00:00Z");
-    const first = issueVaaniTranscriptToken("call_ABC123", "session-a", now);
-    const second = issueVaaniTranscriptToken("call_ABC123", "session-a", now);
+    const token = issueVaaniTranscriptToken("call_ABC123", "session-a", now);
 
-    expect(first).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(first).not.toContain("call_ABC123");
-    expect(first).not.toBe(second);
-    expect(readVaaniTranscriptToken(first, "session-a", now + 30 * 60 * 1000)).toBe("call_ABC123");
-    expect(readVaaniTranscriptToken(first, "session-b", now)).toBeNull();
+    expect(token).not.toContain("call_ABC123");
+    expect(readVaaniTranscriptToken(token, "session-a", now + 30 * 60 * 1000)).toBe("call_ABC123");
+    expect(readVaaniTranscriptToken(token, "session-b", now)).toBeNull();
+  });
+
+  it("honours a capability that another process issued", () => {
+    // The point of signing rather than storing: on serverless the instance that
+    // issued the token is rarely the one asked to honour it.
+    const now = Date.parse("2026-09-04T10:00:00Z");
+    const token = issueVaaniTranscriptToken("call_ABC123", "session-a", now);
+    resetVaaniPrototypeStateForTests();
+    expect(readVaaniTranscriptToken(token, "session-a", now)).toBe("call_ABC123");
   });
 
   it("rejects expired, modified, and unknown capabilities", () => {
@@ -137,6 +152,8 @@ describe("Vaani transcript capabilities", () => {
     expect(readVaaniTranscriptToken(token, "session-a", now + 61 * 60 * 1000)).toBeNull();
     expect(readVaaniTranscriptToken(`${token.slice(0, -1)}x`, "session-a", now)).toBeNull();
     expect(readVaaniTranscriptToken("x".repeat(43), "session-a", now)).toBeNull();
+    const [payload] = token.split(".");
+    expect(readVaaniTranscriptToken(`${payload}.${"A".repeat(43)}`, "session-a", now)).toBeNull();
   });
 });
 

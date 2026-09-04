@@ -4,6 +4,7 @@ import {
   getVaaniTranscript,
   readSmallJson,
   readVaaniTranscriptToken,
+  VAANI_CAPABILITY_PATTERN,
   requestHasSameOrigin,
   VaaniProviderError,
 } from "@/lib/integrations/vaani";
@@ -14,7 +15,6 @@ export const maxDuration = 20;
 
 const SESSION_COOKIE = "kavach_vaani_session";
 const SESSION_PATTERN = /^[A-Za-z0-9_-]{43}$/;
-const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
 export async function POST(req: Request) {
   if (!requestHasSameOrigin(req)) {
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   if (Object.keys(body).some((key) => key !== "token")) {
     return json({ error: "unexpected-field" }, 400);
   }
-  if (typeof body.token !== "string" || !TOKEN_PATTERN.test(body.token)) {
+  if (typeof body.token !== "string" || !VAANI_CAPABILITY_PATTERN.test(body.token)) {
     return json({ error: "invalid-transcript-capability" }, 400);
   }
 

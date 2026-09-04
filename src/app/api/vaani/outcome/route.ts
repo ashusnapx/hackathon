@@ -3,6 +3,7 @@ import {
   getVaaniWebConfiguration,
   readSmallJson,
   readVaaniTranscriptToken,
+  VAANI_CAPABILITY_PATTERN,
   requestHasSameOrigin,
   VaaniProviderError,
 } from "@/lib/integrations/vaani";
@@ -12,7 +13,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 20;
 
-const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
 /**
  * Post-call structured output: the disposition, the extracted fields and the
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   }
   const body = parsed.value as Record<string, unknown>;
   if (Object.keys(body).some((key) => key !== "token")) return json({ error: "unexpected-field" }, 400);
-  if (typeof body.token !== "string" || !TOKEN_PATTERN.test(body.token)) {
+  if (typeof body.token !== "string" || !VAANI_CAPABILITY_PATTERN.test(body.token)) {
     return json({ error: "invalid-transcript-capability" }, 400);
   }
 
