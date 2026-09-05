@@ -6,6 +6,7 @@ import { Problem } from "@/components/landing/Problem";
 import { Compare } from "@/components/landing/Compare";
 import { Clocks } from "@/components/landing/Clocks";
 import { Demo } from "@/components/landing/Demo";
+import { VoiceDemo } from "@/components/landing/VoiceDemo";
 import { How } from "@/components/landing/How";
 import { Languages } from "@/components/landing/Languages";
 import { Honesty } from "@/components/landing/Honesty";
@@ -23,6 +24,7 @@ export default function HomePage() {
         <Problem />
         <Compare />
         <Demo />
+        <VoiceDemo />
         <Clocks />
         <How />
         <Languages />

@@ -367,6 +367,27 @@ export const en = {
   "intake.vaaniBrowserMicDenied": "Your browser blocked the microphone, so the call cannot hear you. Allow microphone access for this site and try again, or keep typing instead.",
   "intake.vaaniBrowserAfter": "When you finish, the recording and transcript appear on your case page under Call.",
 
+  // ── Landing: the Vaani call ───────────────────────────────────────────────
+  "vdemo.kicker": "A real call",
+  "vdemo.h2": "She spoke Hindi and English in one sentence. It kept up, and filled the form.",
+  "vdemo.body": "This is not a mock-up. It is a recorded call with Kavach Saathi, played back exactly as it happened — the caller lost ₹10,000 to a money-doubling scam on Instagram. She never typed a word, never chose a category, never saw a form.",
+  "vdemo.listen": "Listen to the call",
+  "vdemo.transcript": "What was said",
+  "vdemo.extracted": "What it filled in, on its own",
+  "vdemo.extractedSub": "Every value below was taken from the conversation above. Nothing was typed.",
+  "vdemo.agent": "Kavach Saathi",
+  "vdemo.caller": "Caller",
+  "vdemo.statReply": "median reply",
+  "vdemo.statFields": "facts captured",
+  "vdemo.statLangs": "languages, one number",
+  "vdemo.statTyping": "form fields to fill",
+  "vdemo.why1": "It answers in about a second and a half, so nobody is left talking into silence.",
+  "vdemo.why2": "It takes Hindi, English and the mix people actually speak, without being told which.",
+  "vdemo.why3": "It routed her to 1930 before asking anything else, because her money had just moved.",
+  "vdemo.why4": "Nothing here was filed with anyone. The call says so out loud, and so do we.",
+  "vdemo.more": "Show the rest of the call",
+  "vdemo.disclaimer": "Recorded with consent for this demonstration. Names and identifiers are the caller's own test data.",
+
   // ── Voice call record ─────────────────────────────────────────────────────
   "case.emailSent": "A copy of this case, with your reference and next steps, was emailed to",
   "call.title": "Your call with Kavach Saathi",
