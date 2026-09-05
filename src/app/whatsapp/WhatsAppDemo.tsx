@@ -23,20 +23,27 @@ export function WhatsAppDemo() {
   return (
     <>
       <SiteHeader width="6xl" />
-      <main id="main" className="mx-auto max-w-6xl px-4 sm:px-8 pt-8 sm:pt-10 pb-10">
-        <p className="label">{t("wa.eyebrow")}</p>
-        <h1 className="h1-long mt-3">{t("wa.title")}</h1>
-        <p className="mt-5 max-w-2xl text-[1.0625rem] leading-[1.65] text-ink-2">{t("wa.sub")}</p>
-        <div className="mt-5 rounded-card border border-wait/40 bg-wait-soft px-4 py-3">
-          <p className="text-sm leading-[1.6] text-ink-2">{t("wa.notReal")}</p>
-        </div>
-        <ul className="mt-6 grid gap-3 sm:grid-cols-3">
-          {(["wa.point1", "wa.point2", "wa.point3"] as const).map((key) => (
-            <li key={key} className="sheet px-4 py-3.5 text-sm leading-[1.55] text-ink-2">{t(key)}</li>
-          ))}
-        </ul>
-        <div className="mt-8">
+      <main id="main" className="mx-auto max-w-2xl px-5 sm:px-8 py-6 sm:py-10">
+        <h1 className="text-[1.75rem] sm:text-3xl leading-tight">{t("wa.title")}</h1>
+        <p className="mt-2 text-[1.0625rem] leading-[1.5] text-ink-2">{t("wa.sub")}</p>
+
+        {/* The one thing on this page. Everything that was around it — three
+            benefit cards and a paragraph of justification — was explaining a
+            demo that explains itself the moment somebody taps it. */}
+        <div className="mt-6">
           <GuidedIntake lockChannel="whatsapp" />
+        </div>
+
+        <details className="mt-6">
+          <summary className="inline-flex min-h-11 items-center text-sm text-ink-3 underline underline-offset-4 cursor-pointer hover:text-ink">
+            {t("wa.realQ")}
+          </summary>
+          <p className="mt-2 text-sm leading-[1.6] text-ink-2">{t("wa.notReal")}</p>
+        </details>
+
+        <div className="mt-2 flex flex-col items-start">
+          <a href="/say" className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">{t("talk.typeLink")} →</a>
+          <a href="/talk" className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">{t("begin.voiceLink")} →</a>
         </div>
       </main>
     </>

@@ -825,7 +825,7 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
         <div className={cn(
           "grid gap-6 lg:items-start",
           lockChannel ? "mt-0" : "mt-7",
-          voiceOnly && lockChannel ? "max-w-xl mx-auto"
+          lockChannel ? "max-w-xl mx-auto"
             : voiceOnly ? "lg:grid-cols-[minmax(0,1fr)_19rem]"
               : "lg:grid-cols-2",
         )}>
@@ -881,7 +881,7 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
               style={whatsapp ? whatsappWallpaperStyle : undefined}
               className={cn(
                 whatsapp ? "px-2.5 sm:px-3 py-3 space-y-1.5" : "px-3 sm:px-5 py-5 space-y-3",
-                whatsapp && `${WHATSAPP_WALLPAPER} no-scrollbar sm:flex-1 sm:min-h-0 sm:overflow-y-auto`,
+                whatsapp && `${WHATSAPP_WALLPAPER} no-scrollbar flex-1 min-h-0 overflow-y-auto`,
               )}
             >
               {whatsapp && (
@@ -1013,7 +1013,7 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
           </Shell>
           )}
 
-          {!(voiceOnly && lockChannel) && (
+          {!lockChannel && (
           <aside className="no-scrollbar lg:sticky lg:top-28 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto space-y-4 lg:pb-4">
             {!voiceOnly && (
               <CaseForm
@@ -2382,7 +2382,7 @@ function Shell({ whatsapp, statusTime, label, children }: {
       className={cn(
         "relative overflow-hidden",
         whatsapp
-          ? "sm:h-full sm:min-h-0 sm:flex sm:flex-col sm:rounded-none"
+          ? "h-full min-h-0 flex flex-col rounded-none"
           : "rounded-card border border-rule-strong bg-raised shadow-[0_18px_55px_-38px_rgba(26,26,26,0.5)]",
       )}
       aria-label={label}

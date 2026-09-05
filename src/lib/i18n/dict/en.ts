@@ -961,13 +961,10 @@ export const en = {
   "begin.back": "Back",
   // The front door is one box. Everything it used to ask, the story answers.
   // The WhatsApp prototype's own page.
-  "wa.eyebrow": "Prototype",
-  "wa.title": "The same case file, inside WhatsApp.",
-  "wa.sub": "Most people this is built for have never opened a government portal, and will not install an app to report a fraud. They have had this screen open every day for years. Everything below is the real interview — the real model, the real case file, the real documents — running in a WhatsApp conversation.",
+  "wa.title": "Kavach, inside WhatsApp.",
+  "wa.sub": "A working prototype. Tap it and report a fraud, exactly as you would on WhatsApp.",
+  "wa.realQ": "Is this really WhatsApp?",
   "wa.notReal": "This is a replica of the WhatsApp interface, not a connection to it. Nothing here reaches Meta, and no message leaves this page. It shows what a WhatsApp Business deployment of Kavach would do, using the working product behind it.",
-  "wa.point1": "Reply buttons, list pickers and voice notes — the parts of WhatsApp a bot actually gets, used the way that app uses them.",
-  "wa.point2": "The same twenty-three languages, the same triage, and the same letters at the end of it.",
-  "wa.point3": "No install, no portal, no account to invent while somebody is being defrauded.",
   "talk.transcriptH": "The conversation",
   "talk.transcriptEmpty": "What you and Kavach Saathi say will appear here as you speak, so you can read along.",
   "talk.h": "Tell us out loud.",

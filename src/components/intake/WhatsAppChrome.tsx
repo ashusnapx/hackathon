@@ -37,33 +37,41 @@ export function PhoneFrame({ children, statusTime }: { children: React.ReactNode
   return (
     <div
       className={cn(
-        // min-w-0: this is a grid item, and a grid item refuses to shrink below
-        // its content unless told to. Without it a long bubble pushes the whole
-        // page sideways on a narrow screen.
-        "relative w-full min-w-0",
-        // iPhone 17 Pro Max is 440 x 956 points. The floor keeps a short laptop
-        // window from rendering a sliver, and is low enough that the handset
-        // still fits without the page itself having to scroll.
-        "sm:mx-auto sm:max-w-full",
-        "sm:[height:clamp(540px,80vh,956px)]",
-        "sm:[width:min(440px,calc(clamp(540px,80vh,956px)*440/956))]",
+        // min-w-0: a grid item refuses to shrink below its content unless told
+        // to, and a long bubble would push the page sideways on a narrow screen.
+        "relative mx-auto w-full min-w-0",
+        // A Galaxy S25 Ultra: 1440x3120 physical, which is 480x1040 in CSS
+        // pixels at its 3x density. It is the phone this product is actually
+        // used on far more often than the one the frame used to draw, and it is
+        // wider — the old 440pt handset read as a narrow toy beside a real one.
+        // Sized from its width at every breakpoint, so on any screen wide
+        // enough it is drawn at the handset's true 480 CSS pixels rather than
+        // scaled down to fit the window. It used to be sized from the viewport
+        // height instead, which on an ordinary laptop rendered a 360px-wide
+        // phone — faithfully proportioned, and unmistakably a toy next to a
+        // real one. The cost is that a laptop scrolls to see the keyboard,
+        // which is the right trade for a page whose whole job is to show it.
+        "max-w-[min(100%,480px)] [aspect-ratio:480/1040]",
       )}
     >
-      {/* Titanium body: a flat rounded rectangle reads as a wireframe, so the
-          frame gets an edge highlight, a darker core and real side buttons. */}
-      <div className="hidden sm:block absolute inset-0 rounded-[3.1rem] bg-gradient-to-br from-[#6f6f76] via-[#26262a] to-[#5b5b62] shadow-[0_45px_90px_-35px_rgba(11,20,26,0.75)]" aria-hidden />
-      <div className="hidden sm:block absolute inset-[3px] rounded-[3rem] bg-[#111114]" aria-hidden />
+      {/* Titanium body. The S25 Ultra is a far squarer phone than an iPhone —
+          flat rails, a tight corner radius — so the frame is drawn that way
+          rather than with an iPhone's soft shoulders. It renders at every width:
+          this page exists to show the handset, and a visitor on a phone was
+          getting a plain white box where a laptop showed one. */}
+      <div className="absolute inset-0 rounded-[1.6rem] sm:rounded-[2.1rem] bg-gradient-to-br from-[#8d8d93] via-[#2b2b30] to-[#6a6a72] shadow-[0_28px_60px_-30px_rgba(11,20,26,0.65)] sm:shadow-[0_45px_90px_-35px_rgba(11,20,26,0.75)]" aria-hidden />
+      <div className="absolute inset-[2px] sm:inset-[3px] rounded-[1.5rem] sm:rounded-[2rem] bg-[#0d0d10]" aria-hidden />
 
-      <span className="hidden sm:block absolute -left-[2px] top-[19%] h-7 w-[3px] rounded-l-sm bg-gradient-to-b from-[#7b7b82] to-[#3f3f45]" aria-hidden />
-      <span className="hidden sm:block absolute -left-[2px] top-[27%] h-12 w-[3px] rounded-l-sm bg-gradient-to-b from-[#7b7b82] to-[#3f3f45]" aria-hidden />
-      <span className="hidden sm:block absolute -left-[2px] top-[37%] h-12 w-[3px] rounded-l-sm bg-gradient-to-b from-[#7b7b82] to-[#3f3f45]" aria-hidden />
-      <span className="hidden sm:block absolute -right-[2px] top-[30%] h-16 w-[3px] rounded-r-sm bg-gradient-to-b from-[#7b7b82] to-[#3f3f45]" aria-hidden />
+      {/* Volume rocker and power, both on the right rail, as Samsung puts them. */}
+      <span className="absolute -right-[2px] top-[21%] h-10 sm:h-14 w-[3px] rounded-r-sm bg-gradient-to-b from-[#9a9aa1] to-[#4a4a52]" aria-hidden />
+      <span className="absolute -right-[2px] top-[33%] h-7 sm:h-9 w-[3px] rounded-r-sm bg-gradient-to-b from-[#9a9aa1] to-[#4a4a52]" aria-hidden />
 
-      <div className="rounded-card border border-rule sm:border-0 sm:absolute sm:inset-[10px] sm:rounded-[2.65rem] overflow-hidden bg-white flex flex-col">
+      <div className="absolute inset-[6px] sm:inset-[9px] rounded-[1.25rem] sm:rounded-[1.7rem] overflow-hidden bg-white flex flex-col">
         {/* The status bar belongs to the drawing of a phone. A real one already
-            has its own, an inch above this. */}
-        <div className="hidden sm:block relative shrink-0 bg-[#008069] text-white">
-          <div className="flex items-center justify-between px-7 pt-2.5 pb-1 text-[0.8125rem] font-semibold">
+            has its own, an inch above this — but this is a picture of a phone
+            and needs one to read as such. */}
+        <div className="relative shrink-0 bg-[#008069] text-white">
+          <div className="flex items-center justify-between px-4 sm:px-6 pt-2 sm:pt-2.5 pb-1 text-[0.6875rem] sm:text-[0.8125rem] font-semibold">
             <span className="tabular-nums">{statusTime}</span>
             <span className="flex items-center gap-1.5" aria-hidden>
               <SignalIcon />
@@ -71,8 +79,9 @@ export function PhoneFrame({ children, statusTime }: { children: React.ReactNode
               <BatteryIcon />
             </span>
           </div>
+          {/* A centred punch-hole, not a Dynamic Island. */}
           <span
-            className="absolute left-1/2 top-1.5 -translate-x-1/2 h-[26px] w-[86px] rounded-full bg-black"
+            className="absolute left-1/2 top-1.5 sm:top-2 -translate-x-1/2 h-[11px] w-[11px] sm:h-[14px] sm:w-[14px] rounded-full bg-black ring-1 ring-white/10"
             aria-hidden
           />
         </div>
