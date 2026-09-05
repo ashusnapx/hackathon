@@ -25,6 +25,7 @@ export function LiveVoiceCall({
   caseReference,
   safetyAnswer,
   childContext,
+  callerName,
   onTranscriptToken,
   onCallEnded,
 }: {
@@ -34,6 +35,8 @@ export function LiveVoiceCall({
   /** Already answered on screen; sent so the agent does not ask again. */
   safetyAnswer?: string;
   childContext?: string;
+  /** Known only on a repeat call; empty means the agent asks once, itself. */
+  callerName?: string;
   /** Handed up so the panel can offer the transcript for review afterwards. */
   onTranscriptToken?: (token: string) => void;
   onCallEnded?: () => void;
@@ -79,6 +82,7 @@ export function LiveVoiceCall({
           ...(caseReference ? { caseReference } : {}),
           ...(safetyAnswer ? { safetyAnswer } : {}),
           ...(childContext ? { childContext } : {}),
+          ...(callerName ? { callerName } : {}),
           // Starting the call is the consent: the line above the button states
           // that Vaani processes and records it, and Kavach Saathi confirms
           // safety, transcription and recording again in its first turn.

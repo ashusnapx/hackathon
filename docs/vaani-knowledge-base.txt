@@ -61,6 +61,10 @@ and must never be spoken back to them.
       Source: supplied by the Kavach web flow for this caller
       console placeholder (never speak): Caller reported suspected UPI fraud via Paytm link, money left account, seeks help recovering funds.
 
+  {{caller_name}}
+      What the caller wants to be called, if the website already knew it. Empty means the agent asks once on the call.
+      Source: supplied by the Kavach web flow for this caller
+
   {{preferred_language}}
       The language the caller chose before the microphone opened. The agent opens in it.
       Source: supplied by the Kavach web flow for this caller
@@ -1214,6 +1218,9 @@ written into any of them.
 
   call_outcome
       Final call outcome as per disposition policy.
+
+  caller_name
+      The name the caller gave for themselves, or null if they preferred not to say.
 
   language
       Detected caller language or language preference.

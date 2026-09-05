@@ -12,6 +12,7 @@ import {
   downloadEvidenceSummary,
   evidenceAttachmentBlockReason,
   validateEvidenceFile,
+  type EvidenceFileError,
   type EvidenceItem,
   type EvidenceStatus,
 } from "@/lib/case/evidence";
@@ -21,6 +22,8 @@ import {
   storeEvidenceFile,
   withEvidenceCaseLock,
 } from "@/lib/case/evidence-store";
+import { useT } from "@/lib/i18n/context";
+import type { DictKey } from "@/lib/i18n/dict/en";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -29,10 +32,10 @@ interface Props {
   persistUpdate: (patch: (c: CaseFile) => CaseFile) => boolean;
 }
 
-const CATEGORY_LABEL: Record<string, string> = {
-  transaction: "Transaction evidence",
-  communication: "Communication evidence",
-  complaint: "Complaint & escalation evidence",
+const CATEGORY_LABEL: Record<string, DictKey> = {
+  transaction: "ev.cat.transaction",
+  communication: "ev.cat.communication",
+  complaint: "ev.cat.complaint",
 };
 
 const CATEGORY_ORDER: Array<EvidenceItem["category"]> = ["transaction", "communication", "complaint"];
@@ -43,10 +46,10 @@ const STATUS_STYLES: Record<EvidenceStatus, string> = {
   not_applicable: "bg-sunk text-ink-3 border-rule",
 };
 
-const STATUS_LABEL: Record<EvidenceStatus, string> = {
-  added: "Marked held",
-  missing: "Missing",
-  not_applicable: "Not applicable",
+const STATUS_LABEL: Record<EvidenceStatus, DictKey> = {
+  added: "ev.status.added",
+  missing: "ev.status.missing",
+  not_applicable: "ev.status.not_applicable",
 };
 
 const STATUS_ICON: Record<EvidenceStatus, string> = {
@@ -55,31 +58,51 @@ const STATUS_ICON: Record<EvidenceStatus, string> = {
   not_applicable: "—",
 };
 
+const FILE_ERROR_KEY: Record<EvidenceFileError, DictKey> = {
+  "ev-file-type": "ev.err.type",
+  "ev-file-size": "ev.err.size",
+  "ev-file-empty": "ev.err.empty",
+};
+
+/** Errors are stored as dictionary keys so the banner follows the language. */
+function toErrKey(cause: unknown, fallback: DictKey): DictKey {
+  if (cause instanceof Error && cause.message.startsWith("ev.")) return cause.message as DictKey;
+  return fallback;
+}
+
 export function EvidenceVault({ caseFile, update, persistUpdate }: Props) {
+  const t = useT();
+  /** Catalogue copy (title/description/why) in the active language. Stored
+      cases keep English-era copies, but the id is stable so the dictionary
+      always wins — with the stored copy as the last-resort fallback. */
+  const tpl = (id: string, field: "title" | "description" | "why", fallback: string) => {
+    const s = t(`ev.tpl.${id}.${field}` as DictKey);
+    return s === `ev.tpl.${id}.${field}` ? fallback : s;
+  };
   const evidence = getEvidence(caseFile);
   const readiness = calculateReadiness(caseFile);
   const attachmentBlockReason = evidenceAttachmentBlockReason(caseFile);
   const attachmentBlockMessage = attachmentBlockReason === "child-sexual-content-risk"
-    ? "Local attachment is disabled for this child-safety case. Do not upload, forward, download or make another copy of sexual material involving anyone under 18. Preserve the source device, URL or account details without opening the material again, and contact 1098, 112 or a trained safeguarding professional."
+    ? t("ev.block.child")
     : attachmentBlockReason === "intimate-content-risk"
-      ? "Local attachment is disabled for this intimate-content case so Kavach does not create another copy. Preserve the source device, URL or account details without forwarding the material. You can still mark an item as held elsewhere."
+      ? t("ev.block.intimate")
       : null;
   const [openCategory, setOpenCategory] = useState<EvidenceItem["category"] | null>("transaction");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<DictKey | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const operationInFlight = useRef(false);
 
   const tone =
     readiness.level === "READY" ? "bg-done" : readiness.level === "PARTIALLY_READY" ? "bg-wait" : "bg-urgent";
 
-  const levelLabel =
+  const levelKey: DictKey =
     readiness.counts.totalApplicable === 0
-      ? "No items marked applicable"
+      ? "ev.noApplicable"
       : readiness.level === "READY"
-      ? "Most items addressed"
+      ? "ev.mostAddressed"
       : readiness.level === "PARTIALLY_READY"
-        ? "Checklist in progress"
-        : "Checklist just started";
+        ? "ev.inProgress"
+        : "ev.justStarted";
 
   const handleStatus = (id: string, status: EvidenceStatus) => {
     update((c) => setEvidenceStatus(c, id, status));
@@ -89,13 +112,13 @@ export function EvidenceVault({ caseFile, update, persistUpdate }: Props) {
   const handleAttach = async (id: string, files: FileList | null) => {
     if (!files?.length || operationInFlight.current) return;
     if (attachmentBlockMessage) {
-      setError(attachmentBlockMessage);
+      setError(attachmentBlockReason === "child-sexual-content-risk" ? "ev.block.child" : "ev.block.intimate");
       return;
     }
     const f = files[0];
     const err = validateEvidenceFile(f);
     if (err) {
-      setError(err);
+      setError(FILE_ERROR_KEY[err]);
       return;
     }
     operationInFlight.current = true;
@@ -118,20 +141,18 @@ export function EvidenceVault({ caseFile, update, persistUpdate }: Props) {
           } catch {
             orphaned = true;
           }
-          throw new Error(orphaned
-            ? "The case record could not be saved and the browser could not remove the new, untracked evidence bytes. The previous attachment is unchanged. Clear Kavach site data to remove the orphaned copy."
-            : "The file bytes were not linked because the case record could not be saved. The previous attachment is unchanged.");
+          throw new Error(orphaned ? "ev.err.orphanNew" : "ev.err.link");
         }
         if (replaced.storageKey && replaced.storageKey !== stored.storageKey) {
           try {
             await removeStoredEvidenceFile(replaced.storageKey);
           } catch {
-            setError("The replacement is saved and its fingerprint matches, but the browser could not remove the older orphaned copy. Clear Kavach site data after keeping any originals you need.");
+            setError("ev.err.orphanOld");
           }
         }
       });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "The file could not be stored in this browser.");
+      setError(toErrKey(cause, "ev.err.store"));
     } finally {
       operationInFlight.current = false;
       setBusyId(null);
@@ -155,19 +176,19 @@ export function EvidenceVault({ caseFile, update, persistUpdate }: Props) {
             .find((item) => item.id === id)?.attachment;
           return removeEvidenceAttachment(c, id);
         })) {
-          throw new Error("The attachment was kept because the case record could not be saved.");
+          throw new Error("ev.err.removeKept");
         }
         const removedAttachment = removed.attachment;
         if (removedAttachment?.storageKey && removedAttachment.storedLocally) {
           try {
             await removeStoredEvidenceFile(removedAttachment.storageKey);
           } catch {
-            setError("The attachment record was removed, but the browser could not verify deletion of the orphaned local bytes. Clear Kavach site data to remove them.");
+            setError("ev.err.removeBytes");
           }
         }
       });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "The local file could not be removed.");
+      setError(toErrKey(cause, "ev.err.removeLocal"));
     } finally {
       operationInFlight.current = false;
       setBusyId(null);
@@ -177,12 +198,12 @@ export function EvidenceVault({ caseFile, update, persistUpdate }: Props) {
   const handleDownload = async (id: string) => {
     if (operationInFlight.current) return;
     if (attachmentBlockMessage) {
-      setError(attachmentBlockMessage);
+      setError(attachmentBlockReason === "child-sexual-content-risk" ? "ev.block.child" : "ev.block.intimate");
       return;
     }
     const attachment = evidence.find((item) => item.id === id)?.attachment;
     if (!attachment?.storageKey || !attachment.storedLocally) {
-      setError("Only the file record is available. Reattach the original file to store its bytes here.");
+      setError("ev.err.recordOnly");
       return;
     }
     operationInFlight.current = true;
@@ -190,7 +211,7 @@ export function EvidenceVault({ caseFile, update, persistUpdate }: Props) {
     setError(null);
     try {
       const stored = await getStoredEvidenceFile(attachment.storageKey);
-      if (!stored) throw new Error("The file is no longer in this browser. It may have been removed with site data.");
+      if (!stored) throw new Error("ev.err.gone");
       const href = URL.createObjectURL(stored.blob);
       const link = document.createElement("a");
       link.href = href;
@@ -198,7 +219,7 @@ export function EvidenceVault({ caseFile, update, persistUpdate }: Props) {
       link.click();
       setTimeout(() => URL.revokeObjectURL(href), 1_000);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "The local file could not be opened.");
+      setError(toErrKey(cause, "ev.err.open"));
     } finally {
       operationInFlight.current = false;
       setBusyId(null);
@@ -210,14 +231,14 @@ export function EvidenceVault({ caseFile, update, persistUpdate }: Props) {
       {/* Summary */}
       <section className="sheet px-5 py-5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-          <p className="label">Evidence map</p>
-          <p className="num text-2xl font-medium">{readiness.percentage}% checklist coverage</p>
+          <p className="label">{t("ev.mapTitle")}</p>
+          <p className="num text-2xl font-medium">{readiness.percentage}% {t("ev.checklistCoverage")}</p>
         </div>
 
         <div
           className="mt-3 h-1.5 bg-sunk rounded-full overflow-hidden"
           role="progressbar"
-          aria-label="Evidence checklist coverage"
+          aria-label={t("ev.coverageAria")}
           aria-valuenow={readiness.percentage}
           aria-valuemin={0}
           aria-valuemax={100}
@@ -227,25 +248,25 @@ export function EvidenceVault({ caseFile, update, persistUpdate }: Props) {
 
         <div className="mt-3 flex flex-wrap gap-2">
           <span className={cn("chip px-2 py-1 rounded-ctl border", STATUS_STYLES[readiness.level === "READY" ? "added" : readiness.level === "PARTIALLY_READY" ? "not_applicable" : "missing"])}>
-            {levelLabel}
+            {t(levelKey)}
           </span>
           <span className="text-sm text-ink-3">
-            {readiness.counts.added} marked held · {readiness.counts.storedLocally} local files · {readiness.counts.missing} missing · {readiness.counts.notApplicable} not applicable
+            {readiness.counts.added} {t("ev.markedHeld")} · {readiness.counts.storedLocally} {t("ev.localFiles")} · {readiness.counts.missing} {t("ev.missingN")} · {readiness.counts.notApplicable} {t("ev.naN")}
           </span>
         </div>
 
         <p className="mt-3 text-sm text-ink-2 leading-snug">
-          If it is safe, preserve the original records without continuing contact or delaying urgent help. This score tracks your checklist; it does not decide legal sufficiency or authenticity.
+          {t("ev.preserveNote")}
         </p>
 
         {readiness.recommendations.length > 0 && (
           <div className="mt-4 border-t border-rule pt-4">
-            <p className="label">Recommended next</p>
+            <p className="label">{t("ev.recommendedNext")}</p>
             <ol className="mt-2 space-y-1.5">
-              {readiness.recommendations.map((item, i) => (
+              {readiness.recommendations.map((item) => (
                 <li key={item.id} className="text-sm text-ink-2 flex gap-2">
-                  <span className="num text-ink-3">{i + 1}.</span>
-                  <span>Review {item.title.toLowerCase()}</span>
+                  <span aria-hidden>•</span>
+                  <span>{tpl(item.id, "title", item.title)}</span>
                 </li>
               ))}
             </ol>
@@ -253,7 +274,7 @@ export function EvidenceVault({ caseFile, update, persistUpdate }: Props) {
         )}
 
         <p className="mt-4 text-xs text-ink-3 border-s-2 border-rule-strong ps-3">
-          Files attached here are stored as actual bytes in this browser&apos;s IndexedDB and fingerprinted with SHA-256. They are not sent to Kavach&apos;s server or an AI model. Clearing site data deletes them; keep the originals too.
+          {t("ev.storageNote")}
         </p>
 
         {attachmentBlockMessage && (
@@ -265,26 +286,26 @@ export function EvidenceVault({ caseFile, update, persistUpdate }: Props) {
 
       {/* Generate summary */}
       <section className="sheet px-5 py-5">
-        <p className="label">Printable evidence manifest</p>
+        <p className="label">{t("ev.manifestTitle")}</p>
         <p className="mt-2 text-[0.9375rem] text-ink-2 leading-snug max-w-xl">
-          Generate a PDF checklist of what you have, what is missing, your timeline and available fingerprints. The PDF does not embed the evidence files and is not an official complaint.
+          {t("ev.manifestBody")}
         </p>
         <div className="mt-4">
           <Button onClick={() => downloadEvidenceSummary(caseFile)} size="sm">
-            Generate Evidence Summary
+            {t("ev.generateSummary")}
           </Button>
         </div>
       </section>
 
       {/* Checklist grouped */}
       <section>
-        <h2 className="text-2xl">Evidence checklist</h2>
+        <h2 className="text-2xl">{t("ev.checklistH2")}</h2>
         <p className="mt-1.5 text-[0.9375rem] text-ink-2 max-w-xl">
-          Each item shows why it matters. Mark as added, missing or not applicable. Attach PNG, JPG or PDF (10 MB max).
+          {t("ev.checklistSub")}
         </p>
 
         {error && (
-          <p role="alert" className="mt-4 text-sm text-urgent bg-urgent-soft border border-urgent/20 px-3 py-2 rounded-ctl">{error}</p>
+          <p role="alert" className="mt-4 text-sm text-urgent bg-urgent-soft border border-urgent/20 px-3 py-2 rounded-ctl">{t(error)}</p>
         )}
 
         <div className="mt-6 border-t border-rule-strong">
@@ -299,7 +320,7 @@ export function EvidenceVault({ caseFile, update, persistUpdate }: Props) {
                   aria-expanded={isOpen}
                   className="w-full flex items-center gap-4 py-4 text-start hover:bg-sunk/60 transition-colors px-1 -mx-1"
                 >
-                  <span className="flex-1 text-lg">{CATEGORY_LABEL[cat]}</span>
+                  <span className="flex-1 text-lg">{t(CATEGORY_LABEL[cat])}</span>
                   <span className="num text-xs text-ink-3 border border-rule px-1.5 py-0.5 rounded-ctl">
                     {addedCount}/{items.length}
                   </span>
@@ -316,6 +337,7 @@ export function EvidenceVault({ caseFile, update, persistUpdate }: Props) {
                       <EvidenceRow
                         key={item.id}
                         item={item}
+                        tpl={tpl}
                         onStatus={handleStatus}
                         onAttach={handleAttach}
                         onRemove={handleRemove}
@@ -337,6 +359,7 @@ export function EvidenceVault({ caseFile, update, persistUpdate }: Props) {
 
 function EvidenceRow({
   item,
+  tpl,
   onStatus,
   onAttach,
   onRemove,
@@ -345,6 +368,7 @@ function EvidenceRow({
   attachmentAllowed,
 }: {
   item: EvidenceItem;
+  tpl: (id: string, field: "title" | "description" | "why", fallback: string) => string;
   onStatus: (id: string, status: EvidenceStatus) => void;
   onAttach: (id: string, files: FileList | null) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
@@ -352,6 +376,7 @@ function EvidenceRow({
   busy: boolean;
   attachmentAllowed: boolean;
 }) {
+  const t = useT();
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -369,14 +394,14 @@ function EvidenceRow({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[0.9375rem] font-medium leading-snug">{item.title}</p>
+            <p className="text-[0.9375rem] font-medium leading-snug">{tpl(item.id, "title", item.title)}</p>
             <span className={cn("chip px-1.5 py-0.5 rounded-ctl border", STATUS_STYLES[item.status])}>
-              {STATUS_LABEL[item.status]}
+              {t(STATUS_LABEL[item.status])}
             </span>
           </div>
 
-          <p className="mt-1 text-sm text-ink-2 leading-snug">{item.description}</p>
-          <p className="mt-1.5 text-xs text-ink-3 leading-snug border-s-2 border-rule-strong ps-3">{item.why}</p>
+          <p className="mt-1 text-sm text-ink-2 leading-snug">{tpl(item.id, "description", item.description)}</p>
+          <p className="mt-1.5 text-xs text-ink-3 leading-snug border-s-2 border-rule-strong ps-3">{tpl(item.id, "why", item.why)}</p>
 
           {item.attachment && (
             <div className="mt-3 bg-sunk border border-rule px-3 py-2.5 rounded-ctl">
@@ -386,9 +411,9 @@ function EvidenceRow({
                   {(item.attachment.size / 1024).toFixed(0)} KB · {item.attachment.type.split("/")[1]?.toUpperCase() || "FILE"}
                 </span>
                 {item.attachment.storedLocally && item.attachment.storageKey ? (
-                  <span className="text-xs text-done">Stored in this browser</span>
+                  <span className="text-xs text-done">{t("ev.storedLocal")}</span>
                 ) : (
-                  <span className="text-xs text-urgent">Record only — file bytes unavailable</span>
+                  <span className="text-xs text-urgent">{t("ev.recordOnly")}</span>
                 )}
               </div>
               {item.attachment.sha256 && (
@@ -404,7 +429,7 @@ function EvidenceRow({
                     onClick={() => void onDownload(item.id)}
                     className="text-xs text-ink-2 hover:text-ink underline underline-offset-4 disabled:opacity-50"
                   >
-                    Download local copy
+                    {t("ev.downloadCopy")}
                   </button>
                 )}
                 <button
@@ -413,14 +438,14 @@ function EvidenceRow({
                   onClick={() => void onRemove(item.id)}
                   className="ms-auto text-xs text-ink-3 hover:text-urgent underline underline-offset-4 disabled:opacity-50"
                 >
-                  Remove{busy ? "…" : ""}
+                  {t("ev.remove")}{busy ? "…" : ""}
                 </button>
               </div>
             </div>
           )}
 
           {item.status === "added" && !item.attachment && (
-            <p className="mt-3 text-xs text-ink-3">Marked as held elsewhere; Kavach has no local file for this item.</p>
+            <p className="mt-3 text-xs text-ink-3">{t("ev.heldElsewhere")}</p>
           )}
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -428,7 +453,7 @@ function EvidenceRow({
               <>
                 {attachmentAllowed && (
                   <label className={cn("inline-flex items-center justify-center h-9 px-3 border border-rule-strong rounded-ctl bg-raised hover:border-ink cursor-pointer text-sm transition-colors", busy && "opacity-50 pointer-events-none")}>
-                    {busy ? "Storing and fingerprinting…" : "Add evidence"}
+                    {busy ? t("ev.storing") : t("ev.addEvidence")}
                     <input
                       ref={inputRef}
                       type="file"
@@ -442,10 +467,10 @@ function EvidenceRow({
                   </label>
                 )}
                 <Button size="sm" variant="secondary" onClick={() => onStatus(item.id, "added")}>
-                  Mark held elsewhere
+                  {t("ev.markHeld")}
                 </Button>
                 <button onClick={() => onStatus(item.id, "not_applicable")} className="text-sm text-ink-3 hover:text-ink underline underline-offset-4">
-                  Not applicable
+                  {t("ev.status.not_applicable")}
                 </button>
               </>
             )}
@@ -454,7 +479,7 @@ function EvidenceRow({
               <>
                 {attachmentAllowed && !item.attachment && (
                   <label className={cn("inline-flex items-center justify-center h-9 px-3 border border-rule-strong rounded-ctl bg-raised hover:border-ink cursor-pointer text-sm transition-colors", busy && "opacity-50 pointer-events-none")}>
-                    {busy ? "Storing and fingerprinting…" : "Attach file"}
+                    {busy ? t("ev.storing") : t("ev.attachFile")}
                     <input
                       ref={inputRef}
                       type="file"
@@ -469,7 +494,7 @@ function EvidenceRow({
                 )}
                 {attachmentAllowed && item.attachment && (
                   <label className={cn("inline-flex items-center justify-center h-9 px-3 border border-rule-strong rounded-ctl bg-raised hover:border-ink cursor-pointer text-sm transition-colors", busy && "opacity-50 pointer-events-none")}>
-                    {busy ? "Storing and fingerprinting…" : "Replace file"}
+                    {busy ? t("ev.storing") : t("ev.replaceFile")}
                     <input
                       ref={inputRef}
                       type="file"
@@ -483,17 +508,17 @@ function EvidenceRow({
                   </label>
                 )}
                 <button onClick={() => onStatus(item.id, "missing")} className="text-sm text-ink-3 hover:text-ink underline underline-offset-4">
-                  Mark missing
+                  {t("ev.markMissing")}
                 </button>
                 <button onClick={() => onStatus(item.id, "not_applicable")} className="text-sm text-ink-3 hover:text-ink underline underline-offset-4">
-                  Not applicable
+                  {t("ev.status.not_applicable")}
                 </button>
               </>
             )}
 
             {item.status === "not_applicable" && (
               <button onClick={() => onStatus(item.id, "missing")} className="text-sm text-ink-3 hover:text-ink underline underline-offset-4">
-                Change
+                {t("ev.change")}
               </button>
             )}
           </div>

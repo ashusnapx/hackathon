@@ -49,7 +49,7 @@ export async function POST(req: Request) {
   const body = parsed.value as Record<string, unknown>;
   const permitted = new Set([
     "language", "caseReference", "safeToSpeak", "transcriptionConsent", "recordingConsent",
-    "safetyAnswer", "childContext",
+    "safetyAnswer", "childContext", "callerName",
   ]);
   if (Object.keys(body).some((key) => !permitted.has(key))) {
     return json({ error: "unexpected-field" }, 400);
@@ -91,6 +91,7 @@ export async function POST(req: Request) {
       consentedFields,
       safetyAnswer: typeof body.safetyAnswer === "string" ? body.safetyAnswer : undefined,
       childContext: typeof body.childContext === "string" ? body.childContext : undefined,
+      callerName: typeof body.callerName === "string" ? body.callerName.slice(0, 60) : undefined,
     });
     return jsonWithSession({
       ok: true,

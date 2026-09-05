@@ -202,18 +202,17 @@ describe("file attachments (prototype local)", () => {
 
   it("rejects disallowed file type", () => {
     const err = validateEvidenceFile({ name: "evil.exe", type: "application/x-msdownload", size: 1000 });
-    expect(err).toBeTruthy();
-    expect(err).toMatch(/PNG, JPG and PDF/);
+    expect(err).toBe("ev-file-type");
   });
 
   it("rejects file over 10 MB", () => {
     const err = validateEvidenceFile({ name: "big.pdf", type: "application/pdf", size: MAX_EVIDENCE_FILE_SIZE + 1 });
-    expect(err).toMatch(/too large/);
+    expect(err).toBe("ev-file-size");
   });
 
   it("rejects empty file", () => {
     const err = validateEvidenceFile({ name: "empty.pdf", type: "application/pdf", size: 0 });
-    expect(err).toMatch(/empty/);
+    expect(err).toBe("ev-file-empty");
   });
 
   it("throws when attaching invalid file via attachEvidenceFile", () => {

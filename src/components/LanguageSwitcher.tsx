@@ -102,8 +102,7 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
         <p className="label mb-2">{t("lang.choose")}</p>
         <p className="text-sm text-ink-2 leading-snug mb-1 font-light">{t("lang.sub")}</p>
         <p className="text-xs text-ink-3 leading-snug mb-3 font-light">
-          Marked <span className="label !tracking-wider">EN</span> are not translated yet and fall
-          back to English. Documents can still be translated into any of the 23.
+          {t("lang.noteFallback")}
         </p>
         <input
           ref={searchRef}
@@ -163,7 +162,7 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
           );
         })}
         {!results.length && (
-          <li className="px-3 py-6 text-center text-sm text-ink-3">No match</li>
+          <li className="px-3 py-6 text-center text-sm text-ink-3">{t("lang.noMatch")}</li>
         )}
       </ul>
     </>

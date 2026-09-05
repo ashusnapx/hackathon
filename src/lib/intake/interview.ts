@@ -48,6 +48,8 @@ export interface IntakeDraft {
   /** Exact receipt time of the bank's transaction communication, if known. */
   bankAlertAt?: string;
   narrative: string;
+  /** What the caller asked to be called, so a second call does not ask again. */
+  callerName?: string;
   /** Named by the caller on the call; drives the bank and RBI tracks. */
   bankName?: string;
   analysis?: IntakeAnalysis;

@@ -24,6 +24,7 @@ export interface VaaniCallFacts {
   entities: Entities;
   moneyMoved?: MoneyAnswer;
   transactionInitiation?: RbiInitiation;
+  callerName?: string;
   bankName?: string;
   state?: string;
   district?: string;
@@ -165,6 +166,7 @@ export function mapVaaniCall(extracted: Record<string, unknown>): VaaniCallFacts
     entities,
     moneyMoved,
     transactionInitiation: initiation(extracted.transaction_authorisation),
+    callerName: text(extracted.caller_name),
     bankName: text(extracted.bank_name),
     state: text(extracted.state),
     district: text(extracted.district),

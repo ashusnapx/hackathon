@@ -12,6 +12,7 @@ import {
 } from "@/lib/case/documents";
 import { completeness } from "@/lib/case/tracks";
 import { useI18n } from "@/lib/i18n/context";
+import type { DictKey } from "@/lib/i18n/dict/en";
 import type { CaseDocs, CaseFile } from "@/lib/case/types";
 import { cn, writeToClipboard } from "@/lib/utils";
 import { useIsClient } from "@/lib/useIsClient";
@@ -36,7 +37,7 @@ interface Props {
 export function DocumentsPanel({ caseFile, update }: Props) {
   const { t, lang } = useI18n();
   const [busy, setBusy] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<DictKey | null>(null);
   const [active, setActive] = useState<DocKey>("ncrp");
   const generationSequence = useRef(0);
   const latestCase = useRef(caseFile);
@@ -71,7 +72,7 @@ export function DocumentsPanel({ caseFile, update }: Props) {
         sequence !== generationSequence.current
         || documentInputFingerprint(latestCase.current) !== requestedFingerprint
       ) {
-        setGenerateError("Your case changed while these drafts were being prepared. Nothing stale was saved—generate them again from the current facts.");
+        setGenerateError("doc.err.stale" as const);
         return;
       }
       update((c) => ({
@@ -88,7 +89,7 @@ export function DocumentsPanel({ caseFile, update }: Props) {
       }));
     } catch {
       if (sequence === generationSequence.current) {
-        setGenerateError("The drafts could not be generated. Your case facts are still saved; check the connection and try again.");
+        setGenerateError("doc.err.generate");
       }
     } finally {
       if (sequence === generationSequence.current) setBusy(false);
@@ -118,7 +119,7 @@ export function DocumentsPanel({ caseFile, update }: Props) {
 
       {generateError && (
         <p role="alert" className="mt-4 rounded-ctl border border-urgent/30 bg-urgent-soft px-4 py-3 text-sm leading-[1.55] text-urgent-ink">
-          {generateError}
+          {t(generateError)}
         </p>
       )}
 
@@ -208,7 +209,7 @@ function Document({
   const canShare = useIsClient() && !!navigator.share;
   const [showTranslation, setShowTranslation] = useState(false);
   const [translating, setTranslating] = useState(false);
-  const [translationError, setTranslationError] = useState<string | null>(null);
+  const [translationError, setTranslationError] = useState<DictKey | null>(null);
   const translationSequence = useRef(0);
   const latestTranslationInput = useRef({ body, targetLang });
   useEffect(() => {
@@ -271,7 +272,7 @@ function Document({
         || latestTranslationInput.current.body !== requested.body
         || latestTranslationInput.current.targetLang !== requested.targetLang
       ) {
-        setTranslationError("The document or language changed while translation was running. The old result was not saved.");
+        setTranslationError("doc.err.translateStale");
         return;
       }
       if (data.translated) {
@@ -280,7 +281,7 @@ function Document({
       }
     } catch {
       if (sequence === translationSequence.current) {
-        setTranslationError("Translation is unavailable right now. The English draft has not changed.");
+        setTranslationError("doc.err.translateDown");
       }
     } finally {
       if (sequence === translationSequence.current) setTranslating(false);
@@ -299,7 +300,7 @@ function Document({
           {copyState === "done"
             ? t("doc.copied")
             : copyState === "failed"
-              ? "Select the text below and copy"
+              ? t("doc.copyFallback")
               : t("doc.copy")}
         </Button>
         {canShare && (
@@ -317,7 +318,7 @@ function Document({
 
       {translationError && (
         <p role="alert" className="mx-5 mt-4 rounded-ctl border border-urgent/30 bg-urgent-soft px-3 py-2 text-sm text-urgent-ink">
-          {translationError}
+          {t(translationError)}
         </p>
       )}
 
@@ -333,7 +334,7 @@ function Document({
       )}
 
       <p className="px-5 py-2.5 border-t border-rule num text-xs text-ink-3">
-        {body.length} characters
+        {body.length} {t("doc.characters")}
       </p>
     </article>
   );

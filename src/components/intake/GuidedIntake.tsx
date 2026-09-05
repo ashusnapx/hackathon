@@ -220,6 +220,7 @@ export function GuidedIntake() {
         ...current,
         moneyMoved: facts.moneyMoved ?? current.moneyMoved,
         transactionInitiation: facts.transactionInitiation ?? current.transactionInitiation,
+        callerName: facts.callerName ?? current.callerName,
         bankName: facts.bankName ?? current.bankName,
         state: facts.state ?? current.state,
         district: facts.district ?? current.district,
@@ -342,7 +343,12 @@ export function GuidedIntake() {
       txns: analysis.triage.amount || analysis.entities.refs[0]
         ? [{ amount: analysis.triage.amount, ref: analysis.entities.refs[0], at: incidentAt }]
         : [],
-      victim: { state: draft.state, district: draft.district, ageContext: draft.childContext },
+      victim: {
+        name: draft.callerName,
+        state: draft.state,
+        district: draft.district,
+        ageContext: draft.childContext,
+      },
       ...(draft.bankName ? { bank: { name: draft.bankName } } : {}),
       suspect: {
         phones: analysis.entities.phones,
@@ -487,6 +493,7 @@ export function GuidedIntake() {
               language={lang.code}
               safetyAnswer={draft.safety}
               childContext={draft.childContext}
+              callerName={draft.callerName}
               // The voice channel has no interview under it, so approving the
               // transcript used to end on a sentence pointing at facts that were
               // not on screen. Hand back to the chat, where the story now sits
@@ -1144,6 +1151,7 @@ function VaaniPanel({
   language,
   safetyAnswer,
   childContext,
+  callerName,
   onTranscript,
   onAccepted,
   t,
@@ -1151,6 +1159,7 @@ function VaaniPanel({
   language: string;
   safetyAnswer?: string;
   childContext?: string;
+  callerName?: string;
   onTranscript: (text: string) => void;
   /** Called once the caller has approved their own words, with the capability
    *  that can fetch what the provider already extracted. */
@@ -1286,6 +1295,7 @@ function VaaniPanel({
           language={language}
           safetyAnswer={safetyAnswer}
           childContext={childContext}
+          callerName={callerName}
           onTranscriptToken={setTranscriptToken}
           onCallEnded={() => setState("requested")}
         />

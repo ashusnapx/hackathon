@@ -69,12 +69,14 @@ export function evidenceAttachmentBlockReason(
   return null;
 }
 
-export function validateEvidenceFile(file: { name: string; type: string; size: number }): string | null {
+export type EvidenceFileError = "ev-file-type" | "ev-file-size" | "ev-file-empty";
+
+export function validateEvidenceFile(file: { name: string; type: string; size: number }): EvidenceFileError | null {
   const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
   const typeOk = (ALLOWED_EVIDENCE_TYPES as readonly string[]).includes(file.type) || ALLOWED_EXTS.includes(ext);
-  if (!typeOk) return "Only PNG, JPG and PDF files are accepted.";
-  if (file.size > MAX_EVIDENCE_FILE_SIZE) return "File is too large — 10 MB maximum.";
-  if (file.size === 0) return "File is empty.";
+  if (!typeOk) return "ev-file-type";
+  if (file.size > MAX_EVIDENCE_FILE_SIZE) return "ev-file-size";
+  if (file.size === 0) return "ev-file-empty";
   return null;
 }
 

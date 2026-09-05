@@ -610,6 +610,17 @@ export function vaaniGreeting(language: string): string {
   return GREETINGS[language] ?? GREETINGS.en;
 }
 const CASE_REFERENCE_PATTERN = /^KVC-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+/**
+ * A name to be called by, and nothing else: letters, spaces and the marks names
+ * actually contain. Digits and punctuation are dropped so the field cannot be
+ * used to smuggle an account number or an instruction into the prompt.
+ */
+const CALLER_NAME_PATTERN = /^[\p{L}\p{M}][\p{L}\p{M} '.\-]{0,39}$/u;
+
+export function safeCallerName(value: string | undefined): string {
+  const trimmed = value?.trim().replace(/\s+/g, " ") ?? "";
+  return CALLER_NAME_PATTERN.test(trimmed) ? trimmed : "";
+}
 const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9._-]{16,2048}$/;
 const CALL_ID_PATTERN = /^[A-Za-z0-9_-]{6,160}$/;
 
@@ -649,6 +660,8 @@ export interface VaaniCallContext {
   /** Answered on the website before the microphone opened, so the agent does not re-ask. */
   safetyAnswer?: string;
   childContext?: string;
+  /** What the caller wants to be called. A chosen name, never an identity document. */
+  callerName?: string;
 }
 
 /**
@@ -676,6 +689,7 @@ export function buildVaaniCallMetadata(
 
   return {
     case_id: caseReference,
+    caller_name: safeCallerName(context.callerName),
     consented_fields: consented.join(","),
     summarised_problem: "",
     preferred_language: context.language,
@@ -773,7 +787,9 @@ export async function startVaaniBrowserCall(context: VaaniCallContext): Promise<
     body: JSON.stringify({
       agent_id: agentId,
       medium: "webrtc",
-      name: "Kavach caller",
+      // The provider's participant label. A chosen first name where there is
+      // one, never the narrative and never an identifier.
+      name: safeCallerName(context.callerName) || "Kavach caller",
       // The agent is configured for one target language; the caller chose their
       // own. Sending it per call is what stops a Hindi voice reading English.
       primary_language: context.language,
