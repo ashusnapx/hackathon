@@ -25,7 +25,7 @@ interface Props {
    * "page" is the full control with its status line and disclosure.
    * "compact" is the green circle WhatsApp puts at the end of its composer.
    */
-  variant?: "page" | "compact";
+  variant?: "page" | "compact" | "hero";
   /**
    * Told whenever the microphone changes state.
    *
@@ -36,6 +36,15 @@ interface Props {
   onModeChange?: (mode: Mode) => void;
   /** Filled with a way to throw the take away, for the composer's bin button. */
   controller?: React.MutableRefObject<{ cancel: () => void } | null>;
+  /**
+   * The words as they are being said, before the engine commits to them.
+   *
+   * Only the recognition path can produce these; the recorder path has nothing
+   * to show until the take is uploaded. A composer that wants to show live text
+   * has to cope with both, which is why this is a callback rather than a
+   * promise that it will ever fire.
+   */
+  onInterim?: (text: string) => void;
 }
 
 interface SpeechRecognitionLike extends EventTarget {
@@ -112,7 +121,7 @@ function getRecognition(): SpeechRecognitionLike | null {
   return Ctor ? new Ctor() : null;
 }
 
-export function VoiceInput({ onResult, disabled, variant = "page", onModeChange, controller }: Props) {
+export function VoiceInput({ onResult, disabled, variant = "page", onModeChange, controller, onInterim }: Props) {
   const { lang, t } = useI18n();
   const [mode, setMode] = useState<Mode>("idle");
   const [level, setLevel] = useState(0);
@@ -177,6 +186,10 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
   const modeRef = useRef(onModeChange);
   useEffect(() => { modeRef.current = onModeChange; }, [onModeChange]);
   useEffect(() => { modeRef.current?.(mode); }, [mode]);
+
+  const interimRef = useRef(onInterim);
+  useEffect(() => { interimRef.current = onInterim; }, [onInterim]);
+  useEffect(() => { interimRef.current?.(interim); }, [interim]);
 
   useEffect(() => {
     if (!controller) return;
@@ -428,6 +441,8 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
     );
   }
 
+  const hero = variant === "hero";
+
   return (
     <div className="flex flex-col items-center gap-3">
       <button
@@ -436,13 +451,21 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
         disabled={disabled || busy || mode === "unsupported"}
         aria-pressed={listening}
         aria-label={listening ? t("start.micStop") : t("start.mic")}
-        aria-describedby={disclosureId}
+        aria-describedby={hero ? undefined : disclosureId}
         className={cn(
           "relative flex items-center justify-center rounded-full transition-all duration-200",
-          "w-20 h-20 border disabled:opacity-45",
+          "border disabled:opacity-45",
+          // The one thing to do on the front door, sized like it. A 46px circle
+          // is a control; this is an invitation, and it has to read as one to
+          // somebody holding the phone at arm's length.
+          hero ? "w-28 h-28 sm:w-32 sm:h-32" : "w-20 h-20",
           listening
             ? "bg-urgent border-urgent text-white"
-            : "bg-raised border-rule-strong text-ink hover:border-ink",
+            // The hero is the one thing to do on the page, so it is filled
+            // rather than outlined: an outline reads as "one of several".
+            : hero
+              ? "bg-deep border-deep text-[#ffffeb] hover:opacity-90"
+              : "bg-raised border-rule-strong text-ink hover:border-ink",
         )}
         style={
           listening
@@ -450,10 +473,12 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
             : undefined
         }
       >
-        {busy ? <Spinner /> : listening ? <StopIcon /> : <MicIcon />}
+        <span className={cn(hero && "scale-[1.6]")}>
+          {busy ? <Spinner /> : listening ? <StopIcon /> : <MicIcon />}
+        </span>
       </button>
 
-      <p className="text-sm text-ink-3 text-center min-h-[1.25rem]">
+      <p className={cn("text-center min-h-[1.25rem]", hero ? "text-[0.9375rem] text-ink-2" : "text-sm text-ink-3")}>
         {mode === "unsupported"
           ? t("start.voiceUnsupported")
           : mode === "nothing"
@@ -465,9 +490,11 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
               : `${t("start.mic")} · ${t("start.micHint")} ${lang.endonym}`}
       </p>
 
-      <p id={disclosureId} className="max-w-lg text-xs leading-[1.55] text-ink-3 text-center">
-        {t("start.voiceDisclosure")}
-      </p>
+      {hero ? null : (
+        <p id={disclosureId} className="max-w-lg text-xs leading-[1.55] text-ink-3 text-center">
+          {t("start.voiceDisclosure")}
+        </p>
+      )}
 
       {interim && (
         <p className="max-w-lg text-center text-[0.9375rem] text-ink-2 italic leading-snug">{interim}</p>

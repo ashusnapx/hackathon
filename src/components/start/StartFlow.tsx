@@ -2,33 +2,35 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 
 import { Button } from "@/components/ui/Button";
 import { SiteHeader } from "@/components/SiteHeader";
-import { VoiceInput } from "@/components/start/VoiceInput";
+import { VoiceComposer } from "@/components/start/VoiceComposer";
 import { emptyIntake } from "@/lib/intake/interview";
 import { draftFromStory } from "@/lib/intake/infer";
 import { saveBrowserIntakeDraft } from "@/lib/intake/persistence";
 import { clearStoredVaaniSession } from "@/lib/integrations/vaani-client";
 import { useI18n } from "@/lib/i18n/context";
-import { cn } from "@/lib/utils";
 import type { IntakeAnalysis } from "@/lib/intake/interview";
 
 /**
- * The front door: one box.
+ * The front door: one thing to do.
  *
- * It used to be two safety questions and a choice of channel — four taps before
- * anybody could say a word about what had happened to them, and every one of
- * them a question the story itself answers. Somebody who has just lost their
- * savings does not want a form about forms; they want to tell someone.
+ * This screen is read by somebody who has just lost money, on a phone, possibly
+ * in their sixties, possibly unable to read the language the internet is
+ * written in. It carried ninety-seven words, a thirty-word example inside the
+ * box, ten blocks of text and eight controls — and it led with a keyboard,
+ * which is the hardest thing you can ask of exactly that person.
  *
- * So they tell us, and the model reads it: the category, the amount, the time,
- * whether money moved, whether this is the kind of fraud that arrives with a
- * threat. What it cannot settle, the interview asks for afterwards in the
- * ordinary way. The 112 and 1930 numbers are on this screen throughout rather
- * than behind a question, which puts them in front of more people than asking
- * ever did.
+ * So it leads with the microphone instead. Speaking is the one input everybody
+ * has: it needs no spelling, no script, no keyboard layout for Bhojpuri, and it
+ * is how two in five people in India already search. Typing is one tap away for
+ * those who prefer it, and everything else on the old screen — what we never
+ * ask, the other ways in — is behind a disclosure or in the header, where it
+ * can be found and cannot be in the way.
+ *
+ * The emergency numbers stay in the open. They are the only thing here that
+ * matters more than the box.
  */
 export function StartFlow() {
   const { t, lang } = useI18n();
@@ -37,10 +39,8 @@ export function StartFlow() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const ready = story.trim().length >= 25 && !busy;
-
   const send = async () => {
-    if (!ready) return;
+    if (story.trim().length < 25 || busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -51,10 +51,8 @@ export function StartFlow() {
       });
       if (!response.ok) throw new Error("triage-failed");
       const analysis = await response.json() as IntakeAnalysis;
-
       // Nothing of the last report comes with them: not the narrative, not the
-      // extracted facts, and not the receipt for a previous voice call — which
-      // would otherwise offer a stranger's transcript to import.
+      // extracted facts, and not the receipt for a previous voice call.
       saveBrowserIntakeDraft({ ...emptyIntake("web"), ...draftFromStory(story, analysis) });
       clearStoredVaaniSession();
       router.push("/assist");
@@ -67,60 +65,43 @@ export function StartFlow() {
   return (
     <>
       <SiteHeader width="2xl" />
-      <main id="main" className="px-4 py-8 sm:py-12 flex items-start justify-center">
+      <main id="main" className="px-5 sm:px-8 py-6 sm:py-12 flex items-start justify-center">
         <div className="w-full max-w-xl">
-        <h1 className="text-2xl sm:text-3xl leading-tight">{t("begin.storyH")}</h1>
-        <p className="mt-3 text-[1.0625rem] leading-[1.6] text-ink-2">{t("begin.storySub")}</p>
+          <h1 className="text-[1.75rem] sm:text-3xl leading-tight">{t("begin.storyH")}</h1>
+          <p className="mt-2 text-[1.0625rem] leading-[1.5] text-ink-2">{t("begin.storyShort")}</p>
 
-        <div className="mt-6 sheet px-3 py-3 sm:px-4 sm:py-4">
-          <textarea
-            value={story}
-            onChange={(event) => { setStory(event.target.value); setError(null); }}
-            rows={6}
-            disabled={busy}
-            placeholder={t("start.placeholder")}
-            aria-label={t("begin.storyH")}
-            /* 16px minimum, or iOS Safari zooms the page the moment it is focused. */
-            className="w-full bg-transparent resize-y text-base leading-[1.6] focus:outline-none placeholder:text-ink-3/70 disabled:opacity-60"
-          />
-          <div className="mt-2 flex items-center gap-3 border-t border-rule pt-3">
-            <VoiceInput
-              variant="compact"
-              disabled={busy}
-              onResult={(chunk) => setStory((was) => [was.trim(), chunk].filter(Boolean).join(" "))}
+          <div className="mt-6">
+            <VoiceComposer
+              value={story}
+              onChange={(next) => { setStory(next); setError(null); }}
+              onSubmit={send}
+              submitLabel={t("begin.storyCta")}
+              busy={busy}
             />
-            <p className="flex-1 min-w-0 text-xs leading-[1.4] text-ink-3">{t("begin.storyHint")}</p>
-            <Button onClick={send} disabled={!ready} size="md">
-              {busy ? `${t("start.analysing")}…` : t("begin.storyCta")}
-            </Button>
           </div>
-        </div>
 
-        {error && <p role="alert" className="mt-3 text-sm text-urgent-ink">{error}</p>}
+          {error && <p role="alert" className="mt-3 text-sm text-urgent-ink">{error}</p>}
 
-        {/* Not behind a question. Somebody in danger should reach these without
-            first telling a web page that they are in danger. */}
-        <div className="mt-5 flex flex-wrap items-center gap-2">
-          <Button href="tel:1930" external variant="urgent" size="sm">{t("begin.call1930")}</Button>
-          <Button href="tel:112" external variant="secondary" size="sm">{t("begin.call112")}</Button>
-        </div>
+          {/* The only thing on this page that matters more than the box, and so
+              the only other thing that is never folded away. */}
+          <div className="mt-7 grid grid-cols-2 gap-2">
+            <Button href="tel:1930" external variant="urgent" size="md">{t("begin.call1930short")}</Button>
+            <Button href="tel:112" external variant="secondary" size="md">{t("begin.call112short")}</Button>
+          </div>
 
-        <p className="mt-5 text-xs leading-[1.55] text-ink-3">{t("begin.boundaryNote")}</p>
-
-        {/* The other three ways in, named rather than hidden: the same case
-            file comes out of all of them. */}
-        <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2.5">
-          <a href="/talk" className={cn("inline-flex items-center gap-2 text-sm font-medium underline underline-offset-4")}>
-            <Image src="/vaani/vaani-mark.png" alt="" width={72} height={72} className="w-4 h-4" />
-            {t("begin.voiceLink")} →
-          </a>
-          <a href="/whatsapp" className="text-sm font-medium underline underline-offset-4">
-            {t("begin.waLink")} →
-          </a>
-          <a href="/report" className="text-sm font-medium underline underline-offset-4">
-            {t("begin.formLink")} →
-          </a>
-        </div>
+          <details className="mt-6 group">
+            <summary className="inline-flex min-h-11 items-center text-sm text-ink-3 underline underline-offset-4 cursor-pointer hover:text-ink">
+              {t("begin.safeSummary")}
+            </summary>
+            <p className="mt-2 text-sm leading-[1.6] text-ink-2">{t("begin.boundaryNote")}</p>
+            {/* A thumb needs 44px, and these are the fallbacks for somebody who
+                could not use either of the two inputs above. */}
+            <div className="mt-2 flex flex-col items-start">
+              <a href="/talk" className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">{t("begin.voiceLink")} →</a>
+              <a href="/whatsapp" className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">{t("begin.waLink")} →</a>
+              <a href="/report" className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">{t("begin.formLink")} →</a>
+            </div>
+          </details>
         </div>
       </main>
     </>

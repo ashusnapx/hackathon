@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { VoiceInput } from "@/components/start/VoiceInput";
+import { VoiceComposer } from "@/components/start/VoiceComposer";
 import { Button } from "@/components/ui/Button";
 import { SiteHeader } from "@/components/SiteHeader";
 import { CATEGORIES, findCategory } from "@/lib/case/categories";
@@ -1217,29 +1218,20 @@ function StepControls({
         </>
       );
     }
+    // The same surface as the front door: one microphone that stays put, one
+    // panel that fills up beside it. Somebody who arrives here having already
+    // spoken should not meet a different way of speaking.
     return (
-      <ActionCard>
-        <div className="flex justify-center py-2">
-          <VoiceInput onResult={(chunk) => patch({
-            narrative: [draft.narrative.trim(), chunk].filter(Boolean).join(" "),
-            analysis: undefined,
-            analysisConfirmed: false,
-          })} disabled={busy} />
-        </div>
-        <textarea
+      <>
+        <VoiceComposer
           value={draft.narrative}
-          onChange={(e) => patch({ narrative: e.target.value, analysis: undefined, analysisConfirmed: false })}
-          rows={7}
-          placeholder={t("start.placeholder")}
-          aria-label={t("intake.storyQ")}
-          className="mt-3 w-full p-4 bg-raised border border-rule-strong rounded-ctl text-base leading-[1.6] resize-y focus:outline-none focus:border-ink"
+          onChange={(narrative) => patch({ narrative, analysis: undefined, analysisConfirmed: false })}
+          onSubmit={analyse}
+          submitLabel={t("intake.storyCta")}
+          busy={busy}
         />
-        <p className="mt-2 text-sm leading-[1.55] text-ink-3">{t("intake.storyHint")}</p>
         {error && <p role="alert" className="mt-3 text-sm text-urgent-ink">{error}</p>}
-        <Button onClick={analyse} disabled={busy} size="md" className="mt-5" full>
-          {busy ? `${t("intake.analysing")}…` : t("intake.storyCta")}
-        </Button>
-      </ActionCard>
+      </>
     );
   }
 
