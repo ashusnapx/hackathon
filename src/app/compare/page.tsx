@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { Wordmark } from "@/components/Wordmark";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { AccountMenu } from "@/components/auth/AccountMenu";
 import { Button } from "@/components/ui/Button";
 import { FRICTIONS, NCRP_REQUIRED_COUNT, RELAXED_COUNT } from "@/lib/report/schema";
 import { useT } from "@/lib/i18n/context";
@@ -40,6 +41,7 @@ export default function ComparePage() {
         <div className="pointer-events-auto mx-auto max-w-5xl rounded-card border border-ink/15 bg-paper/85 backdrop-blur-xl shadow-[0_6px_24px_-18px_rgba(26,26,26,0.55)] px-3 sm:px-4 h-[60px] sm:h-[64px] flex items-center gap-4">
           <Wordmark />
           <div className="ms-auto flex items-center gap-3">
+            <AccountMenu compact />
             <LanguageSwitcher compact />
             <Button href="/assist" size="sm">{t("nav.start")}</Button>
           </div>

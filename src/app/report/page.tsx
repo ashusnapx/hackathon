@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Wordmark } from "@/components/Wordmark";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { AccountMenu } from "@/components/auth/AccountMenu";
 import { Button } from "@/components/ui/Button";
 import { SaveBadge } from "@/components/report/SaveBadge";
 import { StageIncident, StageEvidence, StageSuspect, StageYou } from "@/components/report/Stages";
@@ -268,7 +269,8 @@ function Header() {
     <header className="sticky top-0 z-40 px-3 sm:px-5 pt-3 sm:pt-4 pointer-events-none">
       <div className="pointer-events-auto mx-auto max-w-2xl rounded-card border border-ink/15 bg-paper/85 backdrop-blur-xl shadow-[0_6px_24px_-18px_rgba(26,26,26,0.55)] px-3 sm:px-4 h-[60px] sm:h-[64px] flex items-center gap-4">
         <Wordmark />
-        <div className="ms-auto">
+        <div className="ms-auto flex items-center gap-3">
+          <AccountMenu compact />
           <LanguageSwitcher compact />
         </div>
       </div>

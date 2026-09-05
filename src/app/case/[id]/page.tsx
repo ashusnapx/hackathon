@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Wordmark } from "@/components/Wordmark";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { AccountMenu } from "@/components/auth/AccountMenu";
 import { RecoveryWindow } from "@/components/case/RecoveryWindow";
 import { RbiProtectionCard } from "@/components/case/RbiProtectionCard";
 import { NextAction } from "@/components/case/NextAction";
@@ -114,6 +115,7 @@ function CaseScreen({ id }: { id: string }) {
           >
             {syncLabel}
           </span>
+          <AccountMenu compact />
           <LanguageSwitcher compact />
         </div>
       </header>

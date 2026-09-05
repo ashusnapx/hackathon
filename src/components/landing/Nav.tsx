@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Wordmark } from "@/components/Wordmark";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { AccountMenu } from "@/components/auth/AccountMenu";
 import { Button } from "@/components/ui/Button";
 import { useT } from "@/lib/i18n/context";
 import { useActiveCaseId } from "@/lib/case/store";
@@ -170,6 +171,7 @@ export function Nav() {
 
         <div className="ms-auto flex flex-nowrap items-center gap-1 sm:gap-2.5 shrink-0">
           <LanguageSwitcher compact />
+          <AccountMenu compact />
           <Button href="/start" size="sm" className="shrink-0">{t("nav.start")}</Button>
 
           <div className="relative shrink-0">

@@ -12,6 +12,24 @@ export const en = {
   "nav.faq": "Questions",
   // Signing in. The app sits behind this, so the words have to be plain and the
   // page has to say what to do if somebody is in danger right now.
+  // The account panel. It is the one place somebody can check what this product
+  // is holding about them, so every line is a fact rather than a summary.
+  "account.title": "Account",
+  "account.verified": "Email confirmed",
+  "account.unverified": "Email not confirmed",
+  "account.lastSignIn": "Last signed in",
+  "account.memberSince": "Account created",
+  "account.confirmedOn": "Email confirmed",
+  "account.method": "Signs in with",
+  "account.methodPassword": "Email and password",
+  "account.methodOther": "An external provider",
+  "account.sessionEnds": "This session ends",
+  "account.casesHere": "Cases on this device",
+  "account.language": "Reading in",
+  "account.id": "Account ID",
+  "account.copied": "Copied",
+  "account.unknown": "Not known",
+  "account.deviceNote": "Your cases are stored on this device and opened by their link, not by this account. Signing in on another phone will not list them.",
   "field.showPassword": "Show password",
   "field.hidePassword": "Hide password",
   "auth.title": "Sign in to Kavach",
