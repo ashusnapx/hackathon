@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
  * learns — which service, not which key, which host or which error.
  */
 
-type ServiceId = "database" | "ai" | "voice" | "email";
+type ServiceId = "database" | "ai" | "voice" | "email" | "auth";
 type ServiceState = "up" | "down" | "off";
 
 interface Service { id: ServiceId; state: ServiceState; ms: number | null }
@@ -27,6 +27,7 @@ const LABELS: Record<ServiceId, string> = {
   ai: "status.ai",
   voice: "status.voice",
   email: "status.email",
+  auth: "status.auth",
 };
 
 const REFRESH_MS = 60_000;

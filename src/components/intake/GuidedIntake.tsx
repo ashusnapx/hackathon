@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import { VoiceInput } from "@/components/start/VoiceInput";
 import { Button } from "@/components/ui/Button";
 import { Wordmark } from "@/components/Wordmark";
@@ -751,6 +752,7 @@ export function GuidedIntake() {
             {persistenceLabel}
           </span>
           <LanguageSwitcher compact />
+          <SignOutButton />
         </div>
       </header>
 

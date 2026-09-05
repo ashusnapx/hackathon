@@ -6,7 +6,7 @@
  * browser can import the types without pulling a server-only module with them.
  */
 
-export type ServiceId = "database" | "ai" | "voice" | "email";
+export type ServiceId = "database" | "ai" | "voice" | "email" | "auth";
 export type ServiceState = "up" | "down" | "off";
 
 export interface ServiceHealth {

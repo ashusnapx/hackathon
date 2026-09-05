@@ -1,6 +1,7 @@
 import demoCall from "@/lib/demo/call.json";
 import { verifyEmailTransport } from "@/lib/email/send";
 import { database, databaseConfigured } from "@/lib/db/supabase";
+import { authConfig } from "@/lib/auth/config";
 import {
   HEALTH_CACHE_TTL_MS,
   isFresh,
@@ -95,6 +96,28 @@ async function checkEmail(): Promise<ServiceHealth> {
   return { id: "email", state: ok ? "up" : "down", ms };
 }
 
+/**
+ * Whether the gate in front of this app is actually standing.
+ *
+ * Checked by asking Supabase for its auth settings rather than by looking at a
+ * variable, for the same reason as everything else here — but it matters more:
+ * when this reads "off", the middleware is letting everybody through, and the
+ * footer saying so is the difference between knowing that and assuming
+ * otherwise.
+ */
+async function checkAuth(): Promise<ServiceHealth> {
+  const config = authConfig();
+  if (!config) return { id: "auth", state: "off", ms: null };
+  const { ok, ms } = await timed(async () => {
+    const response = await fetch(`${config.url}/auth/v1/settings`, {
+      headers: { apikey: config.key },
+      signal: signal(),
+    });
+    return response.ok;
+  });
+  return { id: "auth", state: ok ? "up" : "down", ms };
+}
+
 export async function getHealth(force = false): Promise<HealthReport> {
   if (!force && cached && isFresh(cached.at, Date.now(), HEALTH_CACHE_TTL_MS)) return cached.report;
 
@@ -105,6 +128,7 @@ export async function getHealth(force = false): Promise<HealthReport> {
     checkAi(),
     checkVoice(),
     checkEmail(),
+    checkAuth(),
   ]);
 
   const report: HealthReport = { checkedAt: new Date().toISOString(), services };
