@@ -12,6 +12,8 @@ export const en = {
   "nav.faq": "Questions",
   // Signing in. The app sits behind this, so the words have to be plain and the
   // page has to say what to do if somebody is in danger right now.
+  "field.showPassword": "Show password",
+  "field.hidePassword": "Hide password",
   "auth.title": "Sign in to Kavach",
   "auth.sub": "Your case files are behind this. Use your email address and a password — nothing else is asked for.",
   "auth.emergency": "In immediate danger? Call 112. To report a financial fraud straight away, call 1930. Neither needs an account.",

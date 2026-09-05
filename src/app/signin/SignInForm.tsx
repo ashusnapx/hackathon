@@ -111,6 +111,7 @@ export function SignInForm({ configured }: { configured: boolean }) {
       <Field
         label={t("auth.password")}
         type="password"
+        reveal
         autoComplete={mode === "in" ? "current-password" : "new-password"}
         value={password}
         onChange={(event) => { setPassword(event.target.value); setError(null); }}
