@@ -773,6 +773,7 @@ export const en = {
 
   "cmp.cta": "Try the rebuilt form",
   "cmp.ctaOfficial": "File on the official portal",
+  "nav.whatsapp": "On WhatsApp",
   "nav.compare": "The comparison",
 
   "check.kicker": "Before you pay",
@@ -924,7 +925,7 @@ export const en = {
 
   // ── Guided, channel-continuous intake ────────────────────────────────────
   "intake.title": "Tell it once. We build the case with you.",
-  "intake.sub": "A calm, question-by-question interview. Switch between chat, a WhatsApp preview and a Vaani call without starting again.",
+  "intake.sub": "A calm, question-by-question interview. Switch between typing and a Vaani call without starting again.",
   "intake.progress": "Case understanding",
   "intake.saved": "Saved on this device",
   "intake.switch": "How we talk",
@@ -955,6 +956,22 @@ export const en = {
   "begin.chatNote": "A familiar chat, at your own pace. Nothing is sent to WhatsApp.",
   "begin.formLink": "Prefer a form? Use the five-step version",
   "begin.back": "Back",
+  // The front door is one box. Everything it used to ask, the story answers.
+  // The WhatsApp prototype's own page.
+  "wa.eyebrow": "Prototype",
+  "wa.title": "The same case file, inside WhatsApp.",
+  "wa.sub": "Most people this is built for have never opened a government portal, and will not install an app to report a fraud. They have had this screen open every day for years. Everything below is the real interview — the real model, the real case file, the real documents — running in a WhatsApp conversation.",
+  "wa.notReal": "This is a replica of the WhatsApp interface, not a connection to it. Nothing here reaches Meta, and no message leaves this page. It shows what a WhatsApp Business deployment of Kavach would do, using the working product behind it.",
+  "wa.point1": "Reply buttons, list pickers and voice notes — the parts of WhatsApp a bot actually gets, used the way that app uses them.",
+  "wa.point2": "The same twenty-three languages, the same triage, and the same letters at the end of it.",
+  "wa.point3": "No install, no portal, no account to invent while somebody is being defrauded.",
+  "begin.storyH": "What happened?",
+  "begin.storySub": "Tell it once, in your own words and your own language. We will work out the rest — the type of fraud, the money, the deadlines and who to write to.",
+  "begin.storyHint": "Speak or type. Nothing is filed with anyone.",
+  "begin.storyCta": "Continue",
+  "begin.call1930": "Call 1930 — money fraud",
+  "begin.call112": "Call 112 — emergency",
+  "begin.voiceLink": "Rather talk to someone",
   "begin.boundaryNote": "We only ask what helps your case. Never share an OTP, PIN, password, CVV, full card number or Aadhaar number. Kavach is independent — not police, not government.",
 
   "intake.boundaryQ": "Before we begin, one important promise.",

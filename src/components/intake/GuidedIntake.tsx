@@ -27,6 +27,7 @@ import {
   type EvidenceKind,
   type IncidentTiming,
   type IntakeAnalysis,
+  type IntakeChannel,
   type IntakeDraft,
   type MoneyAnswer,
   type SafetyAnswer,
@@ -221,7 +222,7 @@ async function triageNarrative(
   }
 }
 
-export function GuidedIntake() {
+export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = {}) {
   const { t, lang } = useI18n();
   const router = useRouter();
   const [draft, setDraft] = useState<IntakeDraft>(() => emptyIntake());
@@ -306,6 +307,15 @@ export function GuidedIntake() {
     setDraft((current) => ({ ...current, ...value }));
     setError(null);
   }, []);
+
+  // A page that fixes the channel wins over whatever is in the stored draft,
+  // and the front door's "rather talk to someone" link asks for voice by query.
+  useEffect(() => {
+    if (!hydrated) return;
+    const asked = lockChannel
+      ?? (new URLSearchParams(window.location.search).get("channel") === "voice" ? "voice" : undefined);
+    if (asked && draftRef.current.channel !== asked) patch({ channel: asked });
+  }, [hydrated, lockChannel, patch]);
 
   const appendNarrative = useCallback((chunk: string) => {
     const clean = chunk.replace(/\s+/g, " ").trim();
@@ -739,6 +749,7 @@ export function GuidedIntake() {
 
   return (
     <div className="min-h-dvh">
+      {!lockChannel && (
       <SiteHeader
         width="6xl"
         status={
@@ -751,6 +762,7 @@ export function GuidedIntake() {
           </span>
         }
       />
+      )}
 
       <main id="main" className="mx-auto max-w-6xl px-4 sm:px-8 py-8 sm:py-12">
         {persistence === "error" && (
@@ -758,29 +770,29 @@ export function GuidedIntake() {
             {t("rep.save.error")}
           </p>
         )}
-        <div className="max-w-3xl">
-          <p className="label">{t("intake.agentName")} · {t("intake.agentRole")}</p>
-          <h1 className="h1-long mt-3">{t("intake.title")}</h1>
-          <p className="mt-5 max-w-2xl text-[1.0625rem] leading-[1.65] text-ink-2">{t("intake.sub")}</p>
-        </div>
+        {!lockChannel && (
+          <div className="max-w-3xl">
+            <p className="label">{t("intake.agentName")} · {t("intake.agentRole")}</p>
+            <h1 className="h1-long mt-3">{t("intake.title")}</h1>
+            <p className="mt-5 max-w-2xl text-[1.0625rem] leading-[1.65] text-ink-2">{t("intake.sub")}</p>
+          </div>
+        )}
 
+        {/* Two ways to talk, not three. WhatsApp is a real prototype and it has
+            its own page to make that argument; offering it as a third tab here
+            asked somebody mid-report to re-pick a channel they had already
+            picked, which is the opposite of getting out of their way. */}
+        {!lockChannel && (
         <section className="mt-8 sheet px-3 py-3 sm:px-4" aria-label={t("intake.switch")}>
           <div className="flex flex-col lg:flex-row lg:items-center gap-3">
             <p className="label shrink-0 lg:me-3">{t("intake.switch")}</p>
-            <div className="grid sm:grid-cols-3 gap-2 flex-1">
+            <div className="grid sm:grid-cols-2 gap-2 flex-1">
               <ChannelButton
                 active={draft.channel === "web"}
                 title={t("intake.channel.web")}
                 note={t("intake.channel.webNote")}
                 icon={<ChatIcon />}
                 onClick={() => patch({ channel: "web" })}
-              />
-              <ChannelButton
-                active={draft.channel === "whatsapp"}
-                title={t("intake.channel.whatsapp")}
-                note={t("intake.channel.whatsappNote")}
-                icon={<span className="text-[#25D366]"><WhatsAppIcon /></span>}
-                onClick={() => patch({ channel: "whatsapp" })}
               />
               <ChannelButton
                 active={draft.channel === "voice"}
@@ -792,6 +804,7 @@ export function GuidedIntake() {
             </div>
           </div>
         </section>
+        )}
 
         {needsFastFinancialAction(draft) && (
           <aside className="mt-5 rounded-card border border-urgent/40 bg-urgent-soft px-5 py-5" role="alert">

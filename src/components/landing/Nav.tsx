@@ -34,6 +34,7 @@ const ALL = [
   { href: "#how", key: "nav.how" },
   { href: "/check", key: "nav.check" },
   { href: "/compare", key: "nav.compare" },
+  { href: "/whatsapp", key: "nav.whatsapp" },
   { href: "/cases", key: "nav.cases" },
   { href: DEMO_CASE_PATH, key: "nav.sample" },
   { href: "#clocks", key: "nav.clocks" },
