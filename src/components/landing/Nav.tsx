@@ -168,7 +168,7 @@ export function Nav() {
 
         <div className="ms-auto flex flex-nowrap items-center gap-1 sm:gap-2.5 shrink-0">
           <LanguageSwitcher compact />
-          <Button href="/assist" size="sm" className="shrink-0">{t("nav.start")}</Button>
+          <Button href="/start" size="sm" className="shrink-0">{t("nav.start")}</Button>
 
           <div className="relative shrink-0">
             <button

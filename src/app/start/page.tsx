@@ -1,10 +1,11 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { StartFlow } from "@/components/start/StartFlow";
 
-/**
- * Compatibility route for old bookmarks. Every new narrative begins in the
- * shared interview so immediate-danger and child-safety gates cannot be
- * bypassed through the legacy free-text screen.
- */
+export const metadata: Metadata = {
+  title: "Start",
+  description: "Two safety questions, then choose how to tell Kavach what happened.",
+};
+
 export default function StartPage() {
-  redirect("/assist");
+  return <StartFlow />;
 }
