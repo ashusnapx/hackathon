@@ -103,7 +103,9 @@ function Field({
 
   return (
     <div>
-      <label htmlFor={id} className="text-sm font-medium">{t(field.label)}</label>
+      <label htmlFor={id} className="text-sm font-medium">
+        {field.labelText ?? (field.label ? t(field.label) : field.id)}
+      </label>
       {field.hint && <p className="mt-0.5 text-xs leading-[1.5] text-ink-3">{t(field.hint)}</p>}
       {field.kind === "textarea"
         ? <textarea {...shared} rows={3} />

@@ -143,6 +143,15 @@ export interface CaseFile {
   /** Evidence Vault — checklist per case, stored locally. Optional for backwards compat. */
   evidence?: EvidenceItem[];
   /**
+   * Answers to blanks that only a draft knew about, keyed by the words it used.
+   *
+   * The letters are written by a model, which invents labels — a hold status,
+   * a recoverable amount — that are real questions but not fields on a case.
+   * Their answers live here so that filling one in survives a reload and a
+   * regenerated draft.
+   */
+  fills?: Record<string, string>;
+  /**
    * The voice call this case was opened from.
    *
    * A real call is held as a server-issued capability and never as a provider

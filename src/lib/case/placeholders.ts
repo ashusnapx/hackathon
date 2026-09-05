@@ -27,7 +27,10 @@ export interface PlaceholderField {
   id: string;
   /** Tested against the bracket's contents, lowercased and space-collapsed. */
   match: RegExp;
-  label: DictKey;
+  /** For a gap we know about, and can therefore name in every language. */
+  label?: DictKey;
+  /** For a gap only this letter knows about: its own words, from its own text. */
+  labelText?: string;
   hint?: DictKey;
   kind: PlaceholderKind;
   read(caseFile: CaseFile): string;
@@ -86,7 +89,7 @@ export const PLACEHOLDER_FIELDS: PlaceholderField[] = [
   },
   {
     id: "ncrpAck",
-    match: /ncrp|cybercrime\.gov\.in|official acknowledgement|portal acknowledgement/,
+    match: /ncrp|cybercrime\.gov\.in|(official|portal) (acknowledgement|complaint)( number| reference)?/,
     label: "fill.ncrpAck",
     hint: "fill.ncrpAck.h",
     kind: "text",
@@ -235,17 +238,59 @@ export function bracketsIn(text: string): string[] {
   return [...new Set(text.match(/\[[^[\]\n]{2,120}\]/g) ?? [])];
 }
 
+/** The verbs a draft puts in front of a blank: "Enter Hold Status". */
+const LABEL_VERB = /^(enter|insert|specify|provide|fill in|fill|input|write|give|mention)\s+/;
+
+/**
+ * A blank the letter names but we do not.
+ *
+ * The model invents labels we will never finish enumerating — one letter asked
+ * for a hold status, a recoverable amount and an investigating officer's action
+ * status, none of which is a field on a case. Treating those as prose left six
+ * inputs missing from the panel and six brackets in a letter somebody was about
+ * to hand to a bank. So an unrecognised label becomes a field of its own, named
+ * after the words the letter used, and its answer is kept on the case.
+ */
+function fieldFromLetter(bracket: string): PlaceholderField {
+  const key = inner(bracket);
+  // Labelled in the letter's own casing, not ours. Lowercasing it first turned
+  // "IO Action Status" into "Io action status", which is how an investigating
+  // officer stops being one.
+  const written = bracket.slice(1, -1).trim().replace(/\s+/g, " ");
+  const words = written.replace(new RegExp(LABEL_VERB.source, "i"), "").trim() || written;
+  return {
+    id: `letter:${key}`,
+    // Never scanned for; built on demand for the bracket that produced it.
+    match: /$^/,
+    labelText: words,
+    kind: words.length > 48 ? "textarea" : "text",
+    read: (caseFile) => caseFile.fills?.[key] ?? "",
+    write: (value, caseFile) => {
+      const fills = { ...caseFile.fills };
+      // An emptied answer is removed rather than stored blank, so a case does
+      // not accumulate the debris of every draft it has ever had.
+      if (value.trim()) fills[key] = value;
+      else delete fills[key];
+      return { fills };
+    },
+  };
+}
+
 export function classifyBracket(bracket: string): Gap {
   const content = inner(bracket);
   const field = PLACEHOLDER_FIELDS.find((candidate) => candidate.match.test(content));
   if (field) return { text: bracket, kind: "field", field };
   if (FOR_OTHERS.test(content)) return { text: bracket, kind: "for-others" };
-  if (READER_NOTE.test(content) || /[.!?]$/.test(content) || content.split(" ").length > 7) {
-    return { text: bracket, kind: "note" };
-  }
-  // An unrecognised short bracket is still a hole in the letter, and saying so
-  // is more use than pretending the draft is finished.
-  return { text: bracket, kind: "note" };
+
+  // A sentence is addressed to the reader; a label is a hole in the form. The
+  // difference decides whether somebody gets an input box or a paragraph to
+  // read, so it is drawn on how the words are written, not on what they mean.
+  const isSentence = READER_NOTE.test(content)
+    || /[.!?]$/.test(content)
+    || content.split(" ").length > 7;
+  if (isSentence) return { text: bracket, kind: "note" };
+
+  return { text: bracket, kind: "field", field: fieldFromLetter(bracket) };
 }
 
 export function readGaps(text: string): Gap[] {
@@ -276,9 +321,13 @@ export function findPlaceholders(text: string): PlaceholderField[] {
   for (const gap of readGaps(text)) {
     if (gap.field && !found.has(gap.field.id)) found.set(gap.field.id, gap.field);
   }
-  return [...found.values()].sort(
-    (a, b) => DISPLAY_ORDER.indexOf(a.id) - DISPLAY_ORDER.indexOf(b.id),
-  );
+  const rank = (id: string) => {
+    const index = DISPLAY_ORDER.indexOf(id);
+    // Gaps the letter named itself come after the ones we know, in the order
+    // the letter asks for them.
+    return index === -1 ? DISPLAY_ORDER.length : index;
+  };
+  return [...found.values()].sort((a, b) => rank(a.id) - rank(b.id));
 }
 
 function asPattern(bracket: string): RegExp {

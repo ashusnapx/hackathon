@@ -119,6 +119,62 @@ describe("brackets the model invents, rather than the ones we wrote", () => {
   });
 });
 
+describe("blanks the letter names and we do not", () => {
+  // From the money-restoration worksheet the model wrote for the sample case.
+  const WORKSHEET = [
+    "[Enter Portal Complaint Number]",
+    "[Enter Hold Status]",
+    "[Enter Recoverable Amount]",
+    "[Enter IO Action Status]",
+    "[Enter Court Requirement Status]",
+    "[Enter Completed Credit Status]",
+  ];
+
+  it("offers every one of them as a field, not as prose to read", () => {
+    // These arrived as six unanswerable "notes" beside a letter somebody was
+    // about to hand to a bank, which is the failure this guards against.
+    expect(WORKSHEET.map((bracket) => classifyBracket(bracket).kind))
+      .toEqual(Array(WORKSHEET.length).fill("field"));
+  });
+
+  it("recognises the portal complaint number as the NCRP acknowledgement", () => {
+    expect(classifyBracket("[Enter Portal Complaint Number]").field?.id).toBe("ncrpAck");
+  });
+
+  it("names the field after the letter's own words, minus the instruction", () => {
+    expect(classifyBracket("[Enter Hold Status]").field?.labelText).toBe("Hold Status");
+    expect(classifyBracket("[Recoverable Amount]").field?.labelText).toBe("Recoverable Amount");
+    // Its casing, not ours: lowercasing turns an investigating officer into Io.
+    expect(classifyBracket("[Enter IO Action Status]").field?.labelText).toBe("IO Action Status");
+  });
+
+  it("keeps the answer on the case, so a reload does not lose it", () => {
+    const field = classifyBracket("[Enter Hold Status]").field!;
+    const answered = { ...blank(), ...field.write("On hold at the beneficiary bank", blank()) };
+    expect(field.read(answered)).toBe("On hold at the beneficiary bank");
+    expect(fillDocument("Status: [Enter Hold Status]", answered))
+      .toBe("Status: On hold at the beneficiary bank");
+  });
+
+  it("forgets an answer that is emptied again", () => {
+    const field = classifyBracket("[Enter Hold Status]").field!;
+    const answered = { ...blank(), ...field.write("On hold", blank()) };
+    const cleared = { ...answered, ...field.write("", answered) };
+    expect(cleared.fills).toEqual({});
+  });
+
+  it("still reads a sentence as a note, however short", () => {
+    expect(classifyBracket("[Please confirm the amount.]").kind).toBe("note");
+    expect(classifyBracket("[Do not copy the total loss unless confirmed]").kind).toBe("note");
+  });
+
+  it("asks for what it knows first, and the letter's own blanks after", () => {
+    const ids = findPlaceholders("[Enter Hold Status] and [your full name]").map((f) => f.id);
+    expect(ids[0]).toBe("name");
+    expect(ids[1]).toMatch(/^letter:/);
+  });
+});
+
 describe("reading brackets out of a draft", () => {
   it("does not mistake a line of the letter for a gap", () => {
     expect(bracketsIn("Enclosures: statement, screenshots.")).toEqual([]);
