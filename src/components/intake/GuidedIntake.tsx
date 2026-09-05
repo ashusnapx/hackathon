@@ -54,6 +54,7 @@ import {
 } from "@/lib/integrations/vaani-client";
 import Image from "next/image";
 import { LiveVoiceCall } from "@/components/intake/LiveVoiceCall";
+import { mapVaaniCall } from "@/lib/intake/from-vaani";
 import {
   WhatsAppBubble,
   WhatsAppComposer,
@@ -184,6 +185,62 @@ export function GuidedIntake() {
     patch(value);
   }, [patch]);
 
+  /**
+   * Fill the case from the call, and ask the model only for the gaps.
+   *
+   * Vaani has already returned the amount, the bank, the UPI id, the reference
+   * and a written chronology. Re-deriving those from the transcript would be
+   * slower, cost a request, and give a second chance to be wrong — so they are
+   * taken as they are, and the model is called only when the category or the
+   * English account is missing.
+   */
+  const applyCallFacts = useCallback(async (token: string) => {
+    setBusy(true);
+    try {
+      const response = await fetch("/api/vaani/outcome", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      if (!response.ok) return false;
+      const data = await response.json() as { extracted?: Record<string, unknown> };
+      if (!data.extracted || !Object.keys(data.extracted).length) return false;
+
+      const facts = mapVaaniCall(data.extracted);
+      if (facts.needsModel || !facts.triage.categoryId) return false;
+
+      setDraft((current) => ({
+        ...current,
+        moneyMoved: facts.moneyMoved ?? current.moneyMoved,
+        transactionInitiation: facts.transactionInitiation ?? current.transactionInitiation,
+        bankName: facts.bankName ?? current.bankName,
+        state: facts.state ?? current.state,
+        district: facts.district ?? current.district,
+        analysis: {
+          triage: {
+            categoryId: facts.triage.categoryId!,
+            subcategoryId: facts.triage.subcategoryId,
+            confidence: facts.triage.confidence ?? 0.6,
+            amount: facts.triage.amount,
+            incidentAt: facts.triage.incidentAt,
+            englishNarrative: facts.triage.englishNarrative,
+            applicableTracks: facts.triage.applicableTracks ?? [],
+            urgency: facts.triage.urgency ?? "moderate",
+          },
+          entities: facts.entities,
+          source: "vaani",
+        },
+        analysisConfirmed: false,
+      }));
+      setPersistence("saving");
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
   const analyse = useCallback(async () => {
     const narrative = draft.narrative.trim();
     if (narrative.length < 25) {
@@ -279,6 +336,7 @@ export function GuidedIntake() {
         ? [{ amount: analysis.triage.amount, ref: analysis.entities.refs[0], at: incidentAt }]
         : [],
       victim: { state: draft.state, district: draft.district, ageContext: draft.childContext },
+      ...(draft.bankName ? { bank: { name: draft.bankName } } : {}),
       suspect: {
         phones: analysis.entities.phones,
         upiIds: analysis.entities.upiIds,
@@ -426,7 +484,13 @@ export function GuidedIntake() {
               // transcript used to end on a sentence pointing at facts that were
               // not on screen. Hand back to the chat, where the story now sits
               // ready to be read and confirmed.
-              onAccepted={() => patch({ channel: "web" })}
+              onAccepted={(token) => {
+                patch({ channel: "web" });
+                // The provider's own extraction first. If it cannot supply a
+                // category or an English account, the interview simply asks the
+                // model on the next step, as it always did.
+                if (token) void applyCallFacts(token);
+              }}
               onTranscript={appendNarrative}
               t={t}
               unlocked={voiceGateComplete}
@@ -706,7 +770,11 @@ function StepControls({
         <div className="flex items-center justify-between gap-3">
           <p className="label">{t("intake.verifySub")}</p>
           <span className="text-xs text-ink-3 rounded-full border border-rule px-2 py-1">
-            {draft.analysis.source === "openai" ? t("intake.sourceModel") : t("intake.sourceRules")}
+            {draft.analysis.source === "vaani"
+              ? t("intake.sourceCall")
+              : draft.analysis.source === "openai"
+                ? t("intake.sourceModel")
+                : t("intake.sourceRules")}
           </span>
         </div>
         <div className="mt-4 grid sm:grid-cols-2 gap-4">
@@ -1078,8 +1146,9 @@ function VaaniPanel({
   safetyAnswer?: string;
   childContext?: string;
   onTranscript: (text: string) => void;
-  /** Called once the caller has approved their own words. */
-  onAccepted: () => void;
+  /** Called once the caller has approved their own words, with the capability
+   *  that can fetch what the provider already extracted. */
+  onAccepted: (transcriptToken: string | null) => void;
   t: T;
   unlocked: boolean;
 }) {
@@ -1186,7 +1255,7 @@ function VaaniPanel({
     const reviewed = stagedTranscript.replace(/\s+/g, " ").trim();
     if (!reviewed) return;
     onTranscript(reviewed);
-    onAccepted();
+    onAccepted(transcriptToken);
     if (requestIdRef.current) {
       writeStoredVaaniSession({
         version: 1,

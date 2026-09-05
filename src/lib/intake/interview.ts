@@ -29,7 +29,8 @@ export type EvidenceKind =
 export interface IntakeAnalysis {
   triage: Triage;
   entities: Entities;
-  source: "openai" | "rules";
+  /** "vaani" means the facts came from the call itself, not from a model reading it. */
+  source: "openai" | "rules" | "vaani";
 }
 
 export interface IntakeDraft {
@@ -47,6 +48,8 @@ export interface IntakeDraft {
   /** Exact receipt time of the bank's transaction communication, if known. */
   bankAlertAt?: string;
   narrative: string;
+  /** Named by the caller on the call; drives the bank and RBI tracks. */
+  bankName?: string;
   analysis?: IntakeAnalysis;
   analysisConfirmed: boolean;
   /** Material facts for the RBI unauthorised-transaction screening. */
