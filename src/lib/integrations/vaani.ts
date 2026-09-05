@@ -586,6 +586,23 @@ export function resetVaaniPrototypeStateForTests(): void {
 // — dialling a number that may not be safe to answer, and leaving voicemail.
 
 const CONSENT_POLICY_VERSION_FALLBACK = "prototype-unversioned";
+
+/**
+ * The first thing a caller hears, in their own language.
+ *
+ * Short on purpose: identity and "is it safe to speak" are the only parts that
+ * cannot wait. The agent takes consent and lists the commands once the caller
+ * has answered, rather than spending their first fifteen seconds on disclosures
+ * they already read on the website.
+ */
+const GREETINGS: Record<string, string> = {
+  en: "Hello, I'm Kavach Saathi, an AI assistant from Kavach — not the police or government. Is it safe for you to speak right now?",
+  hi: "नमस्ते, मैं कवच साथी हूँ — कवच की AI सहायक, पुलिस या सरकार नहीं। क्या अभी बात करना सुरक्षित है?",
+};
+
+export function vaaniGreeting(language: string): string {
+  return GREETINGS[language] ?? GREETINGS.en;
+}
 const CASE_REFERENCE_PATTERN = /^KVC-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
 const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9._-]{16,2048}$/;
 const CALL_ID_PATTERN = /^[A-Za-z0-9_-]{6,160}$/;
@@ -743,6 +760,7 @@ export async function startVaaniBrowserCall(context: VaaniCallContext): Promise<
       // The agent is configured for one target language; the caller chose their
       // own. Sending it per call is what stops a Hindi voice reading English.
       primary_language: context.language,
+      welcome_message: vaaniGreeting(context.language),
       welcome_interruptible: true,
       metadata: buildVaaniCallMetadata({ ...context, channel: "webrtc" }),
     }),

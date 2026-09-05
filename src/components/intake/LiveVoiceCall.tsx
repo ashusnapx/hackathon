@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { writeStoredVaaniSession } from "@/lib/integrations/vaani-client";
 import { parseCaption, type Caption } from "@/lib/integrations/vaani-captions";
 import { useT } from "@/lib/i18n/context";
+import { LANGUAGES } from "@/lib/i18n/languages";
 
 type Phase = "idle" | "connecting" | "live" | "ended" | "error";
 type Failure = "connect" | "microphone";
@@ -25,6 +26,7 @@ export function LiveVoiceCall({
   onTranscriptToken,
   onCallEnded,
 }: {
+  /** The site language, used only to order the picker. */
   language: string;
   caseReference?: string;
   /** Handed up so the panel can offer the transcript for review afterwards. */
@@ -33,6 +35,15 @@ export function LiveVoiceCall({
 }) {
   const t = useT();
   const [phase, setPhase] = useState<Phase>("idle");
+  const [picking, setPicking] = useState(false);
+  const [showAllLanguages, setShowAllLanguages] = useState(false);
+
+  // The language they are already reading the site in comes first; the rest keep
+  // the picker's own order, which is by number of speakers.
+  const ordered = [
+    ...LANGUAGES.filter((option) => option.code === language),
+    ...LANGUAGES.filter((option) => option.code !== language),
+  ];
   const [failure, setFailure] = useState<Failure>("connect");
   const [captions, setCaptions] = useState<Caption[]>([]);
   const [muted, setMuted] = useState(false);
@@ -49,8 +60,9 @@ export function LiveVoiceCall({
 
   useEffect(() => teardown, [teardown]);
 
-  const start = async () => {
+  const start = async (spokenLanguage: string) => {
     if (phase === "connecting" || phase === "live") return;
+    setPicking(false);
     setPhase("connecting");
     setCaptions([]);
     try {
@@ -58,7 +70,7 @@ export function LiveVoiceCall({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          language,
+          language: spokenLanguage,
           ...(caseReference ? { caseReference } : {}),
           // Starting the call is the consent: the line above the button states
           // that Vaani processes and records it, and Kavach Saathi confirms
@@ -164,7 +176,7 @@ export function LiveVoiceCall({
       {/* One control, the size of a thumb. Tapping it starts the conversation. */}
       <div className="mt-4 flex flex-col items-center text-center">
         <button
-          onClick={phase === "live" ? end : start}
+          onClick={phase === "live" ? end : () => setPicking(true)}
           disabled={phase === "connecting"}
           aria-label={phase === "live" ? t("intake.vaaniBrowserEnd") : t("intake.vaaniBrowserOpen")}
           className={cn(
@@ -201,6 +213,35 @@ export function LiveVoiceCall({
         <p role="alert" className="mt-2 text-sm text-urgent-ink">
           {failure === "microphone" ? t("intake.vaaniBrowserMicDenied") : t("intake.vaaniBrowserError")}
         </p>
+      )}
+
+      {picking && (
+        <div className="mt-4 rounded-ctl border border-rule-strong bg-surface px-4 py-4 text-start">
+          <p className="text-[0.9375rem] font-semibold">{t("intake.vaaniLangQ")}</p>
+          <p className="mt-1 text-xs leading-[1.55] text-ink-3">{t("intake.vaaniLangSub")}</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {(showAllLanguages ? ordered : ordered.slice(0, 8)).map((option) => (
+              <button
+                key={option.code}
+                onClick={() => void start(option.code)}
+                className="min-h-12 rounded-ctl border border-rule-strong bg-raised px-3 py-2 text-start hover:border-ink transition-colors"
+              >
+                <span className="block text-[0.9375rem] font-medium leading-tight">{option.endonym}</span>
+                <span className="block text-[0.6875rem] text-ink-3 leading-tight mt-0.5">{option.english}</span>
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 flex items-center gap-4">
+            {!showAllLanguages && (
+              <button onClick={() => setShowAllLanguages(true)} className="text-sm font-medium underline underline-offset-4">
+                {t("intake.vaaniLangMore")}
+              </button>
+            )}
+            <button onClick={() => setPicking(false)} className="text-sm text-ink-3 underline underline-offset-4">
+              {t("intake.vaaniLangCancel")}
+            </button>
+          </div>
+        </div>
       )}
 
       {captions.length > 0 && (

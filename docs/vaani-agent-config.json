@@ -12,14 +12,19 @@
     "name": "Kavach Saathi",
     "service": "Kavach",
     "targetLanguage": "hi",
-    "welcomeMessage": "Hello, I'm Kavach Saathi, an AI voice assistant from Kavach, an independent support service—not the police or government. This call uses Vaani for voice processing. Is it safe for you to speak right now? You can say stop, skip, repeat, human or end call at any point.",
+    "welcomeMessage": "नमस्ते, मैं कवच साथी हूँ — कवच की AI सहायक, पुलिस या सरकार नहीं। क्या अभी बात करना सुरक्षित है?",
     "greeting": {
       "interruptible": true,
       "letUserSpeakFirst": false,
       "note": "The disclosure must be spoken before anything else, so the agent speaks first; the caller may still interrupt it."
     },
-    "welcomeNote": "The greeting no longer names the case reference. A live call proved that with {{case_id}} empty the agent said \"helping you with .\" out loud — and the reference is not what a frightened caller needs in the first sentence. The prompt still receives it and uses it when it is present.",
-    "perCallLanguage": "primary_language is sent per call from the language the caller chose on the website, so a Hindi caller is not read English text by a Hindi voice."
+    "welcomeNote": "Two sentences, in the agent's target language. A live call proved that the per-call welcome_message sent with trigger-call is ignored for the WebRTC medium: a Hindi caller still heard the configured English greeting, then the agent switched to Hindi on its own. Since the target language is Hindi, the configured greeting is Hindi; the prompt still tells the agent to continue in whatever language the caller uses.",
+    "perCallLanguage": "primary_language is sent per call from the language the caller chose on the website, so a Hindi caller is not read English text by a Hindi voice.",
+    "welcomeByLanguage": {
+      "en": "Hello, I'm Kavach Saathi, an AI assistant from Kavach — not the police or government. Is it safe for you to speak right now?",
+      "hi": "नमस्ते, मैं कवच साथी हूँ — कवच की AI सहायक, पुलिस या सरकार नहीं। क्या अभी बात करना सुरक्षित है?",
+      "_note": "Sent per call as welcome_message, so a Hindi caller is greeted in Hindi instead of hearing English words in a Hindi voice."
+    }
   },
   "dynamicVariables": [
     {
