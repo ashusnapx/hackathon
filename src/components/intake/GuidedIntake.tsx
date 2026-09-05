@@ -806,7 +806,14 @@ export function GuidedIntake() {
           </aside>
         )}
 
-        <div className="mt-7 grid lg:grid-cols-2 gap-6 lg:items-start">
+        {/* Two columns of equal weight for the chat, because the case file
+            beside it is the other half of the conversation. The voice channel
+            keeps the wide column it had: it is a microphone, and a form of
+            twenty boxes next to "just talk" argues against the whole idea. */}
+        <div className={cn(
+          "mt-7 grid gap-6 lg:items-start",
+          voiceOnly ? "lg:grid-cols-[minmax(0,1fr)_19rem]" : "lg:grid-cols-2",
+        )}>
           {voiceOnly ? (
             <VaaniPanel
               language={lang.code}
@@ -991,14 +998,16 @@ export function GuidedIntake() {
           )}
 
           <aside className="no-scrollbar lg:sticky lg:top-28 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto space-y-4 lg:pb-4">
-            <CaseForm
-              draft={draft}
-              patch={patch}
-              updateTriage={updateTriage}
-              updateEntity={updateEntity}
-              asking={detail?.id}
-              t={t}
-            />
+            {!voiceOnly && (
+              <CaseForm
+                draft={draft}
+                patch={patch}
+                updateTriage={updateTriage}
+                updateEntity={updateEntity}
+                asking={detail?.id}
+                t={t}
+              />
+            )}
             <div className="px-1 text-sm text-ink-3 space-y-2">
               {voiceGateComplete && (
                 <button
