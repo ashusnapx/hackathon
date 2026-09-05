@@ -23,31 +23,46 @@ import { cn } from "@/lib/utils";
  * people will actually use — which is the whole argument this product makes.
  * On a real phone the frame is dropped: you are already holding one.
  */
+/**
+ * The handset, from a small tablet up — and nothing at all below that.
+ *
+ * On a phone this was drawing a picture of a phone inside a phone, at a third
+ * of the width, with the conversation clipped to a fixed height that nothing
+ * could scroll. The frame is decoration in service of an idea ("this is what
+ * it looks like on WhatsApp"), and on a phone the idea needs no help: the chat
+ * simply fills the screen and the page scrolls, which is what the real app
+ * does. So every fixed dimension here starts at `sm`.
+ */
 export function PhoneFrame({ children, statusTime }: { children: React.ReactNode; statusTime: string }) {
   return (
     <div
-      className="relative sm:mx-auto"
-      style={{
+      className={cn(
+        // min-w-0: this is a grid item, and a grid item refuses to shrink below
+        // its content unless told to. Without it a long bubble pushes the whole
+        // page sideways on a narrow screen.
+        "relative w-full min-w-0",
         // iPhone 17 Pro Max is 440 x 956 points. The floor keeps a short laptop
         // window from rendering a sliver, and is low enough that the handset
         // still fits without the page itself having to scroll.
-        height: "clamp(540px, 80vh, 956px)",
-        width: "min(440px, calc(clamp(540px, 80vh, 956px) * 440 / 956))",
-        maxWidth: "100%",
-      }}
+        "sm:mx-auto sm:max-w-full",
+        "sm:[height:clamp(540px,80vh,956px)]",
+        "sm:[width:min(440px,calc(clamp(540px,80vh,956px)*440/956))]",
+      )}
     >
       {/* Titanium body: a flat rounded rectangle reads as a wireframe, so the
           frame gets an edge highlight, a darker core and real side buttons. */}
-      <div className="absolute inset-0 rounded-[3.1rem] bg-gradient-to-br from-[#6f6f76] via-[#26262a] to-[#5b5b62] shadow-[0_45px_90px_-35px_rgba(11,20,26,0.75)]" aria-hidden />
-      <div className="absolute inset-[3px] rounded-[3rem] bg-[#111114]" aria-hidden />
+      <div className="hidden sm:block absolute inset-0 rounded-[3.1rem] bg-gradient-to-br from-[#6f6f76] via-[#26262a] to-[#5b5b62] shadow-[0_45px_90px_-35px_rgba(11,20,26,0.75)]" aria-hidden />
+      <div className="hidden sm:block absolute inset-[3px] rounded-[3rem] bg-[#111114]" aria-hidden />
 
-      <span className="absolute -left-[2px] top-[19%] h-7 w-[3px] rounded-l-sm bg-gradient-to-b from-[#7b7b82] to-[#3f3f45]" aria-hidden />
-      <span className="absolute -left-[2px] top-[27%] h-12 w-[3px] rounded-l-sm bg-gradient-to-b from-[#7b7b82] to-[#3f3f45]" aria-hidden />
-      <span className="absolute -left-[2px] top-[37%] h-12 w-[3px] rounded-l-sm bg-gradient-to-b from-[#7b7b82] to-[#3f3f45]" aria-hidden />
-      <span className="absolute -right-[2px] top-[30%] h-16 w-[3px] rounded-r-sm bg-gradient-to-b from-[#7b7b82] to-[#3f3f45]" aria-hidden />
+      <span className="hidden sm:block absolute -left-[2px] top-[19%] h-7 w-[3px] rounded-l-sm bg-gradient-to-b from-[#7b7b82] to-[#3f3f45]" aria-hidden />
+      <span className="hidden sm:block absolute -left-[2px] top-[27%] h-12 w-[3px] rounded-l-sm bg-gradient-to-b from-[#7b7b82] to-[#3f3f45]" aria-hidden />
+      <span className="hidden sm:block absolute -left-[2px] top-[37%] h-12 w-[3px] rounded-l-sm bg-gradient-to-b from-[#7b7b82] to-[#3f3f45]" aria-hidden />
+      <span className="hidden sm:block absolute -right-[2px] top-[30%] h-16 w-[3px] rounded-r-sm bg-gradient-to-b from-[#7b7b82] to-[#3f3f45]" aria-hidden />
 
-      <div className="absolute inset-[10px] rounded-[2.65rem] overflow-hidden bg-white flex flex-col">
-        <div className="relative shrink-0 bg-[#008069] text-white">
+      <div className="rounded-card border border-rule sm:border-0 sm:absolute sm:inset-[10px] sm:rounded-[2.65rem] overflow-hidden bg-white flex flex-col">
+        {/* The status bar belongs to the drawing of a phone. A real one already
+            has its own, an inch above this. */}
+        <div className="hidden sm:block relative shrink-0 bg-[#008069] text-white">
           <div className="flex items-center justify-between px-7 pt-2.5 pb-1 text-[0.8125rem] font-semibold">
             <span className="tabular-nums">{statusTime}</span>
             <span className="flex items-center gap-1.5" aria-hidden>

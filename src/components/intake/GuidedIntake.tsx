@@ -756,7 +756,7 @@ export function GuidedIntake() {
             {whatsapp && (
               <WhatsAppComposer
                 attachmentNote={t("intake.waAttachLater")}
-                hideCamera={step === "story" && Boolean(draft.narrative.trim())}
+                hideCamera={step === "story"}
                 suggestions={CHIP_STEPS.has(step) ? controls : undefined}
                 input={step === "story" ? controls : (
                   <p className="text-[0.9375rem] leading-[1.4] text-[#8696a0] truncate">
@@ -764,11 +764,12 @@ export function GuidedIntake() {
                   </p>
                 )}
                 trailing={step === "story" ? (
-                  // WhatsApp's own rule: a microphone until there is something
-                  // to send, then a send button in the same place.
-                  draft.narrative.trim() ? (
-                    <WhatsAppSendButton onClick={analyse} disabled={busy} label={t("intake.waSend")} />
-                  ) : (
+                  // WhatsApp swaps the microphone for send the moment you type,
+                  // which assumes you know the button was ever there. This is
+                  // built for people who have not used a chatbot before, so
+                  // both stay on screen and send simply waits until there is
+                  // something to send.
+                  <div className="flex items-center gap-1.5">
                     <VoiceInput
                       variant="compact"
                       disabled={busy}
@@ -778,7 +779,12 @@ export function GuidedIntake() {
                         analysisConfirmed: false,
                       })}
                     />
-                  )
+                    <WhatsAppSendButton
+                      onClick={analyse}
+                      disabled={busy || !draft.narrative.trim()}
+                      label={t("intake.waSend")}
+                    />
+                  </div>
                 ) : undefined}
               />
             )}

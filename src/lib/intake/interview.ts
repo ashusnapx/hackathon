@@ -103,6 +103,34 @@ export function emptyIntake(channel: IntakeChannel = "web"): IntakeDraft {
   };
 }
 
+/**
+ * The draft that pressing Start produces.
+ *
+ * Built from empty every time, on purpose. It used to be patched onto whatever
+ * was already stored, so that somebody who had typed their account and pressed
+ * Start again did not lose it — but the cost was that every new report began
+ * carrying the last one's narrative, its extracted amount and its bank. "Start"
+ * has to mean start; a half-finished interview is resumable from the same
+ * screen it was abandoned on, without being inherited by the next person to use
+ * the phone.
+ */
+export function freshStartDraft(
+  channel: IntakeChannel,
+  answers: { safety?: SafetyAnswer; childContext?: ChildContext },
+  now = new Date(),
+): IntakeDraft {
+  const { safety, childContext } = answers;
+  return {
+    ...emptyIntake(channel),
+    acceptedBoundaries: true,
+    safety,
+    safetyCheckedAt: now.toISOString(),
+    emergencyAcknowledged: safety && safety !== "safe" ? true : undefined,
+    childContext,
+    childSafetyAcknowledged: childContext && childContext !== "adult-or-no-child" ? true : undefined,
+  };
+}
+
 /** One shared definition for every route that can accept a victim narrative. */
 export const SAFETY_GATE_TTL_MS = 30 * 60 * 1000;
 

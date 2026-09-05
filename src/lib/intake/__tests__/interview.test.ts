@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   emptyIntake,
   evidenceIdsFor,
+  freshStartDraft,
   hasCompletedSafetyGate,
   hasCurrentSafetyAnswer,
   intakeProgress,
@@ -9,6 +10,7 @@ import {
   nextIntakeStep,
   timingEstimate,
   victimTurnsFromTranscript,
+  type IntakeDraft,
 } from "../interview";
 
 describe("adaptive intake interview", () => {
@@ -163,5 +165,47 @@ describe("keeping only what the caller said", () => {
     expect(kept).not.toContain("how can I help");
     expect(kept).not.toContain("interrupted");
     expect(kept).not.toMatch(/\[\d{1,2}:\d{2}/);
+  });
+});
+
+describe("pressing Start", () => {
+  it("carries nothing of the last report into the next one", () => {
+    const abandoned: IntakeDraft = {
+      ...emptyIntake("web"),
+      narrative: "I lost twelve thousand rupees to a fake delivery link.",
+      callerName: "Someone Else",
+      bankName: "HDFC",
+      state: "Karnataka",
+      moneyMoved: "yes",
+      analysisConfirmed: true,
+      evidence: ["transaction"],
+      files: [{ name: "screenshot.png", size: 1, type: "image/png" }],
+    };
+
+    const fresh = freshStartDraft("whatsapp", { safety: "safe", childContext: "adult-or-no-child" });
+
+    // Nothing from the abandoned interview may reappear: the next person to
+    // pick up this phone must not be handed the last one's fraud.
+    for (const key of Object.keys(abandoned) as (keyof IntakeDraft)[]) {
+      if (["version", "channel", "acceptedBoundaries", "analysisConfirmed", "rbiAssessmentReviewed", "routingAnswered", "narrative", "files"].includes(key)) continue;
+      expect(fresh[key]).toBeUndefined();
+    }
+    expect(fresh.narrative).toBe("");
+    expect(fresh.files).toEqual([]);
+    expect(fresh.channel).toBe("whatsapp");
+  });
+
+  it("keeps the two answers the front door just asked for", () => {
+    const fresh = freshStartDraft("voice", { safety: "safe", childContext: "adult-or-no-child" });
+    expect(fresh.acceptedBoundaries).toBe(true);
+    expect(fresh.safety).toBe("safe");
+    expect(fresh.childContext).toBe("adult-or-no-child");
+    expect(hasCompletedSafetyGate(fresh)).toBe(true);
+  });
+
+  it("acknowledges the emergency route for anyone who did not answer safe", () => {
+    expect(freshStartDraft("voice", { safety: "danger", childContext: "adult-or-no-child" }).emergencyAcknowledged).toBe(true);
+    expect(freshStartDraft("voice", { safety: "safe", childContext: "child-other" }).childSafetyAcknowledged).toBe(true);
+    expect(freshStartDraft("voice", { safety: "safe", childContext: "adult-or-no-child" }).emergencyAcknowledged).toBeUndefined();
   });
 });

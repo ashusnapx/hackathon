@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
-import { emptyIntake, type ChildContext, type IntakeDraft, type SafetyAnswer } from "@/lib/intake/interview";
-import { loadBrowserIntakeDraft, saveBrowserIntakeDraft } from "@/lib/intake/persistence";
+import { freshStartDraft, type ChildContext, type SafetyAnswer } from "@/lib/intake/interview";
+import { saveBrowserIntakeDraft } from "@/lib/intake/persistence";
+import { clearStoredVaaniSession } from "@/lib/integrations/vaani-client";
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 
@@ -37,20 +38,11 @@ export function StartFlow() {
   };
 
   const begin = (channel: "voice" | "whatsapp") => {
-    // Patched onto any existing draft rather than replacing it: someone who
-    // already typed their account should not lose it by pressing Start again.
-    const existing = loadBrowserIntakeDraft().draft;
-    const draft: IntakeDraft = {
-      ...(existing ?? emptyIntake(channel)),
-      channel,
-      acceptedBoundaries: true,
-      safety,
-      safetyCheckedAt: new Date().toISOString(),
-      emergencyAcknowledged: safety !== "safe" ? true : undefined,
-      childContext,
-      childSafetyAcknowledged: childContext && childContext !== "adult-or-no-child" ? true : undefined,
-    };
-    saveBrowserIntakeDraft(draft);
+    // Nothing of the last report comes with them: not the narrative, not the
+    // extracted facts, and not the receipt for a previous voice call — which
+    // would otherwise offer a stranger's transcript to import.
+    saveBrowserIntakeDraft(freshStartDraft(channel, { safety, childContext }));
+    clearStoredVaaniSession();
     router.push("/assist");
   };
 
