@@ -1,219 +1,144 @@
 {
-  "callId": "webrtc-1788582819-31b61fa4",
+  "callId": "webrtc-1788586041-d3cb642c",
   "fetchedAt": "2026-09-05",
   "turns": [
     {
-      "agent": false,
-      "text": "मेरे साथ एक UPI fraud हुआ है. दस हज़ार रुपए का. Instagram पर.",
-      "at": "04:34:04"
-    },
-    {
       "agent": true,
-      "text": "नमस्ते, मैं कवच साथी हूँ, एक एआई सहायक। मैं पुलिस या सरकारी सेवा नहीं हूँ। कृपया मुझे विस्तार से बताएं कि क्या हुआ था?",
-      "at": "04:34:18"
+      "text": "Hello, I am Kavach Saathi, an AI assistant from Kavach — not the police or government, Please tell me what happened,",
+      "at": "05:27:48"
     },
     {
       "agent": false,
-      "text": "मुझे एक आदमी reach out किया पर और उसने बोला कि आप मुझे दस हज़ार दोगे तो मैं उसका बीस हज़ार कर दूंगा. So money double करने का बात किया था, but पैसा देने के बाद उसने मुझे block कर दिया है.",
-      "at": "04:34:33"
+      "text": "I am facing a online fraud that I have did a transaction day before yesterday, which got failed. But then the person in front is asking me again for the money. It was around 10000 rupees, 2 days back.",
+      "at": "05:27:53"
     },
     {
       "agent": true,
-      "text": "यह सुनकर बहुत दुख हुआ। चूंकि यह पैसे का मामला है, अगर यह पिछले 24 घंटों के भीतर हुआ है, तो आप तुरंत 1930 पर कॉल करें और अपने बैंक को भी इसकी सूचना दें। क्या आप बता सकते हैं कि यह घटना कब हुई थी?",
-      "at": "04:34:38"
+      "text": "I am sorry to hear that. First, what may I call you?",
+      "at": "05:27:57"
     },
     {
       "agent": false,
-      "text": "यह घटना हुई थी चार सौ दो हज़ार छब्बीस को.",
-      "at": "04:34:44"
+      "text": "प्रणव,",
+      "at": "05:28:15"
     },
     {
       "agent": true,
-      "text": "क्या आप तारीख दोबारा बता सकते हैं? क्या यह इसी साल चार फरवरी को हुआ था?",
-      "at": "04:34:53"
+      "text": "Thank you, Pranav. Since this happened very recently, please call 1930 and your bank's fraud number as soon as this call ends, or right now if you prefer. To help me understand, how did you try to send this 10,000 rupees—was it through an app, a card, or",
+      "at": "05:28:16"
     },
     {
       "agent": false,
-      "text": "नहीं नहीं 04/09/2026.",
-      "at": "04:35:02"
-    },
-    {
-      "agent": true,
-      "text": "अच्छा, यानी कल ही, 4 सितंबर 2026 को। क्या आप बता सकते हैं कि आपने यह पैसे किस ऐप या बैंक के ज़रिए भेजे थे?",
-      "at": "04:35:09"
+      "text": "भाई,",
+      "at": "05:28:19"
     },
     {
       "agent": false,
-      "text": "Paytm app से और bank था HDFC.",
-      "at": "04:35:13"
+      "text": "Sorry, buy card.",
+      "at": "05:28:28"
     },
     {
       "agent": true,
-      "text": "Paytm से HDFC बैंक के ज़रिए। क्या आपको उस ट्रांजैक्शन का कोई",
-      "at": "04:35:13"
+      "text": "Got it, Pranav. You tried to send the money by card. Did you receive any transaction reference number or message when the transaction failed?",
+      "at": "05:28:33"
     },
     {
       "agent": false,
-      "text": "जी.",
-      "at": "04:35:19"
+      "text": "Yeah, I have the documents. I have the screenshot.",
+      "at": "05:28:40"
     },
     {
       "agent": true,
-      "text": "क्या आपको उस ट्रांजैक्शन का कोई रेफरेंस नंबर या यूपीआई ट्रांजैक्शन आईडी याद है?",
-      "at": "04:35:25"
+      "text": "Great, having those screenshots will be helpful. Did the person asking for the money contact you through a specific number, email, or app?",
+      "at": "05:28:44"
     },
     {
       "agent": false,
-      "text": "हां हां, वह है 64321. Reference number.",
-      "at": "04:35:36"
+      "text": "Contacted me through email.",
+      "at": "05:28:53"
     },
     {
       "agent": true,
-      "text": "ठीक है, रेफरेंस नंबर 64321 है। क्या आपने पैसे भेजने के लिए कोई क्यूआर कोड स्कैन किया था, यूपीआई पिन डाला था, या कोई और तरीका इस्तेमाल किया था?",
-      "at": "04:35:43"
+      "text": "Thank you for sharing that, Pranav. Keep those emails as evidence. Is there anything else you still have, like call logs or other messages, that might help?",
+      "at": "05:28:56"
     },
     {
       "agent": false,
-      "text": "उन्होंने मुझे अपना UPI ID भेजा था. UPI ID था scammer at the rate 12345.",
-      "at": "04:35:51"
+      "text": "No, nothing of that's all.",
+      "at": "05:29:03"
     },
     {
       "agent": true,
-      "text": "ठीक है, आपने उनकी यूपीआई आईडी scammer@12345 पर पैसे भेजे। क्या आपने पैसे भेजने के लिए अपना यूपीआई पिन दर्ज किया था?",
-      "at": "04:35:54"
+      "text": "Alright, Pranav. Have you already contacted your bank or reported this to cybercrime.gov.in or the police?",
+      "at": "05:29:08"
     },
     {
       "agent": false,
-      "text": "Yes yes.",
-      "at": "04:36:01"
+      "text": "No no no steps has been taken till now. That's why I have come to the steps.",
+      "at": "05:29:18"
     },
     {
       "agent": true,
-      "text": "ठीक है। क्या उस व्यक्ति ने आपसे इंस्टाग्राम के अलावा किसी और नंबर या ऐप पर भी संपर्क किया था?",
-      "at": "04:36:03"
+      "text": "Understood, Pranav. Please make sure to report this to your bank and on cybercrime.gov.in as soon as possible. It's important to take these steps quickly. What would you like to happen next?",
+      "at": "05:29:25"
     },
     {
       "agent": false,
-      "text": "नहीं,",
-      "at": "04:36:08"
+      "text": "Nothing less. To take my money back into my account.",
+      "at": "05:29:36"
     },
     {
       "agent": true,
-      "text": "ठीक है, सिर्फ इंस्टाग्राम पर ही बात हुई थी। क्या आपके पास इस",
-      "at": "04:36:09"
+      "text": "I understand, Pranav. While I can't promise recovery, reporting to your bank and cybercrime.gov.in is the best step to take for a chance at getting your money back. Is there anything else you need help with?",
+      "at": "05:29:38"
     },
     {
       "agent": false,
-      "text": "हां,",
-      "at": "04:36:14"
+      "text": "No no, thank you.",
+      "at": "05:29:47"
     },
     {
       "agent": true,
-      "text": "जी, क्या आपके पास इस बातचीत के स्क्रीनशॉट या कोई और सबूत सुरक्षित हैं?",
-      "at": "04:36:18"
-    },
-    {
-      "agent": false,
-      "text": "हां हां, सब screenshots हैं मेरे पास.",
-      "at": "04:36:28"
-    },
-    {
-      "agent": true,
-      "text": "यह बहुत अच्छी बात है कि आपके पास स्क्रीनशॉट हैं। क्या आपने इस बारे में पहले ही 1930, अपने बैंक, या cybercrime.gov.in पर कोई शिकायत दर्ज कराई है?",
-      "at": "04:36:34"
-    },
-    {
-      "agent": false,
-      "text": "जी मैंने बस 19 30 पर complaint किया है. उसके आगे steps बचे हुए हैं.",
-      "at": "04:36:41"
-    },
-    {
-      "agent": true,
-      "text": "यह बहुत अच्छा किया कि आपने 1930 पर शिकायत कर दी है। क्या आप अपना राज्य और जिला बता सकते हैं?",
-      "at": "04:36:45"
-    },
-    {
-      "agent": false,
-      "text": "कर्नाटका, बैंगलोर.",
-      "at": "04:36:50"
-    },
-    {
-      "agent": true,
-      "text": "ठीक है, कर्नाटक, बैंगलोर। अब आप इस मामले में आगे क्या सहायता चाहते हैं?",
-      "at": "04:36:59"
-    },
-    {
-      "agent": false,
-      "text": "जी मैं चाहता हूं कि जितने भी आगे के steps हों वह काम कर जाए. और मेरा पैसा मुझे वापस मिल जाए.",
-      "at": "04:37:28"
-    },
-    {
-      "agent": true,
-      "text": "मैं समझ सकता हूँ कि आप अपना पैसा वापस पाना चाहते हैं, लेकिन मैं आपको बता दूँ कि हम पैसे वापस दिलाने या फ्रीज करने का कोई वादा नहीं कर सकते। जो जानकारी आपने दी है, उसके अनुसार: कल, 4 सितंबर 2026 को इंस्टाग्राम पर पैसे दोगुने करने के झांसे में आकर आपने Paytm (HDFC बैंक) से scammer@12345 पर ₹10,000 भेजे। आपने अपना यूपीआई पिन डाला था और आपके पास स्क्रीनशॉट सुरक्षित हैं। आपने 1930 पर शिकायत दर्ज करा दी है। आप कर्नाटक, बैंगलोर से हैं। क्या इस जानकारी में कुछ सुधार करना है?",
-      "at": "04:37:31"
-    },
-    {
-      "agent": false,
-      "text": "नहीं नहीं सही है.",
-      "at": "04:37:46"
-    },
-    {
-      "agent": true,
-      "text": "ठीक है। ध्यान रखें कि अभी पुलिस, बैंक या किसी सरकारी पोर्टल पर कोई शिकायत हमारी तरफ से दर्ज नहीं की गई है। इस बातचीत का पूरा विवरण आपकी स्क्रीन पर है जिसे आप देख सकते हैं। Take care, and remember to reach out again if you need more help. Goodbye!"
+      "text": "Alright, Pranav. Remember, nothing has been filed with the police, a bank, or any government portal yet. The full conversation is on your screen to check. Take care, and remember to reach out again if you need more help. Goodbye!"
     }
   ],
-  "omittedLeadingTurns": {
-    "count": 1,
-    "text": [
-      "Hi! you have reached our customer service, I am your assistant, how can I help you today?"
-    ]
-  },
   "extracted": {
     "call_outcome": "completed",
-    "language": "Hindi",
-    "safe_to_speak": true,
-    "transcript_consent": true,
-    "recording_consent": true,
+    "caller_name": "Pranav",
+    "language": "English",
     "immediate_danger": false,
-    "child_context": false,
-    "money_moved": true,
-    "incident_timing": "2026-09-04",
-    "chronology_draft": "On 2026-09-04, the user was contacted on Instagram by a scammer promising to double money. The user transferred 10,000 INR via Paytm (HDFC Bank) to UPI ID scammer@12345 by entering their UPI PIN. The user was subsequently blocked and has already reported the incident to 1930.",
-    "possible_category": "Investment Fraud / Money Doubling Scam",
+    "money_moved": false,
+    "incident_timing": "2026-09-03",
+    "chronology_draft": "On 2026-09-03, the user attempted a transaction of 10,000 INR via card which failed. The suspect is now pressuring the user for the money via email.",
+    "possible_category": "Online payment fraud/phishing",
     "amount_inr": 10000,
-    "payment_method": "Paytm",
-    "bank_name": "HDFC",
-    "transaction_reference": "64321",
-    "transaction_authorisation": "approved",
-    "suspect_upi": "scammer@12345",
-    "compromised_account": "Instagram",
-    "evidence_available": "Screenshots",
-    "prior_reporting_status": "Reported to 1930",
-    "state": "Karnataka",
-    "district": "Bangalore",
-    "desired_help": "Recovery of funds and guidance on further steps",
-    "summary_confirmed": true,
+    "payment_method": "Card",
+    "transaction_authorisation": "failed",
+    "suspect_email": "unknown",
+    "evidence_available": "Screenshots of the failed transaction",
+    "prior_reporting_status": "None",
+    "desired_help": "Recover the money",
     "human_requested": false,
     "restricted_data_detected": false,
     "emergency_112_advised": false,
     "helpline_1930_advised": true,
     "safeguarding_required": false
   },
-  "extractedCount": 34,
-  "filledCount": 29,
-  "summary": "The user reported a financial fraud incident where they lost 10,000 INR to a money-doubling scam on Instagram. The user has already contacted the 1930 helpline and provided all transaction details, including the UPI ID and reference number. The agent confirmed the details and advised the user on the next steps, noting that the case is already in the reporting process.",
-  "disposition": "completed",
+  "extractedCount": 35,
+  "filledCount": 20,
+  "summary": "Pranav reported a failed card transaction of 10,000 INR from two days ago, noting that a suspect is now pressuring him for payment via email. The agent advised him to report the incident immediately to his bank and the national cybercrime portal (1930). No prior reports have been filed, and the user was instructed on the necessary steps for potential recovery.",
+  "disposition": "urgent_1930",
   "quality": {
-    "clarity": 10,
+    "clarity": 9,
     "professionalism": 10,
-    "problem_resolution": 9,
-    "overall_quality": 10
+    "problem_resolution": 8,
+    "overall_quality": 9
   },
   "latencyMsP50": {
-    "speechToText": 297,
-    "modelFirstToken": 1023,
-    "speechOut": 109,
-    "endToEnd": 1573
+    "speechToText": 296,
+    "modelFirstToken": 835,
+    "speechOut": 321,
+    "endToEnd": 1617
   },
   "audio": "/demo/vaani-call.ogg"
 }

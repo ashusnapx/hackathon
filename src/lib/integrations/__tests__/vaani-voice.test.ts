@@ -143,6 +143,20 @@ describe("a provider error dressed up as a transcript", () => {
     })).toBe(true);
     expect(isVaaniTranscriptError({ transcript: "agent: hello, is it safe to speak?" })).toBe(false);
   });
+
+  it("catches the provider's other phrasings, which it does not announce", async () => {
+    const { isVaaniTranscriptError } = await import("../vaani");
+    // Seen in a real call: a 200, no error field, and this in the transcript.
+    expect(isVaaniTranscriptError({ transcript: "Transcript not found in Azure Blob Storage" })).toBe(true);
+    expect(isVaaniTranscriptError({ transcript: "  " })).toBe(true);
+    expect(isVaaniTranscriptError({ transcript: "Processing" })).toBe(true);
+  });
+
+  it("still accepts a long transcript from a deployment that does not label speakers", async () => {
+    const { isVaaniTranscriptError } = await import("../vaani");
+    const unlabelled = "I lost ten thousand rupees to an investment group. ".repeat(6);
+    expect(isVaaniTranscriptError({ transcript: unlabelled })).toBe(false);
+  });
 });
 
 describe("live captions", () => {

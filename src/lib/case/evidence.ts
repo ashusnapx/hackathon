@@ -253,7 +253,18 @@ export function createDefaultEvidence(nowIso?: string): EvidenceItem[] {
 }
 
 /** Ensure case has evidence array — migrates old cases without breaking. */
+/**
+ * Timestamps here are taken from the case, never from the clock.
+ *
+ * This runs on every read of a stored case, and the writer decides whether a
+ * case is safe to save by comparing what it loaded against what is in storage
+ * now. A `new Date()` in this function makes those two strings differ every
+ * time, so a case that predates the vault — or any template added later —
+ * would report a phantom "changed in another tab" on every edit and could never
+ * be saved again.
+ */
 export function ensureEvidence(c: CaseFile): CaseFile {
+  const stamp = c.createdAt || new Date(0).toISOString();
   if (c.evidence && Array.isArray(c.evidence) && c.evidence.length > 0) {
     // Backfill any new templates introduced later (extensibility)
     const existingIds = new Set(c.evidence.map((e) => e.id));
@@ -265,13 +276,13 @@ export function ensureEvidence(c: CaseFile): CaseFile {
       description: t.description,
       why: t.why,
       status: "missing" as EvidenceStatus,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: stamp,
+      updatedAt: stamp,
     }));
     if (missing.length) return { ...c, evidence: [...c.evidence, ...missing] };
     return c;
   }
-  return { ...c, evidence: createDefaultEvidence() };
+  return { ...c, evidence: createDefaultEvidence(stamp) };
 }
 
 export function getEvidence(c: CaseFile): EvidenceItem[] {

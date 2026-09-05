@@ -134,12 +134,12 @@ export default function ReportPage() {
       <>
         <Header />
         <main id="main" className="mx-auto max-w-2xl px-5 sm:px-8 py-16">
-          <p className="label">Safety check required</p>
-          <h1 className="mt-3 text-3xl sm:text-4xl">Start with the short safety questions.</h1>
+          <p className="label">{t("rep.gate.kicker")}</p>
+          <h1 className="mt-3 text-3xl sm:text-4xl">{t("rep.gate.h1")}</h1>
           <p className="mt-4 max-w-prose text-ink-2 leading-relaxed">
-            Kavach checks immediate danger and child-safety needs before opening any screen that accepts an incident narrative.
+            {t("rep.gate.body")}
           </p>
-          <Button href="/assist" size="lg" className="mt-7">Continue safely</Button>
+          <Button href="/assist" size="lg" className="mt-7">{t("rep.gate.cta")}</Button>
         </main>
       </>
     );

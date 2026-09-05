@@ -173,7 +173,13 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
           {tab === "evidence" && (
             <EvidenceVault caseFile={caseFile} update={update} persistUpdate={persistUpdate} />
           )}
-          {tab === "call" && <CallRecord />}
+          {tab === "call" && (
+            <CallRecord
+              caseFile={caseFile}
+              transcriptToken={caseFile.voiceCall?.transcriptToken}
+              onApply={(patch) => update(() => patch)}
+            />
+          )}
           {tab === "docs" && <DocumentsPanel caseFile={caseFile} update={update} />}
           {tab === "ask" && <AskPanel caseFile={caseFile} />}
         </div>

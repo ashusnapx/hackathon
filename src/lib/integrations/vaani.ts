@@ -556,11 +556,24 @@ export function cleanVaaniTranscript(transcript: string): string {
     .trim();
 }
 
-/** A 200 that is really an error: the provider puts the failure in the body. */
+/**
+ * A 200 that is really an error: the provider puts the failure in the body.
+ *
+ * It has more than one way of saying it — "Error retrieving transcript" and
+ * "Transcript not found in Azure Blob Storage" are both 200s — so the test is
+ * not a list of its phrasings but the shape of a transcript. A real one is a
+ * labelled conversation; a lone unlabelled sentence is the provider explaining
+ * itself, and a victim must never be shown that as their own account. Length
+ * keeps the door open for a genuinely unlabelled transcript from a deployment
+ * that does not speaker-tag, which would never be this short.
+ */
 export function isVaaniTranscriptError(payload: { transcript?: unknown; error?: unknown }): boolean {
   if (typeof payload.error === "string" && payload.error.trim()) return true;
-  return typeof payload.transcript === "string"
-    && /^error retrieving transcript/i.test(payload.transcript.trim());
+  if (typeof payload.transcript !== "string") return false;
+  const transcript = payload.transcript.trim();
+  if (!transcript) return true;
+  if (/^error retrieving transcript/i.test(transcript)) return true;
+  return transcript.length < 200 && !/\b(AGENT|USER|ASSISTANT|VICTIM)\s*:/i.test(transcript);
 }
 
 function parseRetryAfter(value: string | null): number | undefined {

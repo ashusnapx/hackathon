@@ -26,12 +26,15 @@ const HIDDEN = new Set([
 ]);
 
 const LABELS: Record<string, string> = {
+  caller_name: "What to call them",
   amount_inr: "Amount lost",
   payment_method: "Paid through",
   bank_name: "Bank",
   transaction_reference: "Reference",
   transaction_authorisation: "How it was authorised",
   suspect_upi: "Suspect UPI ID",
+  suspect_email: "Suspect email",
+  suspect_phone: "Suspect number",
   compromised_account: "Where they were contacted",
   evidence_available: "Evidence held",
   prior_reporting_status: "Already reported",
@@ -51,6 +54,9 @@ export function VoiceDemo() {
   const facts = useMemo(
     () => Object.entries(call.extracted as Record<string, unknown>)
       .filter(([key]) => !HIDDEN.has(key))
+      // A field the agent could not fill is not a fact it captured. Showing
+      // "Suspect email: unknown" would pad this list with its own failures.
+      .filter(([, value]) => !isBlank(value))
       .map(([key, value]) => [LABELS[key] ?? key.replace(/_/g, " "), format(key, value)] as const),
     [],
   );
@@ -145,6 +151,12 @@ function Stat({ value, label }: { value: string; label: string }) {
       <p className="mt-1.5 text-xs leading-tight text-ink-3">{label}</p>
     </div>
   );
+}
+
+function isBlank(value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value !== "string") return false;
+  return ["", "unknown", "null", "n/a", "not provided"].includes(value.trim().toLowerCase());
 }
 
 function format(key: string, value: unknown): string {

@@ -138,4 +138,13 @@ export interface CaseFile {
   };
   /** Evidence Vault — checklist per case, stored locally. Optional for backwards compat. */
   evidence?: EvidenceItem[];
+  /**
+   * The voice call this case was opened from.
+   *
+   * Only the server-issued capability is kept, never a provider call id: it is
+   * what lets the Call tab fetch this case's own recording and transcript, and
+   * it is scoped to the browser session that made the call. A second case gets
+   * its own token, so one case can never show another case's conversation.
+   */
+  voiceCall?: { transcriptToken: string; endedAt: string };
 }

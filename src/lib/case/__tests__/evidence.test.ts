@@ -468,4 +468,14 @@ describe("existing cases without evidence data", () => {
     expect(readiness.percentage).toBe(0);
     expect(readiness.level).toBe("NOT_READY");
   });
+
+  it("migrates a pre-vault case to the same value on every read", () => {
+    // The writer decides a case is safe to save by comparing what it loaded
+    // against what is in storage. A migration that stamped the current time
+    // made those differ on every read, so a case without a vault could never
+    // be saved again — it reported a conflict with itself.
+    const legacy = { id: "legacy", createdAt: "2026-01-01T00:00:00.000Z" } as CaseFile;
+    expect(JSON.stringify(ensureEvidence(legacy))).toBe(JSON.stringify(ensureEvidence(legacy)));
+    expect(ensureEvidence(legacy).evidence?.[0].createdAt).toBe("2026-01-01T00:00:00.000Z");
+  });
 });

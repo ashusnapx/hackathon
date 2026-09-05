@@ -56,6 +56,12 @@ import Image from "next/image";
 import { LiveVoiceCall } from "@/components/intake/LiveVoiceCall";
 import { mapVaaniCall } from "@/lib/intake/from-vaani";
 import {
+  callAnalysis,
+  callPollDelayMs,
+  draftFromCall,
+  CALL_POLL_BUDGET_MS,
+} from "@/lib/intake/call-to-case";
+import {
   WhatsAppBubble,
   WhatsAppComposer,
   WhatsAppHeader,
@@ -91,6 +97,107 @@ const EVIDENCE_OPTIONS: { id: Exclude<EvidenceKind, "none">; key: Parameters<T>[
   { id: "link", key: "intake.evLink" },
 ];
 
+/** What became of a finished call, from the panel's point of view. */
+type CallHandoff =
+  | { ok: true }
+  | { ok: false; reason: "no-transcript" }
+  | { ok: false; reason: "needs-review"; transcript: string; victimTurns: string };
+
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = globalThis.setTimeout(resolve, ms);
+    signal.addEventListener("abort", () => {
+      globalThis.clearTimeout(timer);
+      reject(new Error("aborted"));
+    }, { once: true });
+  });
+}
+
+async function postCapability(path: string, token: string, signal: AbortSignal) {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+    signal,
+  });
+  const data = await response.json().catch(() => ({})) as Record<string, unknown>;
+  return { response, data };
+}
+
+function retryAfterSeconds(response: Response): number | null {
+  const asked = Number(response.headers.get("Retry-After"));
+  return Number.isFinite(asked) && asked > 0 ? asked : null;
+}
+
+/**
+ * Wait for the provider to finish writing up the call.
+ *
+ * A browser call is usually transcribed within seconds of hanging up, but the
+ * provider answers "not ready" until it is. This waits out that gap on the
+ * caller's behalf, respects the Retry-After it is given, and gives up at a
+ * budget rather than spinning forever — a stalled hand-off falls back to the
+ * manual controls, which is a worse experience but never a dead end.
+ */
+async function pollTranscript(token: string, signal: AbortSignal): Promise<string | null> {
+  const deadline = Date.now() + CALL_POLL_BUDGET_MS;
+  let retryAfter: number | null = null;
+  for (let attempt = 0; ; attempt += 1) {
+    if (attempt > 0) {
+      const delay = callPollDelayMs(attempt - 1, retryAfter);
+      if (Date.now() + delay > deadline) return null;
+      await sleep(delay, signal);
+    }
+    const { response, data } = await postCapability("/api/vaani/transcript", token, signal);
+    const transcript = typeof data.transcript === "string" ? data.transcript : "";
+    if (response.ok && transcript.trim()) return transcript;
+    if (!data.retryable) return null;
+    retryAfter = retryAfterSeconds(response);
+  }
+}
+
+/**
+ * The fields the agent captured during the call.
+ *
+ * Structured output can lag the transcript by a moment, so one retry is worth
+ * it: every field that arrives here is a field the caller does not have to type
+ * again. An empty result is survivable — the model reads the transcript instead.
+ */
+async function fetchCallExtraction(token: string, signal: AbortSignal): Promise<Record<string, unknown>> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const { response, data } = await postCapability("/api/vaani/outcome", token, signal);
+      const extracted = data.extracted;
+      if (response.ok && extracted && typeof extracted === "object" && !Array.isArray(extracted)) {
+        return extracted as Record<string, unknown>;
+      }
+      if (!data.retryable) return {};
+      await sleep(callPollDelayMs(1, retryAfterSeconds(response)), signal);
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+async function triageNarrative(
+  text: string,
+  language: string,
+  signal: AbortSignal,
+): Promise<IntakeAnalysis | null> {
+  try {
+    const response = await fetch("/api/ai/triage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, lang: language }),
+      signal,
+    });
+    if (!response.ok) return null;
+    return await response.json() as IntakeAnalysis;
+  } catch {
+    return null;
+  }
+}
+
 export function GuidedIntake() {
   const { t, lang } = useI18n();
   const router = useRouter();
@@ -101,6 +208,10 @@ export function GuidedIntake() {
   const [persistence, setPersistence] = useState<"checking" | "saving" | "saved" | "error">("checking");
   const [showReset, setShowReset] = useState(false);
   const [safetyClock, setSafetyClock] = useState(() => Date.now());
+  // The hand-off from a finished call runs for tens of seconds. It has to write
+  // the draft as it stands when it completes, not as it was when the call ended.
+  const draftRef = useRef(draft);
+  useEffect(() => { draftRef.current = draft; }, [draft]);
   const currentRef = useRef<HTMLDivElement>(null);
   const evidenceChoice = draft.pendingEvidence ?? [];
   const step = nextIntakeStep(draft);
@@ -320,36 +431,46 @@ export function GuidedIntake() {
     });
   }, []);
 
-  const openCase = useCallback(() => {
-    const analysis = draft.analysis;
-    if (!analysis) return;
+  /**
+   * Write an interview out as a case file, and say which case it became.
+   *
+   * The draft is passed in rather than read from state: the voice hand-off
+   * assembles a draft and opens the case in the same tick, and state set a
+   * moment earlier would not be visible yet.
+   */
+  const commitCase = useCallback((
+    source: IntakeDraft,
+    options?: { transcriptToken?: string; event?: string },
+  ): string | null => {
+    const analysis = source.analysis;
+    if (!analysis) return null;
     const incidentAt = analysis.triage.incidentAt;
     const now = new Date().toISOString();
-    const available = new Set(evidenceIdsFor(draft.evidence));
+    const available = new Set(evidenceIdsFor(source.evidence));
     const evidence = createDefaultEvidence(now).map((item) =>
       available.has(item.id) ? { ...item, status: "added" as const, updatedAt: now } : item,
     );
-    const rbiInput = rbiInputFromDraft(draft);
+    const rbiInput = rbiInputFromDraft(source);
 
     const c = newCase({
       language: lang.code,
-      rawStatement: draft.narrative.trim(),
+      rawStatement: source.narrative.trim(),
       triage: analysis.triage,
       entities: analysis.entities,
       amount: analysis.triage.amount,
       incidentAt,
-      incidentTimingRange: draft.incidentTiming,
-      bankAlertAt: draft.bankAlertAt,
+      incidentTimingRange: source.incidentTiming,
+      bankAlertAt: source.bankAlertAt,
       txns: analysis.triage.amount || analysis.entities.refs[0]
         ? [{ amount: analysis.triage.amount, ref: analysis.entities.refs[0], at: incidentAt }]
         : [],
       victim: {
-        name: draft.callerName,
-        state: draft.state,
-        district: draft.district,
-        ageContext: draft.childContext,
+        name: source.callerName,
+        state: source.state,
+        district: source.district,
+        ageContext: source.childContext,
       },
-      ...(draft.bankName ? { bank: { name: draft.bankName } } : {}),
+      ...(source.bankName ? { bank: { name: source.bankName } } : {}),
       suspect: {
         phones: analysis.entities.phones,
         upiIds: analysis.entities.upiIds,
@@ -357,8 +478,14 @@ export function GuidedIntake() {
         urls: analysis.entities.urls,
         handles: analysis.entities.handles,
       },
-      files: draft.files,
+      evidenceText: source.evidenceNote ?? "",
+      files: source.files,
       evidence,
+      // Kept on the case, not in the browser session, so this case's Call tab
+      // shows this call and no later one can overwrite it.
+      ...(options?.transcriptToken
+        ? { voiceCall: { transcriptToken: options.transcriptToken, endedAt: now } }
+        : {}),
       legal: rbiInput ? {
         rbi: {
           input: rbiInput,
@@ -370,17 +497,71 @@ export function GuidedIntake() {
     c.events.push({
       at: now,
       kind: "triaged",
-      label: `Guided interview confirmed · ${draft.channel} channel`,
+      label: options?.event ?? `Guided interview confirmed · ${source.channel} channel`,
     });
     if (!saveCase(c)) {
       setPersistence("error");
       setError(t("rep.save.error"));
-      return;
+      return null;
     }
     try { localStorage.removeItem(INTAKE_STORAGE_KEY); } catch { /* ignore */ }
     clearStoredVaaniSession();
-    router.push(`/case/${c.id}`);
-  }, [draft, lang.code, router, t]);
+    return c.id;
+  }, [lang.code, t]);
+
+  const openCase = useCallback(() => {
+    const id = commitCase(draft);
+    if (id) router.push(`/case/${id}`);
+  }, [commitCase, draft, router]);
+
+  /**
+   * Hanging up is the end of the interview, not the middle of one.
+   *
+   * The transcript is collected, the provider's own extraction is used as it
+   * stands, the model is asked only for what Vaani could not supply, and the
+   * case page opens. Every step here can fail without costing the caller the
+   * call: whatever was said is handed back for the manual review below instead.
+   */
+  const finishCallToCase = useCallback(async (
+    token: string,
+    signal: AbortSignal,
+  ): Promise<CallHandoff> => {
+    try {
+      const transcript = await pollTranscript(token, signal);
+      if (!transcript) return { ok: false, reason: "no-transcript" };
+
+      const full = cleanCallTranscript(transcript);
+      const victimTurns = victimTurnsFromTranscript(transcript);
+      const review: CallHandoff = { ok: false, reason: "needs-review", transcript: full, victimTurns };
+
+      // A call the caller never spoke on has nothing to open a case from, and
+      // the agent's own questions must never become a victim's statement.
+      const turns = callTurns(full);
+      if (turns.length > 0 && !turns.some((turn) => !turn.agent)) return review;
+
+      const facts = mapVaaniCall(await fetchCallExtraction(token, signal));
+      let analysis = facts.needsModel ? null : callAnalysis(facts);
+      if (!analysis) {
+        const model = victimTurns.trim().length >= 25
+          ? await triageNarrative(victimTurns, lang.code, signal)
+          : null;
+        analysis = callAnalysis(facts, model);
+      }
+      if (!analysis) return review;
+
+      const next = draftFromCall(draftRef.current, { facts, narrative: victimTurns, analysis });
+      const id = commitCase(next, {
+        transcriptToken: token,
+        event: "Opened from a voice call \u00b7 nothing confirmed yet",
+      });
+      if (!id) return review;
+      router.push(`/case/${id}`);
+      return { ok: true };
+    } catch {
+      // Includes the abort that fires when this panel unmounts mid-poll.
+      return { ok: false, reason: "no-transcript" };
+    }
+  }, [commitCase, lang.code, router]);
 
   const reset = useCallback(() => {
     try { localStorage.removeItem(INTAKE_STORAGE_KEY); } catch { /* ignore */ }
@@ -494,10 +675,13 @@ export function GuidedIntake() {
               safetyAnswer={draft.safety}
               childContext={draft.childContext}
               callerName={draft.callerName}
+              // Ending the call opens the case. Everything below is the fallback
+              // for a call the provider could not write up in time.
+              onCallFinished={finishCallToCase}
               // The voice channel has no interview under it, so approving the
-              // transcript used to end on a sentence pointing at facts that were
-              // not on screen. Hand back to the chat, where the story now sits
-              // ready to be read and confirmed.
+              // transcript by hand used to end on a sentence pointing at facts
+              // that were not on screen. Hand back to the chat, where the story
+              // then sits ready to be read and confirmed.
               onAccepted={(token) => {
                 patch({ channel: "web" });
                 // The provider's own extraction first. If it cannot supply a
@@ -1152,6 +1336,7 @@ function VaaniPanel({
   safetyAnswer,
   childContext,
   callerName,
+  onCallFinished,
   onTranscript,
   onAccepted,
   t,
@@ -1160,6 +1345,8 @@ function VaaniPanel({
   safetyAnswer?: string;
   childContext?: string;
   callerName?: string;
+  /** Runs the moment the call ends: it opens the case, or hands back the words. */
+  onCallFinished: (transcriptToken: string, signal: AbortSignal) => Promise<CallHandoff>;
   onTranscript: (text: string) => void;
   /** Called once the caller has approved their own words, with the capability
    *  that can fetch what the provider already extracted. */
@@ -1168,7 +1355,7 @@ function VaaniPanel({
 }) {
   const [restoredSession] = useState<StoredVaaniSession | null>(() => readStoredVaaniSession());
   const [state, setState] = useState<
-    "idle" | "calling" | "requested" | "not-ready" | "reviewing" | "accepted" | "unknown" | "error"
+    "idle" | "calling" | "requested" | "finishing" | "not-ready" | "reviewing" | "accepted" | "unknown" | "error"
   >(() => restoredVaaniUiState(restoredSession));
   const [transcriptToken, setTranscriptToken] = useState<string | null>(
     () => restoredSession?.transcriptToken ?? null,
@@ -1177,8 +1364,55 @@ function VaaniPanel({
   const [fullTranscript, setFullTranscript] = useState("");
   const [reviewSource, setReviewSource] = useState<"sample" | "live" | null>(null);
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
+  const [slowHandoff, setSlowHandoff] = useState(false);
   const requestIdRef = useRef<string | null>(restoredSession?.requestId ?? null);
   const [browserVoice, setBrowserVoice] = useState<{ available: boolean; recordingRequired: boolean } | null>(null);
+
+  // The live call captures its callbacks once, when the room opens, so anything
+  // the end-of-call hand-off reads has to be a ref rather than a prop or state
+  // from that render — otherwise it hangs up holding a token it was given a
+  // moment later.
+  const tokenRef = useRef<string | null>(restoredSession?.transcriptToken ?? null);
+  const finishRef = useRef(onCallFinished);
+  useEffect(() => { finishRef.current = onCallFinished; }, [onCallFinished]);
+  const handoffRef = useRef<AbortController | null>(null);
+  useEffect(() => () => handoffRef.current?.abort(), []);
+
+  /**
+   * The call ended; carry on without the caller.
+   *
+   * Both an agent hang-up and the stop button land here, and the room reports
+   * the first as a disconnect after the second, so a run already in flight is
+   * left alone rather than started twice.
+   */
+  const handleCallEnded = useCallback(async () => {
+    if (handoffRef.current) return;
+    const token = tokenRef.current;
+    if (!token) {
+      setState("requested");
+      return;
+    }
+    const controller = new AbortController();
+    handoffRef.current = controller;
+    setSlowHandoff(false);
+    setState("finishing");
+    const slowTimer = globalThis.setTimeout(() => setSlowHandoff(true), 20_000);
+    try {
+      const result = await finishRef.current(token, controller.signal);
+      if (result.ok) return; // The case page is already opening over this one.
+      if (result.reason === "needs-review") {
+        setStagedTranscript(result.victimTurns);
+        setFullTranscript(result.transcript);
+        setReviewSource("live");
+        setState("reviewing");
+        return;
+      }
+      setState("requested");
+    } finally {
+      globalThis.clearTimeout(slowTimer);
+      handoffRef.current = null;
+    }
+  }, []);
 
 
   useEffect(() => {
@@ -1296,13 +1530,33 @@ function VaaniPanel({
           safetyAnswer={safetyAnswer}
           childContext={childContext}
           callerName={callerName}
-          onTranscriptToken={setTranscriptToken}
-          onCallEnded={() => setState("requested")}
+          onTranscriptToken={(token) => {
+            tokenRef.current = token;
+            setTranscriptToken(token);
+          }}
+          onCallEnded={() => { void handleCallEnded(); }}
         />
+      )}
+      {state === "finishing" && (
+        <div role="status" aria-live="polite" className="mt-3 rounded-ctl border border-rule bg-raised px-4 py-4">
+          <div className="flex items-start gap-3">
+            <span
+              className="mt-0.5 h-5 w-5 shrink-0 rounded-full border-2 border-ink/20 border-t-ink animate-spin"
+              aria-hidden
+            />
+            <div className="min-w-0">
+              <p className="text-[0.9375rem] font-semibold">{t("intake.vaaniBuilding")}</p>
+              <p className="mt-1 text-sm leading-[1.55] text-ink-2">{t("intake.vaaniBuildingSub")}</p>
+              {slowHandoff && (
+                <p className="mt-2 text-sm leading-[1.55] text-ink-3">{t("intake.vaaniBuildingSlow")}</p>
+              )}
+            </div>
+          </div>
+        </div>
       )}
       {state === "requested" && (
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <p className="text-sm text-done flex-1">{t("intake.vaaniActive")}</p>
+          <p className="text-sm text-ink-2 flex-1">{t("intake.vaaniStalled")}</p>
           <Button onClick={importCall} size="sm" variant="secondary">{t("intake.vaaniImport")}</Button>
         </div>
       )}

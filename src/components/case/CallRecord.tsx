@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { readStoredVaaniSession } from "@/lib/integrations/vaani-client";
+import { caseUpdatesFromCall } from "@/lib/case/from-call";
+import { mapVaaniCall } from "@/lib/intake/from-vaani";
+import type { CaseFile } from "@/lib/case/types";
 import { useT } from "@/lib/i18n/context";
 
 interface Outcome {
@@ -19,18 +22,28 @@ interface Outcome {
  * distressed conversation, and presenting it as settled fact is how a wrong
  * amount or a wrong account number ends up in a police complaint.
  */
-export function CallRecord() {
+export function CallRecord({ caseFile, transcriptToken, onApply }: {
+  caseFile: CaseFile;
+  transcriptToken?: string;
+  /** Fold the agent's late-arriving fields into the case. */
+  onApply: (patch: Partial<CaseFile>) => void;
+}) {
   const t = useT();
-  const [token, setToken] = useState<string | null>(null);
+  const [applied, setApplied] = useState(false);
+  const [token, setToken] = useState<string | null>(transcriptToken ?? null);
   const [transcript, setTranscript] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "pending" | "ready" | "error">("idle");
 
   useEffect(() => {
+    // The case carries its own capability, so an older case never borrows the
+    // token of a call made afterwards. Only a case saved before that field
+    // existed falls back to the session.
+    if (transcriptToken) return;
     // Deferred: sessionStorage does not exist during the server render, and
     // setting state synchronously here would cascade a second render.
     queueMicrotask(() => setToken(readStoredVaaniSession()?.transcriptToken ?? null));
-  }, []);
+  }, [transcriptToken]);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -69,6 +82,14 @@ export function CallRecord() {
   }, [token]);
 
   useEffect(() => { queueMicrotask(() => { void load(); }); }, [load]);
+
+  // What the agent captured, measured against the case as it stands now.
+  const backfill = useMemo(
+    () => (outcome?.extracted && Object.keys(outcome.extracted).length
+      ? caseUpdatesFromCall(caseFile, mapVaaniCall(outcome.extracted))
+      : null),
+    [caseFile, outcome],
+  );
 
   if (!token) {
     return (
@@ -154,6 +175,22 @@ export function CallRecord() {
           <p className="mt-3 text-sm text-ink-3">{t("call.extractedNone")}</p>
         )}
       </section>
+
+      {backfill && backfill.added.length > 0 && !applied && (
+        <div className="mt-5 rounded-ctl border border-info/30 bg-info-soft px-4 py-3">
+          <p className="text-sm leading-[1.55] text-ink-2">
+            {t("call.applyLead")} {backfill.added.join(" · ")}
+          </p>
+          <Button
+            onClick={() => { onApply(backfill.patch); setApplied(true); }}
+            size="sm"
+            className="mt-3"
+          >
+            {t("call.apply")}
+          </Button>
+        </div>
+      )}
+      {applied && <p className="mt-5 text-sm text-done">{t("call.applied")}</p>}
 
       <Button onClick={load} size="sm" variant="secondary" className="mt-5" disabled={state === "loading"}>
         {t("call.refresh")}

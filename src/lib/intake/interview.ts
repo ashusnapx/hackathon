@@ -52,6 +52,8 @@ export interface IntakeDraft {
   callerName?: string;
   /** Named by the caller on the call; drives the bank and RBI tracks. */
   bankName?: string;
+  /** What the caller said they still have, in their own words. */
+  evidenceNote?: string;
   analysis?: IntakeAnalysis;
   analysisConfirmed: boolean;
   /** Material facts for the RBI unauthorised-transaction screening. */
