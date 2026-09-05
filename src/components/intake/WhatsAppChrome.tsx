@@ -94,25 +94,37 @@ function BatteryIcon() {
   return <svg width="24" height="12" viewBox="0 0 26 12" fill="none" aria-hidden><rect x="0.7" y="0.7" width="21" height="10.6" rx="3" stroke="currentColor" strokeOpacity=".55" /><rect x="2.4" y="2.4" width="16" height="7.2" rx="1.8" fill="currentColor" /><path d="M23.5 4.2v3.6a2 2 0 0 0 0-3.6z" fill="currentColor" fillOpacity=".55" /></svg>;
 }
 
-export function WhatsAppHeader({ name, status }: { name: string; status: string }) {
+export function WhatsAppHeader({ name, status, typing }: {
+  name: string;
+  status: string;
+  /** Real WhatsApp replaces the contact's status with this while they write. */
+  typing?: boolean;
+}) {
   return (
-    <div className="shrink-0 flex items-center gap-3 px-3 sm:px-4 py-2.5 bg-[#008069] text-white">
+    <div className="shrink-0 flex items-center gap-2 ps-1.5 pe-3 py-2 bg-[#008069] text-white">
+      <span className="grid place-items-center w-7 shrink-0 text-white/95" aria-hidden><BackIcon /></span>
       {/* The display picture is the site's own shield, the way a real contact
           photo would be — not an initial standing in for one. */}
       <span className="grid place-items-center w-10 h-10 rounded-full bg-white shrink-0 overflow-hidden" aria-hidden>
         <KavachShield />
       </span>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 ps-0.5">
         <p className="text-[0.9375rem] font-medium leading-tight truncate">{name}</p>
-        <p className="text-[0.6875rem] leading-tight text-white/80 truncate">{status}</p>
+        <p className="text-[0.6875rem] leading-tight text-white/80 truncate">
+          {typing ? "typing…" : status}
+        </p>
       </div>
-      <span className="flex items-center gap-3.5 ps-1 text-white/90" aria-hidden>
+      <span className="flex items-center gap-4 ps-1 text-white/95" aria-hidden>
         <VideoIcon />
         <PhoneIcon />
         <DotsIcon />
       </span>
     </div>
   );
+}
+
+function BackIcon() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 5l-7 7 7 7" /></svg>;
 }
 
 /**
@@ -141,7 +153,7 @@ export function WhatsAppBubble({ children, outgoing, time, urgent }: {
     <div className={cn("flex", outgoing ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "relative max-w-[85%] sm:max-w-[75%] px-2.5 pt-1.5 pb-1 rounded-lg text-[0.9375rem] leading-[1.45] text-[#111b21]",
+          "relative max-w-[85%] sm:max-w-[75%] ps-2.5 pe-2 pt-1.5 pb-1 rounded-lg text-[0.9375rem] leading-[1.4] text-[#111b21]",
           "shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]",
           outgoing ? "bg-[#d9fdd3] rounded-tr-none" : "bg-white rounded-tl-none",
           urgent && !outgoing && "bg-[#fff5c4]",
@@ -183,7 +195,43 @@ export function WhatsAppBubble({ children, outgoing, time, urgent }: {
  * them, and are inert because this preview cannot honour them — evidence is
  * attached later, in the case file, where it can be hashed and kept.
  */
-export function WhatsAppComposer({ suggestions, input, trailing, attachmentNote, hideCamera }: {
+/**
+ * What the composer becomes while a voice note is being recorded.
+ *
+ * This is WhatsApp's own behaviour and not decoration: the field disappears,
+ * a bin appears where the emoji was, and a running timer sits beside a blinking
+ * red dot. It is the difference between "the microphone is on" being something
+ * you infer from a colour and something the screen tells you.
+ */
+export function WhatsAppRecordingBar({ seconds, onCancel, cancelLabel }: {
+  seconds: number;
+  onCancel: () => void;
+  cancelLabel: string;
+}) {
+  const mm = Math.floor(seconds / 60);
+  const ss = String(seconds % 60).padStart(2, "0");
+  return (
+    <div className="flex-1 min-w-0 h-[46px] rounded-[1.5rem] bg-white ps-2 pe-4 flex items-center gap-3 shadow-[0_1px_1px_rgba(11,20,26,0.06)]">
+      <button
+        type="button"
+        onClick={onCancel}
+        aria-label={cancelLabel}
+        className="grid place-items-center w-9 h-9 shrink-0 rounded-full text-[#54656f] hover:bg-black/5"
+      >
+        <BinIcon />
+      </button>
+      <span className="w-2 h-2 rounded-full bg-[#e5533d] animate-pulse shrink-0" aria-hidden />
+      <span className="num text-[0.9375rem] text-[#111b21] tabular-nums">{mm}:{ss}</span>
+      <span className="ms-auto truncate text-[0.8125rem] text-[#8696a0]">{cancelLabel}</span>
+    </div>
+  );
+}
+
+function BinIcon() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M4 7h16M10 7V5h4v2M6 7l1 13h10l1-13M10 11v6M14 11v6" /></svg>;
+}
+
+export function WhatsAppComposer({ suggestions, input, trailing, attachmentNote, hideCamera, hint, recording }: {
   /** Quick replies for the current question, scrolling in one row. */
   suggestions?: React.ReactNode;
   /** The text field, or a hint when the question expects a tap. */
@@ -191,11 +239,24 @@ export function WhatsAppComposer({ suggestions, input, trailing, attachmentNote,
   /** The green circle: microphone, or send. */
   trailing?: React.ReactNode;
   attachmentNote: string;
-  /** WhatsApp drops the camera the moment you start typing. */
+  /** WhatsApp drops the camera the moment there is something in the field. */
   hideCamera?: boolean;
+  /** Shown instead of the field while a voice note is being recorded. */
+  recording?: React.ReactNode;
+  /**
+   * One line naming what the bar can do, on the steps where it takes an answer.
+   *
+   * The microphone and send are two green circles to somebody who has only ever
+   * received messages on this screen. Saying it in words costs a line of type
+   * and removes the guess.
+   */
+  hint?: string;
 }) {
   return (
     <div className="shrink-0 bg-[#f0f2f5] border-t border-black/5">
+      {hint && (
+        <p className="px-3.5 pt-2 text-[0.6875rem] leading-[1.35] text-[#667781]">{hint}</p>
+      )}
       {suggestions && (
         <div
           className={cn(
@@ -207,28 +268,235 @@ export function WhatsAppComposer({ suggestions, input, trailing, attachmentNote,
           {suggestions}
         </div>
       )}
-      <div className="px-2 py-2 flex items-end gap-1.5">
-        <div className="flex-1 min-w-0 rounded-[1.5rem] bg-white px-2 py-1.5 flex items-end gap-1.5 shadow-[0_1px_1px_rgba(11,20,26,0.06)]">
-          <span className="grid place-items-center w-8 h-8 shrink-0 text-[#54656f]" title={attachmentNote} aria-hidden>
+      <div className="px-1.5 pb-1.5 pt-1 flex items-end gap-1.5">
+        {recording ?? (
+        <div className="flex-1 min-w-0 rounded-[1.5rem] bg-white ps-1.5 pe-2 py-1 flex items-end gap-1 shadow-[0_1px_1px_rgba(11,20,26,0.06)]">
+          <span className="grid place-items-center w-9 h-9 shrink-0 text-[#54656f]" title={attachmentNote} aria-hidden>
             <EmojiIcon />
           </span>
-          <div className="flex-1 min-w-0 py-1">{input}</div>
-          <span className="grid place-items-center w-8 h-8 shrink-0 text-[#54656f] rotate-[-45deg]" title={attachmentNote} aria-hidden>
+          <div className="flex-1 min-w-0 py-[0.4375rem]">{input}</div>
+          <span className="grid place-items-center w-8 h-9 shrink-0 text-[#54656f] rotate-[-45deg]" title={attachmentNote} aria-hidden>
             <ClipIcon />
           </span>
           {!hideCamera && (
-            <span className="grid place-items-center w-8 h-8 shrink-0 text-[#54656f]" title={attachmentNote} aria-hidden>
+            <span className="grid place-items-center w-8 h-9 shrink-0 text-[#54656f]" title={attachmentNote} aria-hidden>
               <CameraIcon />
             </span>
           )}
         </div>
+        )}
         {trailing}
       </div>
     </div>
   );
 }
 
-export const WHATSAPP_WALLPAPER = "bg-[#efeae2] bg-[radial-gradient(#00000008_1px,transparent_1px)] [background-size:18px_18px]";
+/**
+ * The doodle wallpaper.
+ *
+ * A flat beige rectangle is the single biggest tell that a WhatsApp mock-up is
+ * a mock-up: the real chat has a hand-drawn pattern behind it that people
+ * recognise before they read a word. These are our own glyphs, drawn in the
+ * same register — outline, single weight, scattered and rotated — rather than
+ * Meta's artwork, which is theirs.
+ */
+const GLYPHS = [
+  "M12 20C6 16 3 13 3 9.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 9 2.5C21 13 18 16 12 20Z",
+  "M4 5h11v7a5.5 5.5 0 0 1-11 0ZM15 7h2.5a2.5 2.5 0 0 1 0 5H15M3 19h13",
+  "M3 7h3.5L8 5h8l1.5 2H21v12H3ZM12 8.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z",
+  "M10 18V5l9-2v11M7 18a3 3 0 1 0 6 0 3 3 0 0 0-6 0ZM16 14a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z",
+  "M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20ZM8 9v2M16 9v2M8 15a5.5 5.5 0 0 0 8 0",
+  "M2 5h20v14H2ZM2 5l10 8 10-8",
+  "M12 2a7 7 0 0 1 4 12.8V17H8v-2.2A7 7 0 0 1 12 2ZM8 20h8",
+  "M12 2.5l2.9 6.2 6.6.8-4.9 4.6 1.3 6.6L12 17.4 6.1 20.7l1.3-6.6L2.5 9.5l6.6-.8Z",
+  "M12 2a7.5 7.5 0 0 1 7.5 7.5C19.5 15 12 22 12 22S4.5 15 4.5 9.5A7.5 7.5 0 0 1 12 2ZM12 6.5a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z",
+  "M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20ZM12 6.5V12l3.5 2.5",
+  "M5 8h14v13H5ZM9 3v4M15 3v4M5 12h14",
+  "M4 20c0-6 3.6-11 8-11s8 5 8 11ZM2 20h20",
+  "M12 3a6 6 0 0 1 6 6v4h-12V9a6 6 0 0 1 6-6ZM8 17h8l-1.4 4h-5.2Z",
+  "M3 5h18v9h-7l-4 5-1-5H3Z M7 9h10",
+  "M12 3v18M5 10l7-7 7 7",
+  "M4 6h16v12H4ZM4 10h16M10 6v12",
+  "M12 3l5 9H7ZM17 13v6M6 21h13",
+  "M5 5h14l-3 14H8Z M5 5l-2-3h4",
+  "M6 15a6 6 0 1 1 12 0v5H6ZM12 4v5",
+  "M4 3h10l6 6v12H4Z M14 3v6h6",
+];
+
+/**
+ * Scattered so the tile repeats without a seam.
+ *
+ * Every glyph is drawn in its own 24-unit box and placed inside the tile with
+ * room to spare, so nothing is cut in half at the edge — which is what makes a
+ * repeating pattern read as wallpaper rather than as a grid of squares.
+ */
+const PLACEMENTS: [number, number, number, number][] = [
+  [6, 8, 0.85, -12], [58, 4, 0.75, 14], [112, 10, 0.8, -6], [162, 6, 0.7, 18],
+  [30, 46, 0.7, 22], [84, 40, 0.85, -18], [136, 48, 0.75, 8], [176, 44, 0.65, -24],
+  [8, 88, 0.8, 10], [56, 84, 0.7, -14], [108, 90, 0.75, 20], [156, 86, 0.85, -8],
+  [30, 128, 0.75, -20], [80, 132, 0.8, 12], [130, 126, 0.7, -10], [172, 130, 0.75, 24],
+  [10, 166, 0.7, 16], [60, 170, 0.85, -22], [110, 164, 0.75, 6], [158, 168, 0.8, -16],
+];
+
+const WALLPAPER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">`
+  + `<g fill="none" stroke="#cdc4b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">`
+  + PLACEMENTS.map(([x, y, scale, angle], i) =>
+    `<g transform="translate(${x} ${y}) rotate(${angle} 12 12) scale(${scale})">`
+    + `<path d="${GLYPHS[i % GLYPHS.length]}"/></g>`).join("")
+  + `</g></svg>`;
+
+export const WHATSAPP_WALLPAPER = "bg-[#efe7de]";
+
+/** The pattern itself, as a style so the SVG can live in this file. */
+export const whatsappWallpaperStyle: React.CSSProperties = {
+  backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(WALLPAPER_SVG)}")`,
+  backgroundSize: "200px 200px",
+};
+
+/**
+ * The date separator WhatsApp puts between days, and above the first message.
+ */
+export function WhatsAppDateChip({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex justify-center py-1.5">
+      <span className="rounded-md bg-white/85 px-2.5 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
+        {children}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The reply buttons a WhatsApp bot actually sends.
+ *
+ * Interactive replies arrive attached under the message they belong to: white,
+ * the full width of the bubble, the label in WhatsApp's link blue, with a hair
+ * of a gap between them. Putting the same choices on a strip above the keyboard
+ * is a website's idea of a chat, and it was the thing that most gave this away.
+ */
+export function WhatsAppButtons({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col items-start gap-[3px] pt-[3px]" role="group">
+      {children}
+    </div>
+  );
+}
+
+export function WhatsAppButton({ children, onClick, href, selected, disabled, primary }: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  /** A call button is a real link, the way a bot's phone-number button is. */
+  href?: string;
+  selected?: boolean;
+  disabled?: boolean;
+  /** The one that completes the step, drawn filled the way a bot's CTA is. */
+  primary?: boolean;
+}) {
+  const className = cn(
+    "w-[85%] sm:w-[75%] min-h-[38px] px-3 py-2 rounded-lg text-[0.875rem] font-medium",
+    "flex items-center justify-center gap-1.5 text-center leading-[1.3]",
+    "shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] transition-colors",
+    disabled && "opacity-50",
+    primary
+      ? "bg-[#00a884] text-white"
+      : selected
+        ? "bg-[#d9fdd3] text-[#027a5b]"
+        : "bg-white text-[#00a5f4] hover:bg-[#f5f6f6]",
+  );
+  if (href) {
+    const call = href.startsWith("tel:");
+    return (
+      <a href={href} target={call ? undefined : "_blank"} rel={call ? undefined : "noreferrer"} className={className}>
+        {call ? <CallGlyph /> : <LinkGlyph />}
+        {children}
+      </a>
+    );
+  }
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} className={className}>
+      {selected && <TickGlyph />}
+      {children}
+    </button>
+  );
+}
+
+function CallGlyph() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.24 11.4 11.4 0 0 0 3.6.58 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.4 11.4 0 0 0 .57 3.6 1 1 0 0 1-.25 1z" /></svg>;
+}
+
+function LinkGlyph() {
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M14 5h5v5M19 5l-9 9M17 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h4" /></svg>;
+}
+
+function TickGlyph() {
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M4 12.5 9.5 18 20 6.5" /></svg>;
+}
+
+/** The three dots that mean the other side is writing. */
+export function WhatsAppTyping() {
+  return (
+    <div className="flex justify-start">
+      <div className="relative rounded-lg rounded-tl-none bg-white px-3.5 py-3 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
+        <span className="sr-only">…</span>
+        <span className="flex items-center gap-1" aria-hidden>
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="w-[7px] h-[7px] rounded-full bg-[#9aa6ac] animate-pulse"
+              style={{ animationDelay: `${i * 180}ms`, animationDuration: "1.1s" }}
+            />
+          ))}
+        </span>
+        <span aria-hidden className="absolute top-0 -start-2 w-2 h-3 overflow-hidden">
+          <span className="block w-4 h-4 -translate-y-1 bg-white rounded-br-full" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The bottom sheet a WhatsApp list message opens.
+ *
+ * Thirty-six states cannot be reply buttons, and they are not a thing to type
+ * either. WhatsApp's own answer to a long list is a sheet that slides over the
+ * conversation, which is what this is.
+ */
+export function WhatsAppListSheet({ title, items, onPick, onClose }: {
+  title: string;
+  items: string[];
+  onPick: (item: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col justify-end">
+      <button
+        type="button"
+        aria-label={title}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/40"
+      />
+      <div className="relative max-h-[70%] flex flex-col rounded-t-2xl bg-white shadow-[0_-6px_24px_rgba(11,20,26,0.25)]">
+        <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-black/10">
+          <button type="button" onClick={onClose} aria-label="✕" className="text-[#54656f] text-lg leading-none">✕</button>
+          <p className="text-[0.9375rem] font-medium text-[#111b21]">{title}</p>
+        </div>
+        <div className="overflow-y-auto no-scrollbar">
+          {items.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => onPick(item)}
+              className="w-full px-4 py-3 text-start text-[0.9375rem] text-[#111b21] border-b border-black/5 hover:bg-[#f5f6f6]"
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /** The wordmark's shield, sized for a contact photo. */
 function KavachShield() {
@@ -289,7 +557,7 @@ export function WhatsAppSendButton({ onClick, disabled, label }: {
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="grid place-items-center w-11 h-11 shrink-0 rounded-full bg-[#008069] text-white disabled:opacity-50"
+      className="grid place-items-center w-[46px] h-[46px] shrink-0 rounded-full bg-[#00a884] text-white disabled:opacity-50"
     >
       <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
         <path d="M3.4 20.4 21 12 3.4 3.6 3.4 10.1 15.5 12 3.4 13.9z" />
@@ -306,9 +574,11 @@ export function WhatsAppSendButton({ onClick, disabled, label }: {
  * lines and only then scrolls, so this does the same: the height is recomputed
  * from the content on every change, and the cap lives in CSS.
  */
-export function WhatsAppInput({ value, onChange, placeholder, ariaLabel }: {
+export function WhatsAppInput({ value, onChange, onSend, placeholder, ariaLabel }: {
   value: string;
   onChange: (value: string) => void;
+  /** Enter sends and Shift+Enter breaks the line, as it does on WhatsApp Web. */
+  onSend?: () => void;
   placeholder: string;
   ariaLabel: string;
 }) {
@@ -327,13 +597,18 @@ export function WhatsAppInput({ value, onChange, placeholder, ariaLabel }: {
       ref={ref}
       value={value}
       onChange={(event) => onChange(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" || event.shiftKey || !onSend) return;
+        event.preventDefault();
+        onSend();
+      }}
       rows={1}
       placeholder={placeholder}
       aria-label={ariaLabel}
       className={cn(
         "block w-full bg-transparent resize-none focus:outline-none",
         "text-[0.9375rem] leading-[1.45] text-[#111b21] placeholder:text-[#8696a0]",
-        "max-h-32 overflow-y-auto",
+        "max-h-32 overflow-y-auto no-scrollbar",
       )}
     />
   );

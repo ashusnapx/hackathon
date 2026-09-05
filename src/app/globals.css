@@ -916,3 +916,16 @@
 
 /* The player paints its own dark chrome, so it keeps the same colours in both
    themes; only the page around it flips. */
+
+/* WhatsApp paints no scrollbar over its wallpaper, and neither does the case
+   file beside it: a track down the edge of a phone screen is the sort of detail
+   that makes a replica read as a web page. The content still scrolls, by wheel,
+   by touch and by keyboard — only the bar is gone. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}

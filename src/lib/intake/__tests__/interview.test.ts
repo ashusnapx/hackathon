@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DETAIL_QUESTIONS } from "../details";
 import {
   emptyIntake,
   evidenceIdsFor,
@@ -55,7 +56,27 @@ describe("adaptive intake interview", () => {
   it("only asks the time shortcut when money moved", () => {
     const base = { ...emptyIntake(), acceptedBoundaries: true, safety: "safe" as const, safetyCheckedAt: new Date().toISOString(), childContext: "adult-or-no-child" as const };
     expect(nextIntakeStep({ ...base, moneyMoved: "yes" })).toBe("timing");
-    expect(nextIntakeStep({ ...base, moneyMoved: "no" })).toBe("story");
+    expect(nextIntakeStep({ ...base, moneyMoved: "no" })).toBe("name");
+    // And the account of what happened comes after the introductions: a name,
+    // then the contact details every document needs.
+    expect(nextIntakeStep({ ...base, moneyMoved: "no", callerName: "Meera" })).toBe("details");
+    expect(nextIntakeStep({
+      ...base,
+      moneyMoved: "no",
+      callerName: "Meera",
+      detailsAsked: ["phone", "email", "address"],
+    })).toBe("story");
+  });
+
+  it("learns a name before asking anybody to describe their worst hour", () => {
+    const base = { ...emptyIntake(), acceptedBoundaries: true, safety: "safe" as const, safetyCheckedAt: new Date().toISOString(), childContext: "adult-or-no-child" as const, moneyMoved: "no" as const };
+    expect(nextIntakeStep(base)).toBe("name");
+    // Declining is an answer, and it is not asked twice.
+    expect(nextIntakeStep({ ...base, detailsAsked: ["name"] })).toBe("details");
+    expect(nextIntakeStep({
+      ...base,
+      detailsAsked: ["name", "phone", "email", "address"],
+    })).toBe("story");
   });
 
   it("flags recent financial loss without inventing a recovery probability", () => {
@@ -90,8 +111,10 @@ describe("adaptive intake interview", () => {
       moneyMoved: "no",
     });
     expect(p.answered).toBe(11); // includes age and a non-applicable child-safety gate
-    expect(p.total).toBe(15);
-    expect(p.percent).toBe(73);
+    // Seventeen now: the introduction, and the follow-up round that fills the
+    // documents, are both questions somebody is actually asked.
+    expect(p.total).toBe(17);
+    expect(p.percent).toBe(65);
   });
 
   it("asks legally material payment questions only for financial loss", () => {
@@ -110,6 +133,10 @@ describe("adaptive intake interview", () => {
         source: "rules" as const,
       },
       analysisConfirmed: true,
+      // The introduction and the follow-ups that fill the case file come first
+      // and are all skipped here, so this is about the RBI branch and nothing
+      // else.
+      detailsAsked: DETAIL_QUESTIONS.map((question) => question.id),
     };
 
     expect(nextIntakeStep(base)).toBe("rbi-initiation");

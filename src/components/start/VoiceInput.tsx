@@ -26,6 +26,16 @@ interface Props {
    * "compact" is the green circle WhatsApp puts at the end of its composer.
    */
   variant?: "page" | "compact";
+  /**
+   * Told whenever the microphone changes state.
+   *
+   * WhatsApp does not put a recording indicator next to the button — while you
+   * are recording the whole composer becomes the recorder, with a timer and a
+   * way out. That is drawn by whoever owns the composer, so it has to be told.
+   */
+  onModeChange?: (mode: Mode) => void;
+  /** Filled with a way to throw the take away, for the composer's bin button. */
+  controller?: React.MutableRefObject<{ cancel: () => void } | null>;
 }
 
 interface SpeechRecognitionLike extends EventTarget {
@@ -102,7 +112,7 @@ function getRecognition(): SpeechRecognitionLike | null {
   return Ctor ? new Ctor() : null;
 }
 
-export function VoiceInput({ onResult, disabled, variant = "page" }: Props) {
+export function VoiceInput({ onResult, disabled, variant = "page", onModeChange, controller }: Props) {
   const { lang, t } = useI18n();
   const [mode, setMode] = useState<Mode>("idle");
   const [level, setLevel] = useState(0);
@@ -163,6 +173,17 @@ export function VoiceInput({ onResult, disabled, variant = "page" }: Props) {
   }, []);
 
   useEffect(() => () => cleanup(), [cleanup]);
+
+  const modeRef = useRef(onModeChange);
+  useEffect(() => { modeRef.current = onModeChange; }, [onModeChange]);
+  useEffect(() => { modeRef.current?.(mode); }, [mode]);
+
+  useEffect(() => {
+    if (!controller) return;
+    const ref = controller;
+    ref.current = { cancel: () => { cleanup(); setMode("idle"); } };
+    return () => { ref.current = null; };
+  }, [cleanup, controller]);
 
   /** Drives the level meter, so the user can see they are being heard. */
   const meter = useCallback((stream: MediaStream) => {
@@ -357,25 +378,53 @@ export function VoiceInput({ onResult, disabled, variant = "page" }: Props) {
   const busy = mode === "processing";
 
   if (variant === "compact") {
+    // The full control carries a status line under it; the circle in a composer
+    // carried nothing at all, so tapping it and being heard, being transcribed,
+    // or being on a browser that cannot record all looked identical. The pill
+    // floats above the button rather than taking a row, because the composer is
+    // pinned to the bottom of a phone screen.
+    const status = mode === "unsupported"
+      ? t("start.voiceUnsupported")
+      : mode === "nothing"
+        ? t("start.voiceNothing")
+        : busy
+          ? t("start.analysing")
+          : null;
+
     return (
-      <button
-        type="button"
-        onClick={listening ? stop : start}
-        disabled={disabled || busy || mode === "unsupported"}
-        aria-pressed={listening}
-        aria-label={listening ? t("start.micStop") : t("start.mic")}
-        className={cn(
-          "relative grid place-items-center w-11 h-11 shrink-0 rounded-full text-white transition-colors",
-          listening ? "bg-[#e5533d]" : "bg-[#008069] disabled:opacity-50",
+      <span className="relative shrink-0">
+        {status && (
+          <span
+            role="status"
+            aria-live="polite"
+            className={cn(
+              "absolute bottom-full end-0 mb-2 w-max max-w-[15rem] rounded-lg px-2.5 py-1.5",
+              "text-[0.6875rem] leading-[1.35] text-white shadow-lg pointer-events-none",
+              mode === "unsupported" || mode === "nothing" ? "bg-[#8a3d2f]" : "bg-[#111b21]/92",
+            )}
+          >
+            {status}
+          </span>
         )}
-        style={
-          listening
-            ? { boxShadow: `0 0 0 ${3 + level * 12}px color-mix(in srgb, #e5533d 18%, transparent)` }
-            : undefined
-        }
-      >
-        {busy ? <Spinner /> : listening ? <StopIcon /> : <MicIcon />}
-      </button>
+        <button
+          type="button"
+          onClick={listening ? stop : start}
+          disabled={disabled || busy || mode === "unsupported"}
+          aria-pressed={listening}
+          aria-label={listening ? t("start.micStop") : t("start.mic")}
+          className={cn(
+            "relative grid place-items-center w-[46px] h-[46px] rounded-full text-white transition-colors",
+            listening ? "bg-[#e5533d]" : "bg-[#00a884] disabled:opacity-50",
+          )}
+          style={
+            listening
+              ? { boxShadow: `0 0 0 ${3 + level * 12}px color-mix(in srgb, #e5533d 18%, transparent)` }
+              : undefined
+          }
+        >
+          {busy ? <Spinner /> : listening ? <SendIcon /> : <MicIcon />}
+        </button>
+      </span>
     );
   }
 
@@ -434,6 +483,10 @@ function MicIcon() {
       <path d="M5 11a7 7 0 0 0 14 0M12 18v4" strokeLinecap="round" />
     </svg>
   );
+}
+
+function SendIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10.1 15.5 12 3.4 13.9z" /></svg>;
 }
 
 function StopIcon() {

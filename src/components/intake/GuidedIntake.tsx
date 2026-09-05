@@ -18,7 +18,6 @@ import {
   hasCompletedSafetyGate,
   hasCurrentSafetyAnswer,
   SAFETY_GATE_TTL_MS,
-  intakeProgress,
   needsFastFinancialAction,
   nextIntakeStep,
   timingEstimate,
@@ -62,14 +61,39 @@ import {
   CALL_POLL_BUDGET_MS,
 } from "@/lib/intake/call-to-case";
 import {
+  answerDetail,
+  askedDetails,
+  detailAnswerText,
+  detailProgress,
+  detailsForCase,
+  isDetailAnswer,
+  localDateTimeValue,
+  nameAnswered,
+  nextDetail,
+  NAME_QUESTION,
+  skipDetail,
+  skipRemainingDetails,
+  DETAIL_GROUPS,
+  type DetailKind,
+  type DetailPhase,
+  type DetailQuestion,
+} from "@/lib/intake/details";
+import {
   WhatsAppBubble,
   WhatsAppComposer,
   WhatsAppHeader,
   WhatsAppSystemNote,
   WhatsAppSendButton,
+  WhatsAppRecordingBar,
   WhatsAppInput,
+  WhatsAppButtons,
+  WhatsAppButton,
+  WhatsAppDateChip,
+  WhatsAppTyping,
+  WhatsAppListSheet,
   PhoneFrame,
   WHATSAPP_WALLPAPER,
+  whatsappWallpaperStyle,
 } from "@/components/intake/WhatsAppChrome";
 import { cn, inr } from "@/lib/utils";
 
@@ -215,17 +239,20 @@ export function GuidedIntake() {
   const currentRef = useRef<HTMLDivElement>(null);
   const evidenceChoice = draft.pendingEvidence ?? [];
   const step = nextIntakeStep(draft);
-  const progress = intakeProgress(draft);
   const voiceGateComplete = hasCompletedSafetyGate(draft);
   const whatsapp = draft.channel === "whatsapp";
+  // The two steps where the composer is a live field rather than a hint: the
+  // story, and each follow-up question after it.
+  // Two different things: whether the bar at the foot of the screen is a live
+  // field, and whether the step's own control *is* that field. Routing is the
+  // case that separates them — the district is typed into the composer while
+  // "use this location" stays a reply button up in the conversation.
+  const typing = step === "story" || step === "details" || step === "name"
+    || (draft.channel === "whatsapp" && step === "routing" && Boolean(draft.state));
+  const composerOwnsControls = draft.channel === "whatsapp"
+    && (step === "story" || step === "details" || step === "name");
   // The voice channel is a microphone, not a chat with a microphone above it.
   const voiceOnly = draft.channel === "voice";
-  // A tap-to-answer step belongs on the suggestion row; everything else is a
-  // card and belongs in the conversation, where there is room to read it.
-  const CHIP_STEPS = new Set<string>([
-    "safety", "age", "money", "timing",
-    "rbi-initiation", "rbi-credentials", "rbi-bank-fault", "rbi-report-timing",
-  ]);
   const [chatClock, setChatClock] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -239,6 +266,7 @@ export function GuidedIntake() {
       draft,
       t,
       new Date(Math.max(safetyClock, Number.isFinite(safetyAnswerTime) ? safetyAnswerTime : 0)),
+      draft.channel === "whatsapp",
     ),
     [draft, safetyAnswerTime, safetyClock, t],
   );
@@ -451,6 +479,7 @@ export function GuidedIntake() {
       available.has(item.id) ? { ...item, status: "added" as const, updatedAt: now } : item,
     );
     const rbiInput = rbiInputFromDraft(source);
+    const answers = source.details ?? {};
 
     const c = newCase({
       language: lang.code,
@@ -466,11 +495,23 @@ export function GuidedIntake() {
         : [],
       victim: {
         name: source.callerName,
+        // Answered in the follow-ups, and the reason the letters come out of
+        // this without a single square bracket in the address block.
+        phone: answers.phone,
+        email: answers.email,
+        address: answers.address,
+        policeStation: answers.policeStation,
         state: source.state,
         district: source.district,
         ageContext: source.childContext,
       },
-      ...(source.bankName ? { bank: { name: source.bankName } } : {}),
+      bank: {
+        name: source.bankName,
+        branchAddress: answers.branchAddress,
+        last4: answers.accountLast4,
+        ackRef: answers.bankAck,
+        notifiedAt: answers.bankNotifiedAt,
+      },
       suspect: {
         phones: analysis.entities.phones,
         upiIds: analysis.entities.upiIds,
@@ -494,6 +535,14 @@ export function GuidedIntake() {
         },
       } : undefined,
     });
+    if (answers.ncrpAck) {
+      // Where the placeholder panel would put it, so a number given in the chat
+      // and a number typed beside the letter end up in the same place.
+      c.tracks = [
+        ...c.tracks.filter((track) => track.id !== "ncrp"),
+        { id: "ncrp" as const, ref: answers.ncrpAck },
+      ];
+    }
     c.events.push({
       at: now,
       kind: "triaged",
@@ -513,6 +562,90 @@ export function GuidedIntake() {
     const id = commitCase(draft);
     if (id) router.push(`/case/${id}`);
   }, [commitCase, draft, router]);
+
+  /**
+   * The follow-up being asked, and the answer being typed into it.
+   *
+   * The answer is held here rather than in the draft because the draft is what
+   * decides which question comes next: writing every keystroke into it would
+   * mark the question answered on the first letter typed and skip to the next
+   * one. It is cleared whenever the question changes.
+   */
+  const detail = step === "details"
+    ? nextDetail(draft)
+    : step === "name" ? NAME_QUESTION : undefined;
+  // Keyed by the question it belongs to, so moving on empties the field without
+  // an effect that reaches back into state after every render.
+  const [statePicker, setStatePicker] = useState(false);
+  /**
+   * The composer, behaving the way WhatsApp's does.
+   *
+   * There, the circle at the end of the bar is a microphone until you type a
+   * character and a send arrow after that, the camera steps aside at the same
+   * moment, and while a voice note is recording the field is replaced by a
+   * timer and a bin. All of that is state the composer has to hold, so it is
+   * held here, and the microphone reports into it.
+   */
+  const [micMode, setMicMode] = useState<"idle" | "listening" | "processing" | "unsupported" | "nothing">("idle");
+  const [recordedFor, setRecordedFor] = useState(0);
+  const micRef = useRef<{ cancel: () => void } | null>(null);
+  const recordStartRef = useRef(0);
+  const onMicMode = useCallback((mode: typeof micMode) => {
+    if (mode === "listening") {
+      recordStartRef.current = Date.now();
+      setRecordedFor(0);
+    }
+    setMicMode(mode);
+  }, []);
+  const [typed, setTyped] = useState<{ id: string; value: string }>({ id: "", value: "" });
+  const detailValue = detail && typed.id === detail.id ? typed.value : "";
+  const setDetailValue = useCallback((value: string) => {
+    setTyped({ id: nextDetail(draftRef.current)?.id ?? "", value });
+  }, []);
+
+  const saveDetail = useCallback(() => {
+    if (!detail || !isDetailAnswer(detail, detailValue)) return;
+    patch(answerDetail(draft, detail, detailValue));
+  }, [detail, detailValue, draft, patch]);
+
+  const passDetail = useCallback(() => {
+    if (!detail) return;
+    patch(skipDetail(draft, detail.id));
+  }, [detail, draft, patch]);
+
+  const passAllDetails = useCallback(() => {
+    patch(skipRemainingDetails(draft));
+  }, [draft, patch]);
+
+  // What is in the composer, and what pressing send does with it — one answer
+  // for the three steps that take typing, so the bar itself stays simple.
+  const composerText = step === "story"
+    ? draft.narrative
+    : step === "details" || step === "name"
+      ? detailValue
+      : draft.district ?? "";
+  const composerHasText = composerText.trim().length > 0;
+  const composerCanSend = step === "story"
+    ? !busy && composerHasText
+    : detail
+      ? isDetailAnswer(detail, detailValue)
+      : composerHasText;
+  const sendComposer = useCallback(() => {
+    if (step === "story") analyse();
+    else if (step === "details" || step === "name") saveDetail();
+    else patch({ routingAnswered: true });
+  }, [analyse, patch, saveDetail, step]);
+  // A date is chosen in a calendar, not spoken into one.
+  const dictatable = detail?.kind !== "datetime";
+  const recording = micMode === "listening" || micMode === "processing";
+  useEffect(() => {
+    if (micMode !== "listening") return;
+    const timer = globalThis.setInterval(
+      () => setRecordedFor(Math.floor((Date.now() - recordStartRef.current) / 1000)),
+      500,
+    );
+    return () => globalThis.clearInterval(timer);
+  }, [micMode]);
 
   /**
    * Hanging up is the end of the interview, not the middle of one.
@@ -593,10 +726,15 @@ export function GuidedIntake() {
       busy={busy}
       error={error}
       analyse={analyse}
-      updateTriage={updateTriage}
-      updateEntity={updateEntity}
       evidenceChoice={evidenceChoice}
       openCase={openCase}
+      detail={detail}
+      detailValue={detailValue}
+      setDetailValue={setDetailValue}
+      saveDetail={saveDetail}
+      passDetail={passDetail}
+      passAllDetails={passAllDetails}
+      openStatePicker={() => setStatePicker(true)}
     />
   );
 
@@ -668,7 +806,7 @@ export function GuidedIntake() {
           </aside>
         )}
 
-        <div className="mt-7 grid lg:grid-cols-[minmax(0,1fr)_19rem] gap-6 lg:items-start">
+        <div className="mt-7 grid lg:grid-cols-2 gap-6 lg:items-start">
           {voiceOnly ? (
             <VaaniPanel
               language={lang.code}
@@ -717,13 +855,19 @@ export function GuidedIntake() {
 
             <div
               ref={scrollRef}
+              style={whatsapp ? whatsappWallpaperStyle : undefined}
               className={cn(
-                "px-3 sm:px-5 py-5 space-y-3",
-                whatsapp && `${WHATSAPP_WALLPAPER} sm:flex-1 sm:min-h-0 sm:overflow-y-auto`,
+                whatsapp ? "px-2.5 sm:px-3 py-3 space-y-1.5" : "px-3 sm:px-5 py-5 space-y-3",
+                whatsapp && `${WHATSAPP_WALLPAPER} no-scrollbar sm:flex-1 sm:min-h-0 sm:overflow-y-auto`,
               )}
-            > 
-              {whatsapp && <WhatsAppSystemNote>{t("intake.waNotReal")}</WhatsAppSystemNote>}
-              <div role="log" aria-live="polite" aria-relevant="additions" className="space-y-3">
+            >
+              {whatsapp && (
+                <>
+                  <WhatsAppSystemNote>{t("intake.waNotReal")}</WhatsAppSystemNote>
+                  <WhatsAppDateChip>{t("intake.waToday")}</WhatsAppDateChip>
+                </>
+              )}
+              <div role="log" aria-live="polite" aria-relevant="additions" className={whatsapp ? "space-y-1.5" : "space-y-3"}>
                 {messages.map((message, index) => (
                   whatsapp ? (
                     <WhatsAppBubble
@@ -738,9 +882,14 @@ export function GuidedIntake() {
                     <MessageBubble key={`${message.role}-${index}`} message={message} />
                   )
                 ))}
+                {whatsapp && busy && <WhatsAppTyping />}
               </div>
 
-              {(!whatsapp || (!CHIP_STEPS.has(step) && step !== "story")) && (
+              {/* A bot's reply buttons arrive attached to its message, so on
+                  WhatsApp every answer that is a tap belongs here rather than on
+                  a strip above the keyboard. Only the two steps that take typing
+                  hand their control to the composer instead. */}
+              {!composerOwnsControls && (
                 <div
                   ref={currentRef}
                   tabIndex={-1}
@@ -749,50 +898,107 @@ export function GuidedIntake() {
                   {controls}
                 </div>
               )}
+              {whatsapp && (step === "details" || step === "name") && detail && (
+                <div ref={currentRef} tabIndex={-1} className="pt-1 focus:outline-none">
+                  <DetailSkips
+                    onSkip={passDetail}
+                    onSkipAll={passAllDetails}
+                    remaining={detailProgress(draft).remaining}
+                    wa
+                    t={t}
+                  />
+                </div>
+              )}
             </div>
 
-            {/* On the WhatsApp screen the answers belong on the composer strip,
-                where that app puts everything you can do. */}
+            {whatsapp && statePicker && (
+              <WhatsAppListSheet
+                title={t("intake.state")}
+                items={OFFICERS.map((item) => item.state)}
+                onPick={(state) => { patch({ state }); setStatePicker(false); }}
+                onClose={() => setStatePicker(false)}
+              />
+            )}
+
+            {/* The bar at the foot of the screen, doing what that bar does:
+                taking what is typed or spoken, and nothing else. Every answer
+                that is a tap is a reply button up in the conversation. */}
             {whatsapp && (
               <WhatsAppComposer
                 attachmentNote={t("intake.waAttachLater")}
-                hideCamera={step === "story"}
-                suggestions={CHIP_STEPS.has(step) ? controls : undefined}
-                input={step === "story" ? controls : (
-                  <p className="text-[0.9375rem] leading-[1.4] text-[#8696a0] truncate">
-                    {CHIP_STEPS.has(step) ? t("intake.waTapAbove") : t("intake.waReadAbove")}
-                  </p>
-                )}
-                trailing={step === "story" ? (
-                  // WhatsApp swaps the microphone for send the moment you type,
-                  // which assumes you know the button was ever there. This is
-                  // built for people who have not used a chatbot before, so
-                  // both stay on screen and send simply waits until there is
-                  // something to send.
-                  <div className="flex items-center gap-1.5">
+                hideCamera={composerHasText || recording}
+                hint={typing && !recording ? t("detail.typeOrSay") : undefined}
+                recording={recording ? (
+                  <WhatsAppRecordingBar
+                    seconds={recordedFor}
+                    onCancel={() => micRef.current?.cancel()}
+                    cancelLabel={t("intake.waCancelRecording")}
+                  />
+                ) : undefined}
+                input={
+                  composerOwnsControls ? controls
+                    : typing ? (
+                      <WhatsAppInput
+                        value={draft.district ?? ""}
+                        onChange={(district) => patch({ district })}
+                        onSend={sendComposer}
+                        placeholder={t("intake.district")}
+                        ariaLabel={t("intake.district")}
+                      />
+                    ) : (
+                      <p className="text-[0.9375rem] leading-[1.4] text-[#8696a0] truncate">
+                        {t("intake.waTapAbove")}
+                      </p>
+                    )
+                }
+                // One circle, as on the real thing: a microphone until there is
+                // something to send, a send arrow after that, and — while a
+                // voice note is being recorded — the button that ends it. The
+                // line above the bar names both, which is what a one-button
+                // composer costs somebody who has never used one.
+                trailing={typing ? (
+                  composerHasText && !recording ? (
+                    <WhatsAppSendButton
+                      onClick={sendComposer}
+                      disabled={!composerCanSend}
+                      label={t("intake.waSend")}
+                    />
+                  ) : dictatable ? (
                     <VoiceInput
                       variant="compact"
                       disabled={busy}
-                      onResult={(chunk) => patch({
-                        narrative: [draft.narrative.trim(), chunk].filter(Boolean).join(" "),
-                        analysis: undefined,
-                        analysisConfirmed: false,
-                      })}
+                      controller={micRef}
+                      onModeChange={onMicMode}
+                      onResult={(chunk) => {
+                        if (step === "story") {
+                          patch({
+                            narrative: [draft.narrative.trim(), chunk].filter(Boolean).join(" "),
+                            analysis: undefined,
+                            analysisConfirmed: false,
+                          });
+                        } else {
+                          setDetailValue([detailValue.trim(), chunk].filter(Boolean).join(" "));
+                        }
+                      }}
                     />
-                    <WhatsAppSendButton
-                      onClick={analyse}
-                      disabled={busy || !draft.narrative.trim()}
-                      label={t("intake.waSend")}
-                    />
-                  </div>
+                  ) : (
+                    <WhatsAppSendButton onClick={sendComposer} disabled label={t("intake.waSend")} />
+                  )
                 ) : undefined}
               />
             )}
           </Shell>
           )}
 
-          <aside className="lg:sticky lg:top-28 space-y-4">
-            <CaseBrief draft={draft} progress={progress} t={t} />
+          <aside className="no-scrollbar lg:sticky lg:top-28 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto space-y-4 lg:pb-4">
+            <CaseForm
+              draft={draft}
+              patch={patch}
+              updateTriage={updateTriage}
+              updateEntity={updateEntity}
+              asking={detail?.id}
+              t={t}
+            />
             <div className="px-1 text-sm text-ink-3 space-y-2">
               {voiceGateComplete && (
                 <button
@@ -829,7 +1035,8 @@ export function GuidedIntake() {
 }
 
 function StepControls({
-  step, draft, patch, answer, t, busy, error, analyse, updateTriage, updateEntity, evidenceChoice, openCase,
+  step, draft, patch, answer, t, busy, error, analyse, evidenceChoice, openCase,
+  detail, detailValue, setDetailValue, saveDetail, passDetail, passAllDetails, openStatePicker,
 }: {
   step: ReturnType<typeof nextIntakeStep>;
   draft: IntakeDraft;
@@ -839,12 +1046,30 @@ function StepControls({
   busy: boolean;
   error: string | null;
   analyse: () => void;
-  updateTriage: (p: Partial<Triage>) => void;
-  updateEntity: (field: EntityArrayKey, index: number, value?: string) => void;
   evidenceChoice: EvidenceKind[];
   openCase: () => void;
+  detail?: DetailQuestion;
+  detailValue: string;
+  setDetailValue: (value: string) => void;
+  saveDetail: () => void;
+  passDetail: () => void;
+  passAllDetails: () => void;
+  openStatePicker: () => void;
 }) {
+  // WhatsApp draws every one of these as the bot's own reply buttons; the
+  // browser chat draws chips and cards. The wording and the effect are shared.
+  const wa = draft.channel === "whatsapp";
+
   if (step === "boundaries") {
+    if (wa) {
+      return (
+        <Replies wa>
+          <Reply wa primary onClick={() => answer({ acceptedBoundaries: true }, t("intake.boundaryCta"))}>
+            {t("intake.boundaryCta")}
+          </Reply>
+        </Replies>
+      );
+    }
     return (
       <ActionCard>
         <p className="text-[0.9375rem] leading-[1.6] text-ink-2">{t("intake.boundaryBody")}</p>
@@ -858,16 +1083,25 @@ function StepControls({
   }
 
   if (step === "safety") {
+    const at = () => new Date().toISOString();
     return (
-      <QuickReplies>
-        <Quick onClick={() => answer({ safety: "safe" satisfies SafetyAnswer, safetyCheckedAt: new Date().toISOString(), emergencyAcknowledged: false }, t("intake.safetySafe"))}>{t("intake.safetySafe")}</Quick>
-        <Quick onClick={() => answer({ safety: "danger" satisfies SafetyAnswer, safetyCheckedAt: new Date().toISOString(), emergencyAcknowledged: false }, t("intake.safetyDanger"))} urgent>{t("intake.safetyDanger")}</Quick>
-        <Quick onClick={() => answer({ safety: "prefer-not" satisfies SafetyAnswer, safetyCheckedAt: new Date().toISOString(), emergencyAcknowledged: false }, t("intake.preferNot"))}>{t("intake.preferNot")}</Quick>
-      </QuickReplies>
+      <Replies wa={wa}>
+        <Reply wa={wa} onClick={() => answer({ safety: "safe" satisfies SafetyAnswer, safetyCheckedAt: at(), emergencyAcknowledged: false }, t("intake.safetySafe"))}>{t("intake.safetySafe")}</Reply>
+        <Reply wa={wa} urgent onClick={() => answer({ safety: "danger" satisfies SafetyAnswer, safetyCheckedAt: at(), emergencyAcknowledged: false }, t("intake.safetyDanger"))}>{t("intake.safetyDanger")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ safety: "prefer-not" satisfies SafetyAnswer, safetyCheckedAt: at(), emergencyAcknowledged: false }, t("intake.preferNot"))}>{t("intake.preferNot")}</Reply>
+      </Replies>
     );
   }
 
   if (step === "emergency") {
+    if (wa) {
+      return (
+        <Replies wa>
+          <Reply wa href="tel:112">{t("intake.emergencyCall")}</Reply>
+          <Reply wa onClick={() => answer({ emergencyAcknowledged: true }, t("intake.emergencyContinue"))}>{t("intake.emergencyContinue")}</Reply>
+        </Replies>
+      );
+    }
     return (
       <ActionCard urgent>
         <h2 className="!font-sans !text-lg !font-semibold !tracking-normal !leading-snug text-urgent-ink">{t("intake.emergencyH")}</h2>
@@ -882,16 +1116,24 @@ function StepControls({
 
   if (step === "age") {
     return (
-      <QuickReplies>
-        <Quick onClick={() => answer({ childContext: "adult-or-no-child" satisfies ChildContext }, t("intake.ageAdult"))}>{t("intake.ageAdult")}</Quick>
-        <Quick onClick={() => answer({ childContext: "self-minor" satisfies ChildContext }, t("intake.ageSelfMinor"))}>{t("intake.ageSelfMinor")}</Quick>
-        <Quick onClick={() => answer({ childContext: "child-other" satisfies ChildContext }, t("intake.ageChildOther"))}>{t("intake.ageChildOther")}</Quick>
-        <Quick onClick={() => answer({ childContext: "unknown" satisfies ChildContext }, t("intake.preferNot"))}>{t("intake.preferNot")}</Quick>
-      </QuickReplies>
+      <Replies wa={wa}>
+        <Reply wa={wa} onClick={() => answer({ childContext: "adult-or-no-child" satisfies ChildContext }, t("intake.ageAdult"))}>{t("intake.ageAdult")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ childContext: "self-minor" satisfies ChildContext }, t("intake.ageSelfMinor"))}>{t("intake.ageSelfMinor")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ childContext: "child-other" satisfies ChildContext }, t("intake.ageChildOther"))}>{t("intake.ageChildOther")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ childContext: "unknown" satisfies ChildContext }, t("intake.preferNot"))}>{t("intake.preferNot")}</Reply>
+      </Replies>
     );
   }
 
   if (step === "child-safety") {
+    if (wa) {
+      return (
+        <Replies wa>
+          <Reply wa href="tel:1098">{t("intake.childCall")}</Reply>
+          <Reply wa onClick={() => answer({ childSafetyAcknowledged: true }, t("intake.childContinue"))}>{t("intake.childContinue")}</Reply>
+        </Replies>
+      );
+    }
     return (
       <ActionCard urgent>
         <h2 className="!font-sans !text-lg !font-semibold !tracking-normal !leading-snug text-urgent-ink">{t("intake.childH")}</h2>
@@ -906,22 +1148,22 @@ function StepControls({
 
   if (step === "money") {
     return (
-      <QuickReplies>
-        <Quick onClick={() => answer({ moneyMoved: "yes" satisfies MoneyAnswer }, t("intake.moneyYes"))}>{t("intake.moneyYes")}</Quick>
-        <Quick onClick={() => answer({ moneyMoved: "no" satisfies MoneyAnswer }, t("intake.moneyNo"))}>{t("intake.moneyNo")}</Quick>
-        <Quick onClick={() => answer({ moneyMoved: "unsure" satisfies MoneyAnswer }, t("intake.notSure"))}>{t("intake.notSure")}</Quick>
-      </QuickReplies>
+      <Replies wa={wa}>
+        <Reply wa={wa} onClick={() => answer({ moneyMoved: "yes" satisfies MoneyAnswer }, t("intake.moneyYes"))}>{t("intake.moneyYes")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ moneyMoved: "no" satisfies MoneyAnswer }, t("intake.moneyNo"))}>{t("intake.moneyNo")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ moneyMoved: "unsure" satisfies MoneyAnswer }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
+      </Replies>
     );
   }
 
   if (step === "timing") {
     return (
-      <QuickReplies>
-        <Quick onClick={() => answer({ incidentTiming: "last-hour" satisfies IncidentTiming }, t("intake.timingHour"))} urgent>{t("intake.timingHour")}</Quick>
-        <Quick onClick={() => answer({ incidentTiming: "today" satisfies IncidentTiming }, t("intake.timingToday"))}>{t("intake.timingToday")}</Quick>
-        <Quick onClick={() => answer({ incidentTiming: "older" satisfies IncidentTiming }, t("intake.timingOlder"))}>{t("intake.timingOlder")}</Quick>
-        <Quick onClick={() => answer({ incidentTiming: "unsure" satisfies IncidentTiming }, t("intake.notSure"))}>{t("intake.notSure")}</Quick>
-      </QuickReplies>
+      <Replies wa={wa}>
+        <Reply wa={wa} urgent onClick={() => answer({ incidentTiming: "last-hour" satisfies IncidentTiming }, t("intake.timingHour"))}>{t("intake.timingHour")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ incidentTiming: "today" satisfies IncidentTiming }, t("intake.timingToday"))}>{t("intake.timingToday")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ incidentTiming: "older" satisfies IncidentTiming }, t("intake.timingOlder"))}>{t("intake.timingOlder")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ incidentTiming: "unsure" satisfies IncidentTiming }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
+      </Replies>
     );
   }
 
@@ -932,6 +1174,7 @@ function StepControls({
           <WhatsAppInput
             value={draft.narrative}
             onChange={(narrative) => patch({ narrative, analysis: undefined, analysisConfirmed: false })}
+            onSend={analyse}
             placeholder={t("intake.waTypeHint")}
             ariaLabel={t("intake.storyQ")}
           />
@@ -968,7 +1211,19 @@ function StepControls({
   if (step === "verify" && draft.analysis) {
     const triage = draft.analysis.triage;
     const category = findCategory(triage.categoryId);
-    const found = entityItems(draft.analysis.entities);
+    if (wa) {
+      return (
+        <Replies wa>
+          <Reply wa primary onClick={() => answer({ analysisConfirmed: true }, t("intake.verifyConfirm"))}>
+            {t("intake.verifyConfirm")}
+          </Reply>
+        </Replies>
+      );
+    }
+    // The form itself lives in the case brief beside the chat, where it stays
+    // on screen and keeps updating as the interview goes on. Reading it back
+    // inside a bubble and then asking to confirm in the same bubble made the
+    // conversation stop dead on a page-tall form.
     return (
       <ActionCard>
         <div className="flex items-center justify-between gap-3">
@@ -981,85 +1236,11 @@ function StepControls({
                 : t("intake.sourceRules")}
           </span>
         </div>
-        <div className="mt-4 grid sm:grid-cols-2 gap-4">
-          <label className="space-y-1.5">
-            <span className="text-sm text-ink-2">{t("intake.verifyCategory")}</span>
-            <select
-              value={triage.categoryId}
-              onChange={(e) => updateTriage({ categoryId: e.target.value, subcategoryId: undefined })}
-              className="w-full h-12 px-3 bg-raised border border-rule-strong rounded-ctl focus:outline-none focus:border-ink"
-            >
-              {CATEGORIES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-            </select>
-          </label>
-          <label className="space-y-1.5">
-            <span className="text-sm text-ink-2">{t("intake.verifySubcategory")}</span>
-            <select
-              value={triage.subcategoryId || ""}
-              onChange={(e) => updateTriage({ subcategoryId: e.target.value || undefined })}
-              className="w-full h-12 px-3 bg-raised border border-rule-strong rounded-ctl focus:outline-none focus:border-ink"
-            >
-              <option value="">—</option>
-              {category?.subcategories.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-            </select>
-          </label>
-          <label className="space-y-1.5">
-            <span className="text-sm text-ink-2">{t("intake.verifyAmount")}</span>
-            <input
-              type="number"
-              inputMode="decimal"
-              value={triage.amount ?? ""}
-              onChange={(e) => updateTriage({ amount: e.target.value ? Number(e.target.value) : undefined })}
-              className="w-full h-12 px-3 bg-raised border border-rule-strong rounded-ctl num focus:outline-none focus:border-ink"
-            />
-          </label>
-          <label className="space-y-1.5">
-            <span className="text-sm text-ink-2">{t("intake.verifyWhen")}</span>
-            <input
-              type="datetime-local"
-              value={toLocalInput(triage.incidentAt)}
-              onChange={(e) => updateTriage({ incidentAt: fromLocalInput(e.target.value) })}
-              className="w-full h-12 px-3 bg-raised border border-rule-strong rounded-ctl num focus:outline-none focus:border-ink"
-            />
-          </label>
-          {draft.moneyMoved === "yes" && (
-            <label className="space-y-1.5 sm:col-span-2">
-              <span className="text-sm text-ink-2">{t("intake.verifyBankAlert")}</span>
-              <input
-                type="datetime-local"
-                value={toLocalInput(draft.bankAlertAt)}
-                onChange={(e) => patch({ bankAlertAt: fromLocalInput(e.target.value) })}
-                className="w-full h-12 px-3 bg-raised border border-rule-strong rounded-ctl num focus:outline-none focus:border-ink"
-              />
-              <span className="block text-xs leading-snug text-ink-3">{t("intake.verifyBankAlertHint")}</span>
-            </label>
-          )}
-        </div>
-        <div className="mt-4 border-t border-rule pt-4">
-          <p className="text-sm text-ink-3">{t("intake.verifyFound")}</p>
-          {found.length ? (
-            <div className="mt-2 grid gap-2">
-              {found.map((item) => (
-                <div key={`${item.field}-${item.index}`} className="flex items-center gap-2">
-                  <input
-                    value={item.value}
-                    onChange={(event) => updateEntity(item.field, item.index, event.target.value)}
-                    aria-label={`${t("intake.verifyFound")}: ${item.value}`}
-                    className="num min-w-0 flex-1 rounded-ctl border border-rule bg-sunk px-2.5 py-2 text-xs focus:outline-none focus:border-ink"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => updateEntity(item.field, item.index)}
-                    aria-label={`${t("rep.remove")}: ${item.value}`}
-                    className="shrink-0 text-xs underline underline-offset-4 text-ink-3 hover:text-ink"
-                  >
-                    {t("rep.remove")}
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : <p className="mt-1 text-sm text-ink-3">{t("intake.verifyNone")}</p>}
-        </div>
+        <p className="mt-3 text-[0.9375rem] leading-[1.55]">
+          {category?.label ?? t("intake.verifyCategory")}
+          {triage.amount ? <> · <span className="num">{inr(triage.amount)}</span></> : null}
+        </p>
+        <p className="mt-2 text-sm leading-[1.55] text-ink-3">{t("intake.verifyWhere")}</p>
         <Button onClick={() => answer({ analysisConfirmed: true }, t("intake.verifyConfirm"))} size="md" className="mt-5" full>{t("intake.verifyConfirm")}</Button>
       </ActionCard>
     );
@@ -1067,49 +1248,61 @@ function StepControls({
 
   if (step === "rbi-initiation") {
     return (
-      <QuickReplies>
-        <Quick onClick={() => answer({ transactionInitiation: "victim" satisfies RbiInitiation }, t("intake.rbiInitiatedMe"))}>{t("intake.rbiInitiatedMe")}</Quick>
-        <Quick onClick={() => answer({ transactionInitiation: "not-victim" satisfies RbiInitiation }, t("intake.rbiInitiatedNotMe"))}>{t("intake.rbiInitiatedNotMe")}</Quick>
-        <Quick onClick={() => answer({ transactionInitiation: "unknown" satisfies RbiInitiation }, t("intake.notSure"))}>{t("intake.notSure")}</Quick>
-      </QuickReplies>
+      <Replies wa={wa}>
+        <Reply wa={wa} onClick={() => answer({ transactionInitiation: "victim" satisfies RbiInitiation }, t("intake.rbiInitiatedMe"))}>{t("intake.rbiInitiatedMe")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ transactionInitiation: "not-victim" satisfies RbiInitiation }, t("intake.rbiInitiatedNotMe"))}>{t("intake.rbiInitiatedNotMe")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ transactionInitiation: "unknown" satisfies RbiInitiation }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
+      </Replies>
     );
   }
 
   if (step === "rbi-credentials") {
     return (
-      <QuickReplies>
-        <Quick onClick={() => answer({ credentialsShared: "yes" satisfies RbiYesNoUnknown }, t("intake.rbiCredentialYes"))}>{t("intake.rbiCredentialYes")}</Quick>
-        <Quick onClick={() => answer({ credentialsShared: "no" satisfies RbiYesNoUnknown }, t("intake.rbiCredentialNo"))}>{t("intake.rbiCredentialNo")}</Quick>
-        <Quick onClick={() => answer({ credentialsShared: "unknown" satisfies RbiYesNoUnknown }, t("intake.notSure"))}>{t("intake.notSure")}</Quick>
-      </QuickReplies>
+      <Replies wa={wa}>
+        <Reply wa={wa} onClick={() => answer({ credentialsShared: "yes" satisfies RbiYesNoUnknown }, t("intake.rbiCredentialYes"))}>{t("intake.rbiCredentialYes")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ credentialsShared: "no" satisfies RbiYesNoUnknown }, t("intake.rbiCredentialNo"))}>{t("intake.rbiCredentialNo")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ credentialsShared: "unknown" satisfies RbiYesNoUnknown }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
+      </Replies>
     );
   }
 
   if (step === "rbi-bank-fault") {
     return (
-      <QuickReplies>
-        <Quick onClick={() => answer({ suspectedBankFault: "yes" satisfies RbiYesNoUnknown }, t("intake.rbiBankFaultYes"))}>{t("intake.rbiBankFaultYes")}</Quick>
-        <Quick onClick={() => answer({ suspectedBankFault: "no" satisfies RbiYesNoUnknown }, t("intake.rbiBankFaultNo"))}>{t("intake.rbiBankFaultNo")}</Quick>
-        <Quick onClick={() => answer({ suspectedBankFault: "unknown" satisfies RbiYesNoUnknown }, t("intake.notSure"))}>{t("intake.notSure")}</Quick>
-      </QuickReplies>
+      <Replies wa={wa}>
+        <Reply wa={wa} onClick={() => answer({ suspectedBankFault: "yes" satisfies RbiYesNoUnknown }, t("intake.rbiBankFaultYes"))}>{t("intake.rbiBankFaultYes")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ suspectedBankFault: "no" satisfies RbiYesNoUnknown }, t("intake.rbiBankFaultNo"))}>{t("intake.rbiBankFaultNo")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ suspectedBankFault: "unknown" satisfies RbiYesNoUnknown }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
+      </Replies>
     );
   }
 
   if (step === "rbi-report-timing") {
     return (
-      <QuickReplies>
-        <Quick onClick={() => answer({ bankReportTiming: "within_3_working_days" satisfies RbiReportTiming }, t("intake.rbiReportThree"))}>{t("intake.rbiReportThree")}</Quick>
-        <Quick onClick={() => answer({ bankReportTiming: "four_to_seven_working_days" satisfies RbiReportTiming }, t("intake.rbiReportSeven"))}>{t("intake.rbiReportSeven")}</Quick>
-        <Quick onClick={() => answer({ bankReportTiming: "after_7_working_days" satisfies RbiReportTiming }, t("intake.rbiReportAfter"))}>{t("intake.rbiReportAfter")}</Quick>
-        <Quick onClick={() => answer({ bankReportTiming: "not_reported" satisfies RbiReportTiming }, t("intake.rbiReportNo"))} urgent>{t("intake.rbiReportNo")}</Quick>
-        <Quick onClick={() => answer({ bankReportTiming: "unknown" satisfies RbiReportTiming }, t("intake.notSure"))}>{t("intake.notSure")}</Quick>
-      </QuickReplies>
+      <Replies wa={wa}>
+        <Reply wa={wa} onClick={() => answer({ bankReportTiming: "within_3_working_days" satisfies RbiReportTiming }, t("intake.rbiReportThree"))}>{t("intake.rbiReportThree")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ bankReportTiming: "four_to_seven_working_days" satisfies RbiReportTiming }, t("intake.rbiReportSeven"))}>{t("intake.rbiReportSeven")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ bankReportTiming: "after_7_working_days" satisfies RbiReportTiming }, t("intake.rbiReportAfter"))}>{t("intake.rbiReportAfter")}</Reply>
+        <Reply wa={wa} urgent onClick={() => answer({ bankReportTiming: "not_reported" satisfies RbiReportTiming }, t("intake.rbiReportNo"))}>{t("intake.rbiReportNo")}</Reply>
+        <Reply wa={wa} onClick={() => answer({ bankReportTiming: "unknown" satisfies RbiReportTiming }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
+      </Replies>
     );
   }
 
   if (step === "rbi-review") {
     const input = rbiInputFromDraft(draft);
     if (!input) return null;
+    if (wa) {
+      // The screening itself is read in the conversation, as a message from the
+      // assistant; only the acknowledgement is a button.
+      return (
+        <Replies wa>
+          <Reply wa href={assessRbiEligibility(input).source.url}>{t("intake.rbiSource")}</Reply>
+          <Reply wa primary onClick={() => answer({ rbiAssessmentReviewed: true }, t("intake.rbiContinue"))}>
+            {t("intake.rbiContinue")}
+          </Reply>
+        </Replies>
+      );
+    }
     return (
       <RbiReviewCard assessment={assessRbiEligibility(input)} t={t}>
         <Button onClick={() => answer({ rbiAssessmentReviewed: true }, t("intake.rbiContinue"))} size="md" className="mt-5" full>
@@ -1129,6 +1322,34 @@ function StepControls({
           .concat(evidenceChoice.includes(kind) ? [] : [kind]);
       patch({ pendingEvidence: next });
     };
+    const saveLabel = evidenceChoice.length && !evidenceChoice.includes("none")
+      ? `${evidenceChoice.length} ${t("intake.summaryEvidence").toLowerCase()}`
+      : t("intake.evNone");
+    if (wa) {
+      // A multiple-choice question on WhatsApp is a stack of reply buttons that
+      // stay lit once tapped, with the confirmation at the bottom — the same
+      // shape a poll takes there.
+      return (
+        <Replies wa>
+          {EVIDENCE_OPTIONS.map((item) => (
+            <Reply key={item.id} wa selected={evidenceChoice.includes(item.id)} onClick={() => toggle(item.id)}>
+              {t(item.key)}
+            </Reply>
+          ))}
+          <Reply wa selected={evidenceChoice.includes("none")} onClick={() => toggle("none")}>{t("intake.evNone")}</Reply>
+          <Reply
+            wa
+            primary
+            onClick={() => answer(
+              { evidence: evidenceChoice.length ? evidenceChoice : ["none"], pendingEvidence: undefined },
+              saveLabel,
+            )}
+          >
+            {t("intake.evidenceCta")}
+          </Reply>
+        </Replies>
+      );
+    }
     return (
       <ActionCard>
         <div className="grid sm:grid-cols-2 gap-2">
@@ -1153,6 +1374,30 @@ function StepControls({
   }
 
   if (step === "routing") {
+    if (wa) {
+      // Thirty-six states are not reply buttons. WhatsApp's own answer to a
+      // long list is a sheet over the conversation, so that is what this opens;
+      // the district is then simply typed, in the box that is already there.
+      return (
+        <Replies wa>
+          <Reply wa onClick={openStatePicker}>
+            {draft.state ? `${draft.state} ✓` : t("intake.state")}
+          </Reply>
+          {draft.state && (
+            <Reply
+              wa
+              primary
+              onClick={() => answer({ routingAnswered: true }, [draft.district, draft.state].filter(Boolean).join(", "))}
+            >
+              {t("intake.routingCta")}
+            </Reply>
+          )}
+          <Reply wa onClick={() => answer({ routingAnswered: true }, t("intake.routingSkip"))}>
+            {t("intake.routingSkip")}
+          </Reply>
+        </Replies>
+      );
+    }
     return (
       <ActionCard>
         <div className="grid sm:grid-cols-2 gap-4">
@@ -1184,7 +1429,85 @@ function StepControls({
     );
   }
 
+  if ((step === "details" || step === "name") && detail) {
+    const progress = detailProgress(draft);
+    const ready = isDetailAnswer(detail, detailValue);
+    const dictatable = detail.kind !== "datetime";
+
+    if (draft.channel === "whatsapp") {
+      // On the phone the field belongs on the composer strip, where that app
+      // puts everything you can do. The question itself is already a bubble.
+      return (
+        <DetailField
+          question={detail}
+          value={detailValue}
+          onChange={setDetailValue}
+          onSubmit={saveDetail}
+          chrome="whatsapp"
+          t={t}
+        />
+      );
+    }
+
+    return (
+      <ActionCard>
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="label">
+            {step === "name" ? t("detail.counter") : (
+              <>
+                {t("detail.counter")} <span className="num">{progress.position}</span> {t("detail.of")} <span className="num">{progress.total - progress.known}</span>
+              </>
+            )}
+          </p>
+          {progress.known > 0 && (
+            <p className="text-xs text-ink-3"><span className="num">{progress.known}</span> {t("detail.knownAlready")}</p>
+          )}
+        </div>
+        <h2 className="mt-2 !font-sans !text-lg !font-semibold !tracking-normal !leading-snug">
+          {t(detail.question)}
+        </h2>
+        <p className="mt-1.5 text-sm leading-[1.55] text-ink-3">{t(detail.why)}</p>
+        <div className="mt-4 flex items-start gap-2">
+          <div className="flex-1 min-w-0">
+            <DetailField
+              question={detail}
+              value={detailValue}
+              onChange={setDetailValue}
+              onSubmit={saveDetail}
+              chrome="page"
+              t={t}
+            />
+          </div>
+          {dictatable && (
+            <VoiceInput
+              variant="compact"
+              onResult={(chunk) => setDetailValue([detailValue.trim(), chunk].filter(Boolean).join(" "))}
+            />
+          )}
+        </div>
+        {dictatable && <p className="mt-2 text-xs text-ink-3">{t("detail.typeOrSay")}</p>}
+        <div className="mt-5 flex flex-col sm:flex-row gap-2">
+          <Button onClick={saveDetail} disabled={!ready} size="md" className="flex-1">{t("detail.next")}</Button>
+          <Button onClick={passDetail} variant="secondary" size="md">{t("detail.skip")}</Button>
+          {progress.remaining > 1 && (
+            <Button onClick={passAllDetails} variant="secondary" size="md">{t("detail.skipAll")}</Button>
+          )}
+        </div>
+      </ActionCard>
+    );
+  }
+
   if (step === "ready") {
+    if (wa) {
+      return (
+        <>
+          <Replies wa>
+            <Reply wa primary onClick={openCase}>{t("intake.readyCta")}</Reply>
+          </Replies>
+          {error && <p role="alert" className="mt-2 text-xs text-urgent-ink">{error}</p>}
+        </>
+      );
+    }
     return (
       <ActionCard>
         <p className="text-[0.9375rem] leading-[1.6] text-ink-2">{t("intake.readyBody")}</p>
@@ -1197,8 +1520,56 @@ function StepControls({
   return null;
 }
 
-function buildMessages(draft: IntakeDraft, t: T, now = new Date()): Message[] {
-  const messages: Message[] = [{ role: "agent", text: t("intake.boundaryQ"), promptId: "boundaries" }];
+/**
+ * One run of follow-up questions, written into the conversation.
+ *
+ * Returns true when the run is still going, which means the caller has nothing
+ * further to say yet. Only what was actually put to the person is quoted back:
+ * a fact the call or the model supplied was never a question, and showing it as
+ * one would put words in their mouth.
+ */
+function askDetails(
+  draft: IntakeDraft,
+  t: T,
+  messages: Message[],
+  phase: DetailPhase,
+  intro: string,
+): boolean {
+  if (!detailsForCase(draft, phase).length) return false;
+  messages.push({ role: "agent", text: intro });
+  for (const { question, answer } of askedDetails(draft, phase)) {
+    messages.push({ role: "agent", text: t(question.question), promptId: `detail:${question.id}` });
+    messages.push({
+      role: "user",
+      text: answer ? detailAnswerText(question, answer) : t("detail.skipped"),
+    });
+  }
+  const pending = nextDetail(draft, phase);
+  if (!pending) return false;
+  messages.push({
+    role: "agent",
+    text: `${t(pending.question)}\n${t(pending.why)}`,
+    promptId: `detail:${pending.id}`,
+  });
+  return true;
+}
+
+/**
+ * The conversation, rebuilt from the answers rather than accumulated.
+ *
+ * `wa` is not cosmetic. On the web a step can put its explanation on a card
+ * under the chat; WhatsApp has no cards, only messages, so anything a person
+ * needs in order to answer has to be said in the conversation itself. Passing
+ * the channel here is what stops the WhatsApp view from quietly dropping the
+ * boundary text, the RBI screening, or what the assistant understood.
+ */
+function buildMessages(draft: IntakeDraft, t: T, now = new Date(), wa = false): Message[] {
+  const say = (...parts: (string | undefined)[]) => parts.filter(Boolean).join("\n\n");
+  const messages: Message[] = [{
+    role: "agent",
+    text: wa ? say(t("intake.boundaryQ"), t("intake.boundaryBody")) : t("intake.boundaryQ"),
+    promptId: "boundaries",
+  }];
   if (!draft.acceptedBoundaries) return messages;
   messages.push({ role: "user", text: t("intake.boundaryCta") });
   messages.push({ role: "agent", text: t("intake.safetyQ"), promptId: "safety" });
@@ -1225,12 +1596,44 @@ function buildMessages(draft: IntakeDraft, t: T, now = new Date()): Message[] {
     if (!draft.incidentTiming) return messages;
     messages.push({ role: "user", text: timingChoiceLabel(draft.incidentTiming, t) });
   }
+  // Who we are talking to, before what happened to them.
+  messages.push({
+    role: "agent",
+    text: `${t(NAME_QUESTION.question)}\n${t(NAME_QUESTION.why)}`,
+    promptId: "name",
+  });
+  if (!nameAnswered(draft)) return messages;
+  const called = draft.callerName?.trim();
+  messages.push({ role: "user", text: called || t("detail.skipped") });
+  if (called) messages.push({ role: "agent", text: `${t("intake.thankYou")}, ${called}.` });
+
+  // The rest of the contact details, one at a time, filling the form as they go.
+  if (askDetails(draft, t, messages, "intro", t("detail.introYou"))) return messages;
+
   messages.push({ role: "agent", text: t("intake.storyQ"), promptId: "story" });
   if (draft.narrative.trim().length < 25 || !draft.analysis) return messages;
   messages.push({ role: "user", text: draft.narrative.trim() });
-  messages.push({ role: "agent", text: t("intake.verifyQ"), promptId: "verify" });
+  messages.push({
+    role: "agent",
+    text: wa
+      ? say(
+        t("intake.verifyQ"),
+        [
+          findCategory(draft.analysis.triage.categoryId)?.label,
+          draft.analysis.triage.amount ? inr(draft.analysis.triage.amount) : undefined,
+        ].filter(Boolean).join(" · "),
+        t("intake.verifyWhere"),
+      )
+      : t("intake.verifyQ"),
+    promptId: "verify",
+  });
   if (!draft.analysisConfirmed) return messages;
   messages.push({ role: "user", text: t("intake.verifyConfirm") });
+
+  // And the rest of the follow-ups, now that the story has been read.
+  if (askDetails(draft, t, messages, "case", `${t("detail.intro")} ${t("detail.introOptional")}`)) {
+    return messages;
+  }
   if (draft.moneyMoved === "yes") {
     messages.push({ role: "agent", text: t("intake.rbiInitiationQ"), promptId: "rbi-initiation" });
     if (!draft.transactionInitiation) return messages;
@@ -1246,7 +1649,20 @@ function buildMessages(draft: IntakeDraft, t: T, now = new Date()): Message[] {
       if (!draft.bankReportTiming) return messages;
       messages.push({ role: "user", text: rbiReportTimingLabel(draft.bankReportTiming, t) });
     }
-    messages.push({ role: "agent", text: t("intake.rbiReviewQ"), promptId: "rbi-review" });
+    const rbiInput = wa ? rbiInputFromDraft(draft) : undefined;
+    const screening = rbiInput ? assessRbiEligibility(rbiInput) : undefined;
+    messages.push({
+      role: "agent",
+      text: screening
+        ? say(
+          t("intake.rbiReviewQ"),
+          rbiProtectionLabel(screening, t),
+          screening.reasons.slice(0, 3).map((reason) => `• ${reason}`).join("\n"),
+          t("intake.rbiDisclaimer"),
+        )
+        : t("intake.rbiReviewQ"),
+      promptId: "rbi-review",
+    });
     if (!draft.rbiAssessmentReviewed) return messages;
     messages.push({ role: "user", text: t("intake.rbiContinue") });
   }
@@ -1256,46 +1672,239 @@ function buildMessages(draft: IntakeDraft, t: T, now = new Date()): Message[] {
   messages.push({ role: "agent", text: `${t("intake.routingQ")} ${t("intake.routingSub")}`, promptId: "routing" });
   if (!draft.routingAnswered) return messages;
   messages.push({ role: "user", text: [draft.district, draft.state].filter(Boolean).join(", ") || t("intake.routingSkip") });
-  messages.push({ role: "agent", text: t("intake.readyQ"), promptId: "ready" });
+
+
+  messages.push({
+    role: "agent",
+    text: wa ? say(t("intake.readyQ"), t("intake.readyBody")) : t("intake.readyQ"),
+    promptId: "ready",
+  });
   return messages;
 }
 
-function CaseBrief({ draft, progress, t }: { draft: IntakeDraft; progress: ReturnType<typeof intakeProgress>; t: T }) {
-  const rbiInput = rbiInputFromDraft(draft);
-  const rbi = rbiInput && draft.rbiAssessmentReviewed ? assessRbiEligibility(rbiInput) : undefined;
-  const rows: { label: string; value?: string; confirmed?: boolean }[] = [
-    { label: t("intake.summarySafety"), value: draft.safety ? safetyLabel(draft.safety, t) : undefined, confirmed: Boolean(draft.safety) },
-    { label: t("intake.summaryAge"), value: draft.childContext ? childContextLabel(draft.childContext, t) : undefined, confirmed: Boolean(draft.childContext) },
-    { label: t("intake.summaryMoney"), value: draft.moneyMoved ? moneyLabel(draft.moneyMoved, t) : undefined, confirmed: Boolean(draft.moneyMoved) },
-    { label: t("intake.summaryTiming"), value: draft.moneyMoved === "yes" && draft.incidentTiming ? timingChoiceLabel(draft.incidentTiming, t) : undefined, confirmed: Boolean(draft.incidentTiming) },
-    { label: t("intake.summaryBankAlert"), value: draft.bankAlertAt ? new Date(draft.bankAlertAt).toLocaleString("en-IN") : undefined, confirmed: Boolean(draft.bankAlertAt) },
-    { label: t("intake.summaryType"), value: findCategory(draft.analysis?.triage.categoryId)?.label, confirmed: draft.analysisConfirmed },
-    { label: t("intake.summaryRbi"), value: rbi ? rbiProtectionLabel(rbi, t) : undefined, confirmed: Boolean(rbi) },
-    { label: t("intake.summaryEvidence"), value: draft.evidence ? (draft.evidence.includes("none") ? t("intake.evNone") : String(draft.evidence.length)) : undefined, confirmed: draft.evidence !== undefined },
-    { label: t("intake.summaryRoute"), value: [draft.district, draft.state].filter(Boolean).join(", ") || undefined, confirmed: draft.routingAnswered },
-  ];
+/**
+ * A text box on the form that only writes when you leave it.
+ *
+ * Committing on every keystroke would be correct and unusable: the chat's next
+ * question is chosen from what the case is missing, so the first letter typed
+ * here would answer the question being asked and move the conversation on
+ * mid-word. Blur — or Enter — is the moment somebody means it.
+ */
+function FormCell({ value, onCommit, label, kind, placeholder }: {
+  value: string;
+  onCommit: (value: string) => void;
+  label: string;
+  kind: DetailKind;
+  placeholder?: string;
+}) {
+  const [typed, setTyped] = useState<string | null>(null);
+  const shown = typed ?? value;
+  const commit = () => {
+    setTyped(null);
+    if (typed !== null && typed.trim() !== value.trim()) onCommit(typed);
+  };
+  const box = "w-full bg-raised border rounded-ctl text-sm focus:outline-none focus:border-ink";
+  const filled = value.trim().length > 0;
+  const border = filled ? "border-done/40" : "border-rule-strong";
+
+  if (kind === "textarea") {
+    return (
+      <textarea
+        value={shown}
+        rows={2}
+        aria-label={label}
+        placeholder={placeholder}
+        onChange={(event) => setTyped(event.target.value)}
+        onBlur={commit}
+        className={cn(box, border, "px-3 py-2 leading-[1.5] resize-y")}
+      />
+    );
+  }
   return (
-    <section className="sheet px-4 py-4 sm:px-5 sm:py-5">
+    <input
+      type={kind === "datetime" ? "datetime-local" : kind === "email" ? "email" : kind === "tel" ? "tel" : "text"}
+      value={kind === "datetime" ? localDateTimeValue(shown) || shown : shown}
+      aria-label={label}
+      placeholder={placeholder}
+      onChange={(event) => setTyped(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        (event.target as HTMLInputElement).blur();
+      }}
+      className={cn(box, border, "h-11 px-3", kind === "datetime" || kind === "amount" ? "num" : "")}
+    />
+  );
+}
+
+/**
+ * The case file, filling in beside the conversation.
+ *
+ * Everything the interview collects is here, in one place, editable, from the
+ * first message onwards. Two things follow from that, and both are the point:
+ * somebody can watch their case being built instead of trusting that it is, and
+ * anybody who would rather fill a form than answer questions can simply do it —
+ * a box filled here is a question the chat then does not ask, because the chat
+ * asks for what the case is missing and nothing else.
+ *
+ * It is deliberately not a summary. A summary would be a second, slightly wrong
+ * copy of the case; this is the case.
+ */
+function CaseForm({ draft, patch, updateTriage, updateEntity, asking, t }: {
+  draft: IntakeDraft;
+  patch: (p: Partial<IntakeDraft>) => void;
+  updateTriage: (p: Partial<Triage>) => void;
+  updateEntity: (field: EntityArrayKey, index: number, value?: string) => void;
+  /** The question the chat is on, so the form can point at the same box. */
+  asking?: string;
+  t: T;
+}) {
+  const analysis = draft.analysis;
+  const category = findCategory(analysis?.triage.categoryId);
+  const questions = detailsForCase(draft);
+  const filled = questions.filter((question) => question.read(draft)).length;
+  // Identifiers beyond the first of each kind: the first is a named box above,
+  // and this is everything else the story turned up.
+  const extras = analysis
+    ? entityItems(analysis.entities).filter((item) => item.index > 0)
+    : [];
+
+  return (
+    <section className="sheet px-4 py-4 sm:px-5 sm:py-5" aria-label={t("detail.formH")}>
       <div className="flex items-baseline justify-between gap-3">
-        <p className="label">{t("intake.summaryH")}</p>
-        <span className="num text-sm text-ink-3">{progress.answered}/{progress.total}</span>
+        <p className="label">{t("detail.formH")}</p>
+        <span className="num text-sm text-ink-3">{filled}/{questions.length}</span>
       </div>
-      <div className="mt-3 h-1.5 rounded-full bg-sunk overflow-hidden" role="progressbar" aria-label={t("intake.summaryH")} aria-valuenow={progress.percent} aria-valuemin={0} aria-valuemax={100}>
-        <div className="h-full rounded-full bg-deep transition-[width] duration-300" style={{ width: `${progress.percent}%` }} />
+      <div className="mt-3 h-1.5 rounded-full bg-sunk overflow-hidden" role="progressbar" aria-label={t("detail.formH")} aria-valuenow={questions.length ? Math.round((filled / questions.length) * 100) : 0} aria-valuemin={0} aria-valuemax={100}>
+        <div className="h-full rounded-full bg-done transition-[width] duration-300" style={{ width: `${questions.length ? (filled / questions.length) * 100 : 0}%` }} />
       </div>
-      <dl className="mt-4 divide-y divide-rule">
-        {rows.filter((row) => row.value).map((row) => (
-          <div key={row.label} className="py-2.5">
-            <dt className="text-xs text-ink-3">{row.label}</dt>
-            <dd className="mt-0.5 text-sm leading-snug flex items-start gap-2">
-              <span className="flex-1">{row.value}</span>
-              <span className={cn("w-1.5 h-1.5 rounded-full mt-1.5 shrink-0", row.confirmed ? "bg-done" : "bg-wait")} aria-label={row.confirmed ? t("intake.summaryConfirmed") : t("intake.summaryUnconfirmed")} />
-            </dd>
+      <p className="mt-2.5 text-xs leading-[1.5] text-ink-3">{t("detail.formSub")}</p>
+
+      {analysis && (
+        <div className="mt-5 space-y-3.5 border-t border-rule pt-4">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-3">{t("intake.reviewH")}</p>
+            <span className="shrink-0 text-[0.6875rem] text-ink-3 rounded-full border border-rule px-2 py-0.5">
+              {analysis.source === "vaani"
+                ? t("intake.sourceCall")
+                : analysis.source === "openai"
+                  ? t("intake.sourceModel")
+                  : t("intake.sourceRules")}
+            </span>
           </div>
-        ))}
-      </dl>
-      {!rows.some((row) => row.value) && <p className="mt-3 text-sm leading-snug text-ink-3">{t("intake.summaryEmpty")}</p>}
-      {draft.analysis?.triage.amount ? <p className="mt-4 num text-xl">{inr(draft.analysis.triage.amount)}</p> : null}
+          <label className="block space-y-1.5">
+            <span className="text-xs text-ink-2">{t("intake.verifyCategory")}</span>
+            <select
+              value={analysis.triage.categoryId}
+              onChange={(e) => updateTriage({ categoryId: e.target.value, subcategoryId: undefined })}
+              className="w-full h-11 px-3 bg-raised border border-done/40 rounded-ctl text-sm focus:outline-none focus:border-ink"
+            >
+              {CATEGORIES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+            </select>
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs text-ink-2">{t("intake.verifySubcategory")}</span>
+            <select
+              value={analysis.triage.subcategoryId || ""}
+              onChange={(e) => updateTriage({ subcategoryId: e.target.value || undefined })}
+              className={cn(
+                "w-full h-11 px-3 bg-raised border rounded-ctl text-sm focus:outline-none focus:border-ink",
+                analysis.triage.subcategoryId ? "border-done/40" : "border-rule-strong",
+              )}
+            >
+              <option value="">—</option>
+              {category?.subcategories.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+            </select>
+          </label>
+        </div>
+      )}
+
+      {DETAIL_GROUPS.map((group) => {
+        const rows = questions.filter((question) => question.group === group.id);
+        if (!rows.length) return null;
+        return (
+          <div key={group.id} className="mt-5 border-t border-rule pt-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-3">{t(group.label)}</p>
+            <div className="mt-3 space-y-3">
+              {rows.map((question) => (
+                <label key={question.id} className="block space-y-1.5">
+                  <span className="flex items-baseline gap-2 text-xs text-ink-2">
+                    {t(question.label)}
+                    {asking === question.id && (
+                      <span className="rounded-full bg-wait-soft px-1.5 py-0.5 text-[0.625rem] font-semibold text-wait-ink">
+                        {t("detail.asking")}
+                      </span>
+                    )}
+                  </span>
+                  <FormCell
+                    value={question.read(draft)}
+                    onCommit={(value) => patch(question.write(value, draft))}
+                    label={t(question.label)}
+                    kind={question.kind}
+                    placeholder={t(question.placeholder)}
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="mt-5 border-t border-rule pt-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-3">{t("intake.summaryRoute")}</p>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <label className="block space-y-1.5">
+            <span className="text-xs text-ink-2">{t("intake.state")}</span>
+            <select
+              value={draft.state || ""}
+              onChange={(e) => patch({ state: e.target.value || undefined })}
+              className={cn(
+                "w-full h-11 px-2 bg-raised border rounded-ctl text-sm focus:outline-none focus:border-ink",
+                draft.state ? "border-done/40" : "border-rule-strong",
+              )}
+            >
+              <option value="">—</option>
+              {OFFICERS.map((item) => <option key={item.state} value={item.state}>{item.state}</option>)}
+            </select>
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs text-ink-2">{t("intake.district")}</span>
+            <FormCell
+              value={draft.district || ""}
+              onCommit={(value) => patch({ district: value.trim() || undefined })}
+              label={t("intake.district")}
+              kind="text"
+            />
+          </label>
+        </div>
+      </div>
+
+      {extras.length > 0 && (
+        <div className="mt-5 border-t border-rule pt-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-3">{t("intake.verifyFound")}</p>
+          <div className="mt-3 grid gap-1.5">
+            {extras.map((item) => (
+              <div key={`${item.field}-${item.index}`} className="flex items-center gap-2">
+                <input
+                  value={item.value}
+                  onChange={(event) => updateEntity(item.field, item.index, event.target.value)}
+                  aria-label={`${t("intake.verifyFound")}: ${item.value}`}
+                  className="num min-w-0 flex-1 rounded-ctl border border-rule bg-sunk px-2.5 py-2 text-xs focus:outline-none focus:border-ink"
+                />
+                <button
+                  type="button"
+                  onClick={() => updateEntity(item.field, item.index)}
+                  aria-label={`${t("rep.remove")}: ${item.value}`}
+                  className="shrink-0 text-xs underline underline-offset-4 text-ink-3 hover:text-ink"
+                >
+                  {t("rep.remove")}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -1682,7 +2291,7 @@ function Shell({ whatsapp, statusTime, label, children }: {
   const card = (
     <section
       className={cn(
-        "overflow-hidden",
+        "relative overflow-hidden",
         whatsapp
           ? "sm:h-full sm:min-h-0 sm:flex sm:flex-col sm:rounded-none"
           : "rounded-card border border-rule-strong bg-raised shadow-[0_18px_55px_-38px_rgba(26,26,26,0.5)]",
@@ -1711,8 +2320,124 @@ function MessageBubble({ message }: { message: Message }) {
   );
 }
 
+/**
+ * One follow-up question's field.
+ *
+ * The same control appears inside the WhatsApp composer and on the web card, so
+ * it lives in one place: what changes between them is the chrome around it, not
+ * what a phone number or a date is. Every kind except a date accepts dictation,
+ * because the microphone is the point for anyone who does not type comfortably
+ * — and an amount said as "forty seven thousand" is understood.
+ */
+function DetailField({ question, value, onChange, onSubmit, chrome, disabled, t }: {
+  question: DetailQuestion;
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  chrome: "whatsapp" | "page";
+  disabled?: boolean;
+  t: T;
+}) {
+  const whatsapp = chrome === "whatsapp";
+  const placeholder = t(question.placeholder);
+  const label = t(question.question);
+
+  if (question.kind === "textarea") {
+    if (whatsapp) {
+      return <WhatsAppInput value={value} onChange={onChange} onSend={onSubmit} placeholder={placeholder} ariaLabel={label} />;
+    }
+    return (
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        rows={3}
+        placeholder={placeholder}
+        aria-label={label}
+        className="w-full p-3.5 bg-raised border border-rule-strong rounded-ctl text-base leading-[1.6] resize-y focus:outline-none focus:border-ink"
+      />
+    );
+  }
+
+  const type = question.kind === "datetime"
+    ? "datetime-local"
+    : question.kind === "tel"
+      ? "tel"
+      : question.kind === "email"
+        ? "email"
+        : "text";
+
+  return (
+    <input
+      type={type}
+      inputMode={question.kind === "amount" ? "text" : undefined}
+      value={question.kind === "datetime" ? localDateTimeValue(value) || value : value}
+      onChange={(event) => onChange(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        onSubmit();
+      }}
+      disabled={disabled}
+      placeholder={placeholder}
+      aria-label={label}
+      className={cn(
+        whatsapp
+          ? "block w-full bg-transparent focus:outline-none text-[0.9375rem] leading-[1.45] text-[#111b21] placeholder:text-[#8696a0]"
+          : "w-full h-12 px-3.5 bg-raised border border-rule-strong rounded-ctl text-base focus:outline-none focus:border-ink",
+      )}
+    />
+  );
+}
+
+/** Passing on a question, one at a time or all at once. */
+function DetailSkips({ onSkip, onSkipAll, remaining, wa, t }: {
+  onSkip: () => void;
+  onSkipAll: () => void;
+  remaining: number;
+  wa?: boolean;
+  t: T;
+}) {
+  return (
+    <Replies wa={Boolean(wa)}>
+      <Reply wa={Boolean(wa)} onClick={onSkip}>{t("detail.skip")}</Reply>
+      {remaining > 1 && <Reply wa={Boolean(wa)} onClick={onSkipAll}>{t("detail.skipAll")}</Reply>}
+    </Replies>
+  );
+}
+
 function ActionCard({ children, urgent }: { children: React.ReactNode; urgent?: boolean }) {
   return <div className={cn("intake-action-card rounded-card border px-4 py-4 sm:px-5", urgent ? "border-urgent/35 bg-urgent-soft" : "border-rule-strong bg-paper/90")}>{children}</div>;
+}
+
+/**
+ * A row of answers, drawn as the channel draws them.
+ *
+ * On the web they are chips at the end of the conversation. On WhatsApp they
+ * are the interactive reply buttons a bot actually sends, attached under the
+ * message. Every step below is written once and gets both.
+ */
+function Replies({ wa, children }: { wa: boolean; children: React.ReactNode }) {
+  return wa ? <WhatsAppButtons>{children}</WhatsAppButtons> : <QuickReplies>{children}</QuickReplies>;
+}
+
+function Reply({ wa, onClick, href, urgent, selected, primary, children }: {
+  wa: boolean;
+  onClick?: () => void;
+  href?: string;
+  urgent?: boolean;
+  selected?: boolean;
+  primary?: boolean;
+  children: React.ReactNode;
+}) {
+  if (wa) {
+    return (
+      <WhatsAppButton onClick={onClick} href={href} selected={selected} primary={primary}>
+        {children}
+      </WhatsAppButton>
+    );
+  }
+  if (href) return <Button href={href} external variant={urgent ? "urgent" : "secondary"} size="md">{children}</Button>;
+  return <Quick onClick={onClick!} urgent={urgent}>{children}</Quick>;
 }
 
 function QuickReplies({ children }: { children: React.ReactNode }) {
@@ -1811,17 +2536,7 @@ function entityItems(entities: Entities): { field: EntityArrayKey; index: number
   ).slice(0, 12);
 }
 
-function toLocalInput(iso?: string): string {
-  if (!iso) return "";
-  const value = new Date(iso);
-  if (Number.isNaN(value.getTime())) return "";
-  const offset = value.getTimezoneOffset() * 60_000;
-  return new Date(value.getTime() - offset).toISOString().slice(0, 16);
-}
 
-function fromLocalInput(value: string): string | undefined {
-  return value ? new Date(value).toISOString() : undefined;
-}
 
 
 function restoredVaaniUiState(session: StoredVaaniSession | null):

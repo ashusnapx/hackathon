@@ -1,4 +1,5 @@
 import type { Entities, Triage } from "@/lib/case/types";
+import { detailsComplete, nameAnswered } from "./details";
 import type {
   RbiInitiation,
   RbiReportTiming,
@@ -54,6 +55,24 @@ export interface IntakeDraft {
   bankName?: string;
   /** What the caller said they still have, in their own words. */
   evidenceNote?: string;
+  /**
+   * Answers to the follow-up questions, keyed by question id.
+   *
+   * These are the facts a document needs and a story does not supply: a postal
+   * address, the branch a letter is addressed to, the acknowledgement number of
+   * a complaint already filed. They live in one record rather than as twenty
+   * optional fields because the catalogue in `details.ts` owns the list, and
+   * adding a question there should not mean editing this type.
+   */
+  details?: Record<string, string>;
+  /**
+   * Follow-ups already put to the person, answered or not.
+   *
+   * A question on this list with no answer was skipped, and is not asked again;
+   * a question that is not on it has never been in front of anybody, which is
+   * true of everything the call or the model supplied.
+   */
+  detailsAsked?: string[];
   analysis?: IntakeAnalysis;
   analysisConfirmed: boolean;
   /** Material facts for the RBI unauthorised-transaction screening. */
@@ -79,6 +98,7 @@ export type IntakeStep =
   | "child-safety"
   | "money"
   | "timing"
+  | "name"
   | "story"
   | "verify"
   | "rbi-initiation"
@@ -88,6 +108,7 @@ export type IntakeStep =
   | "rbi-review"
   | "evidence"
   | "routing"
+  | "details"
   | "ready";
 
 export function emptyIntake(channel: IntakeChannel = "web"): IntakeDraft {
@@ -168,8 +189,16 @@ export function nextIntakeStep(draft: IntakeDraft): IntakeStep {
   ) return "child-safety";
   if (!draft.moneyMoved) return "money";
   if (draft.moneyMoved === "yes" && !draft.incidentTiming) return "timing";
+  // Who we are talking to, before what happened to them: a name, then the
+  // number, the email and the address every one of these documents needs. The
+  // form beside the chat starts filling from the first answer instead of
+  // sitting empty through the longest question in the interview.
+  if (!nameAnswered(draft)) return "name";
+  if (!detailsComplete(draft, "intro")) return "details";
   if (draft.narrative.trim().length < 25 || !draft.analysis) return "story";
   if (!draft.analysisConfirmed) return "verify";
+  // And then the rest, which only make sense once the story has been read.
+  if (!detailsComplete(draft)) return "details";
   if (draft.moneyMoved === "yes") {
     if (!draft.transactionInitiation) return "rbi-initiation";
     if (draft.transactionInitiation === "not-victim") {
@@ -195,6 +224,7 @@ export function intakeProgress(draft: IntakeDraft): { answered: number; total: n
       : Boolean(draft.childSafetyAcknowledged),
     Boolean(draft.moneyMoved),
     draft.moneyMoved !== "yes" || Boolean(draft.incidentTiming),
+    nameAnswered(draft),
     draft.narrative.trim().length >= 25,
     Boolean(draft.analysis && draft.analysisConfirmed),
     draft.moneyMoved !== "yes" || Boolean(draft.transactionInitiation),
@@ -204,6 +234,7 @@ export function intakeProgress(draft: IntakeDraft): { answered: number; total: n
     draft.moneyMoved !== "yes" || draft.rbiAssessmentReviewed,
     draft.evidence !== undefined,
     draft.routingAnswered,
+    detailsComplete(draft),
   ];
   const answered = checks.filter(Boolean).length;
   return { answered, total: checks.length, percent: Math.round((answered / checks.length) * 100) };
