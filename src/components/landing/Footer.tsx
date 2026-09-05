@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { Wordmark } from "@/components/Wordmark";
 import { Builders } from "@/components/landing/Builders";
+import { SystemStatus } from "@/components/landing/SystemStatus";
 import { Headline } from "@/components/ui/Split";
 import { useT } from "@/lib/i18n/context";
 
@@ -94,6 +95,8 @@ export function Footer() {
             </p>
           </div>
         </div>
+
+        <SystemStatus />
       </div>
     </footer>
   );

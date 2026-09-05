@@ -29,19 +29,45 @@ export function emailConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
   return Boolean(env.GMAIL_USER?.trim() && env.GMAIL_APP_PASSWORD?.trim());
 }
 
+function transport() {
+  return nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.GMAIL_USER!.trim(),
+      pass: process.env.GMAIL_APP_PASSWORD!.trim(),
+    },
+  });
+}
+
+/**
+ * Can we actually send?
+ *
+ * Opens the SMTP conversation and authenticates without delivering anything,
+ * which is the only way to know that an app password has not been revoked
+ * before the first victim's case email silently fails.
+ */
+export async function verifyEmailTransport(): Promise<boolean> {
+  if (!emailConfigured()) return false;
+  const smtp = transport();
+  try {
+    return Boolean(await smtp.verify());
+  } catch {
+    return false;
+  } finally {
+    smtp.close();
+  }
+}
+
 export async function sendCaseCreatedEmail(to: string, input: CaseEmailInput): Promise<EmailResult> {
   if (!emailConfigured()) return { sent: false, reason: "not-configured" };
 
   const user = process.env.GMAIL_USER!.trim();
-  const transport = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    auth: { user, pass: process.env.GMAIL_APP_PASSWORD!.trim() },
-  });
+  const smtp = transport();
 
   try {
-    await transport.sendMail({
+    await smtp.sendMail({
       from: `Kavach <${user}>`,
       to,
       subject: caseCreatedSubject(input),
