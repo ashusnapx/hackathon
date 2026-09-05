@@ -22,25 +22,30 @@ export function TalkView() {
       <SiteHeader width="2xl" />
       <main id="main" className="px-4 py-8 sm:py-12 flex items-start justify-center">
         <div className="w-full max-w-xl">
-          <h1 className="text-2xl sm:text-3xl leading-tight">{t("talk.h")}</h1>
-          <p className="mt-3 text-[1.0625rem] leading-[1.6] text-ink-2">{t("talk.sub")}</p>
+          <h1 className="text-[1.75rem] sm:text-3xl leading-tight">{t("talk.h")}</h1>
+          <p className="mt-2 text-[1.0625rem] leading-[1.5] text-ink-2">{t("talk.short")}</p>
 
-          <div className="mt-6">
+          <div className="mt-4">
             <GuidedIntake lockChannel="voice" />
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            <Button href="tel:1930" external variant="urgent" size="sm">{t("begin.call1930")}</Button>
-            <Button href="tel:112" external variant="secondary" size="sm">{t("begin.call112")}</Button>
+          <div className="mt-7 grid grid-cols-2 gap-2">
+            <Button href="tel:1930" external variant="urgent" size="md">{t("begin.call1930short")}</Button>
+            <Button href="tel:112" external variant="secondary" size="md">{t("begin.call112short")}</Button>
           </div>
 
-          <p className="mt-5 text-xs leading-[1.55] text-ink-3">{t("begin.boundaryNote")}</p>
-
-          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2.5">
-            <a href="/start" className="text-sm font-medium underline underline-offset-4">{t("talk.typeLink")} →</a>
-            <a href="/whatsapp" className="text-sm font-medium underline underline-offset-4">{t("begin.waLink")} →</a>
-            <a href="/report" className="text-sm font-medium underline underline-offset-4">{t("begin.formLink")} →</a>
-          </div>
+          {/* The same fold as the front door: findable, never in the way. */}
+          <details className="mt-6 group">
+            <summary className="inline-flex min-h-11 items-center text-sm text-ink-3 underline underline-offset-4 cursor-pointer hover:text-ink">
+              {t("begin.safeSummary")}
+            </summary>
+            <p className="mt-2 text-sm leading-[1.6] text-ink-2">{t("begin.boundaryNote")}</p>
+            <div className="mt-2 flex flex-col items-start">
+              <a href="/start" className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">{t("talk.typeLink")} →</a>
+              <a href="/whatsapp" className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">{t("begin.waLink")} →</a>
+              <a href="/report" className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">{t("begin.formLink")} →</a>
+            </div>
+          </details>
         </div>
       </main>
     </>

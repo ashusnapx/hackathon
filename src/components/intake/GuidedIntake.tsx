@@ -831,6 +831,7 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
         )}>
           {voiceOnly ? (
             <VaaniPanel
+              bare={Boolean(lockChannel)}
               language={lang.code}
               safetyAnswer={draft.safety}
               childContext={draft.childContext}
@@ -1973,6 +1974,29 @@ function RbiReviewCard({ assessment, t, children }: { assessment: RbiEligibility
   );
 }
 
+/**
+ * The explainer's shape without the explaining, for a page that already did it.
+ *
+ * The body is not dropped, only folded. It is the notice that this is an AI and
+ * not the police, and that the call is recorded — which is exactly the thing a
+ * product should not quietly stop saying because the page looked busy.
+ */
+function BarePanel({ body, summary, children }: { title?: string; body?: string; summary?: string; tone?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      {children}
+      {body && (
+        <details className="mt-3">
+          <summary className="inline-flex min-h-11 items-center text-sm text-ink-3 underline underline-offset-4 cursor-pointer hover:text-ink">
+            {summary}
+          </summary>
+          <p className="mt-1 text-sm leading-[1.6] text-ink-2">{body}</p>
+        </details>
+      )}
+    </div>
+  );
+}
+
 function VaaniPanel({
   language,
   safetyAnswer,
@@ -1981,8 +2005,11 @@ function VaaniPanel({
   onCallFinished,
   onTranscript,
   onAccepted,
+  bare,
   t,
 }: {
+  /** On a page that already introduces the call, the explainer is a second copy. */
+  bare?: boolean;
   language: string;
   safetyAnswer?: string;
   childContext?: string;
@@ -2155,9 +2182,19 @@ function VaaniPanel({
     setState("accepted");
   };
 
+  // On /talk the page's own heading says what this is; repeating it inside the
+  // card is the clutter, not the call.
+  const Shell = bare ? BarePanel : ChannelExplainer;
   return (
-    <ChannelExplainer title={t("intake.vaaniTitle")} body={t("intake.vaaniBody")} tone="voice">
-      <VaaniCredit label={t("intake.vaaniCredit")} linkLabel={t("intake.vaaniCreditLink")} />
+    <Shell
+      title={t("intake.vaaniTitle")}
+      body={t("intake.vaaniBody")}
+      summary={t("intake.vaaniWhat")}
+      tone="voice"
+    >
+      {bare
+        ? <VaaniBadge label={t("intake.vaaniPowered")} linkLabel={t("intake.vaaniCreditLink")} />
+        : <VaaniCredit label={t("intake.vaaniCredit")} linkLabel={t("intake.vaaniCreditLink")} />}
       {browserVoice?.available === false && state === "idle" && (
         <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-3">
           <p className="text-sm text-ink-2 flex-1">{t("intake.vaaniDemo")}</p>
@@ -2247,7 +2284,7 @@ function VaaniPanel({
       {state === "accepted" && <p className="mt-3 text-sm text-done">{t("intake.vaaniAccepted")}</p>}
       {state === "unknown" && <p role="alert" className="mt-3 text-sm text-urgent-ink">{t("intake.vaaniUnknown")}</p>}
       {state === "error" && <p role="alert" className="mt-3 text-sm text-urgent-ink">{t("intake.vaaniError")}</p>}
-    </ChannelExplainer>
+    </Shell>
   );
 }
 
@@ -2259,6 +2296,31 @@ function VaaniPanel({
  * reads identically in both themes. Served from our own origin, so opening this
  * page makes no request to a third party.
  */
+/**
+ * The Vaani badge.
+ *
+ * A roundel and one line of type, the way a manufacturer signs a car: enough to
+ * say who made the voice, small enough that it is not competing with the
+ * microphone for attention. It replaces a title and a four-line paragraph that
+ * said the same thing at ten times the size.
+ */
+function VaaniBadge({ label, linkLabel }: { label: string; linkLabel: string }) {
+  return (
+    <a
+      href="https://vaaniresearch.com"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={linkLabel}
+      className="inline-flex items-center gap-2 no-underline text-ink-3 hover:text-ink transition-colors"
+    >
+      <span className="grid place-items-center w-7 h-7 shrink-0 rounded-full border border-rule bg-white overflow-hidden">
+        <Image src="/vaani/vaani-mark.png" alt="" width={72} height={72} className="w-5 h-5" />
+      </span>
+      <span className="text-[0.6875rem] font-medium uppercase tracking-[0.08em]">{label}</span>
+    </a>
+  );
+}
+
 function VaaniCredit({ label, linkLabel }: { label: string; linkLabel: string }) {
   return (
     <a
@@ -2274,7 +2336,7 @@ function VaaniCredit({ label, linkLabel }: { label: string; linkLabel: string })
   );
 }
 
-function ChannelExplainer({ title, body, tone, children }: { title: string; body: string; tone: "whatsapp" | "voice"; children?: React.ReactNode }) {
+function ChannelExplainer({ title, body, tone, children }: { title: string; body: string; summary?: string; tone: "whatsapp" | "voice"; children?: React.ReactNode }) {
   return (
     <section className={cn("mt-5 rounded-card border px-5 py-4", tone === "whatsapp" ? "bg-[#e3f4e9] border-[#afd0b9]" : "bg-info-soft border-info/25")}>
       <div className="flex items-start gap-3">

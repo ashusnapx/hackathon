@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { StartFlow } from "@/components/start/StartFlow";
+import { ChooseWay } from "@/components/start/ChooseWay";
 
 export const metadata: Metadata = {
   title: "Start",
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function StartPage() {
-  return <StartFlow />;
+  return <ChooseWay />;
 }
