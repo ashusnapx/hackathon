@@ -2,11 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { AccountMenu } from "@/components/auth/AccountMenu";
 import { VoiceInput } from "@/components/start/VoiceInput";
 import { Button } from "@/components/ui/Button";
-import { Wordmark } from "@/components/Wordmark";
+import { SiteHeader } from "@/components/SiteHeader";
 import { CATEGORIES, findCategory } from "@/lib/case/categories";
 import { createDefaultEvidence } from "@/lib/case/evidence";
 import { OFFICERS } from "@/lib/case/officers";
@@ -741,20 +739,18 @@ export function GuidedIntake() {
 
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-40 px-3 sm:px-5 pt-3 sm:pt-4 pointer-events-none">
-        <div className="pointer-events-auto mx-auto max-w-6xl rounded-card border border-ink/15 bg-paper/90 backdrop-blur-xl shadow-[0_6px_24px_-18px_rgba(26,26,26,0.55)] px-3 sm:px-4 h-[60px] sm:h-[64px] flex items-center gap-4">
-          <Wordmark />
+      <SiteHeader
+        width="6xl"
+        status={
           <span
             role="status"
             aria-live="polite"
-            className={cn("hidden sm:inline ms-auto text-xs", persistence === "error" ? "text-urgent-ink" : "text-ink-3")}
+            className={cn("text-xs", persistence === "error" ? "text-urgent-ink" : "text-ink-3")}
           >
             {persistenceLabel}
           </span>
-          <LanguageSwitcher compact />
-          <AccountMenu compact />
-        </div>
-      </header>
+        }
+      />
 
       <main id="main" className="mx-auto max-w-6xl px-4 sm:px-8 py-8 sm:py-12">
         {persistence === "error" && (

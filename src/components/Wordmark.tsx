@@ -21,10 +21,10 @@ export function Wordmark({ className, href = "/" }: { className?: string; href?:
         />
         <path d="M16 8v11M11 13.5h10" stroke="var(--urgent)" strokeWidth="2" strokeLinecap="round" />
       </svg>
-      {/* Below 360px the shield has to carry the mark alone — the row also
-           holds a language picker, a CTA and a menu button, and the link
+      {/* Below 400px the shield carries the mark alone — the row also holds
+           a language picker, an avatar, a CTA and a menu button, and the link
            keeps its "Kavach, home" label either way. */}
-      <span className="max-[359px]:hidden font-display text-[1.375rem] leading-none tracking-tight">
+      <span className="max-[399px]:hidden font-display text-[1.375rem] leading-none tracking-tight">
         Kavach
       </span>
     </span>

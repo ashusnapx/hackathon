@@ -3,9 +3,6 @@
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Wordmark } from "@/components/Wordmark";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { AccountMenu } from "@/components/auth/AccountMenu";
 import { RecoveryWindow } from "@/components/case/RecoveryWindow";
 import { RbiProtectionCard } from "@/components/case/RbiProtectionCard";
 import { NextAction } from "@/components/case/NextAction";
@@ -26,6 +23,7 @@ import { useCaseRestore } from "@/lib/case/restore";
 import { useCaseSyncState } from "@/lib/case/sync";
 import { isFinancial } from "@/lib/case/tracks";
 import { useT } from "@/lib/i18n/context";
+import { SiteHeader } from "@/components/SiteHeader";
 import { cn } from "@/lib/utils";
 import { calculateReadiness } from "@/lib/case/evidence";
 
@@ -102,12 +100,13 @@ function CaseScreen({ id }: { id: string }) {
 
   return (
     <>
-      <header className="sticky top-0 z-40 px-3 sm:px-5 pt-3 sm:pt-4 pointer-events-none no-print">
-        <div className="pointer-events-auto mx-auto max-w-5xl rounded-card border border-ink/15 bg-paper/85 backdrop-blur-xl shadow-[0_6px_24px_-18px_rgba(26,26,26,0.55)] px-3 sm:px-4 h-[60px] sm:h-[64px] flex items-center gap-4">
-          <Wordmark />
+      <SiteHeader
+        width="5xl"
+        noPrint
+        status={
           <span
             className={cn(
-              "ms-auto text-xs transition-opacity",
+              "text-xs transition-opacity",
               syncLabel ? "opacity-100" : "opacity-0",
               sync === "offline" ? "text-wait-ink" : "text-ink-3",
             )}
@@ -115,10 +114,8 @@ function CaseScreen({ id }: { id: string }) {
           >
             {syncLabel}
           </span>
-          <AccountMenu compact />
-          <LanguageSwitcher compact />
-        </div>
-      </header>
+        }
+      />
 
       <main id="main" className="mx-auto max-w-5xl px-5 sm:px-8 py-8 sm:py-10">
         {externalConflict && (

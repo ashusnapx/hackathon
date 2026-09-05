@@ -183,7 +183,18 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
         )}
       >
         <GlobeIcon />
-        <span className={cn("font-medium truncate max-w-[8ch] sm:max-w-none", SCRIPT_CLASS[lang.script])}>
+        {/* The globe carries this alone on a narrow phone. The endonym is the
+            recognition cue for somebody who cannot read English, so it is the
+            last thing dropped — but at 320px the row also holds a wordmark, an
+            avatar, a CTA and a menu, and something has to give before the page
+            scrolls sideways. Tapping still opens the full list in every script. */}
+        <span
+          className={cn(
+            "font-medium truncate max-w-[8ch] sm:max-w-none",
+            compact && "hidden sm:inline",
+            SCRIPT_CLASS[lang.script],
+          )}
+        >
           {lang.endonym}
         </span>
         {loading ? (
