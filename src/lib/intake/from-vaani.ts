@@ -39,10 +39,26 @@ export interface VaaniCallFacts {
   filledFromCall: number;
 }
 
+/**
+ * The words a model writes into a field it could not fill.
+ *
+ * "unknown" in a suspect_email is not an email address, and a case that carries
+ * it forward ends up printing "Suspect email: unknown" on a police complaint.
+ * A field the agent could not answer has to come back empty, not answered.
+ */
+const PLACEHOLDERS = new Set([
+  "null", "undefined", "unknown", "none", "n/a", "na", "nil",
+  "not provided", "not available", "not applicable", "not specified", "not mentioned",
+]);
+
+export function isPlaceholderValue(value: unknown): boolean {
+  if (typeof value !== "string") return value === null || value === undefined;
+  return !value.trim() || PLACEHOLDERS.has(value.trim().toLowerCase());
+}
+
 const text = (value: unknown): string | undefined => {
-  if (typeof value !== "string") return undefined;
-  const trimmed = value.trim();
-  return trimmed && trimmed.toLowerCase() !== "null" ? trimmed : undefined;
+  if (typeof value !== "string" || isPlaceholderValue(value)) return undefined;
+  return value.trim();
 };
 
 const list = (value: unknown): string[] => {

@@ -20,6 +20,7 @@ import { CaseHeader } from "@/components/case/CaseHeader";
 import { CallRecord } from "@/components/case/CallRecord";
 import { CaseEmail } from "@/components/case/CaseEmail";
 import { useCase } from "@/lib/case/store";
+import { DEMO_CASE_ID, ensureDemoCase } from "@/lib/demo/case";
 import { isFinancial } from "@/lib/case/tracks";
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,10 @@ const TABS: { id: Tab; key: Parameters<ReturnType<typeof useT>>[0] }[] = [
 
 export default function CasePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  // The sample case is a link anyone can be sent, so it has to exist for a
+  // visitor who has never been here. Seeding it in a state initialiser puts it
+  // in storage during this first render — before useCase reads, just below.
+  useState(() => { if (id === DEMO_CASE_ID) ensureDemoCase(); });
   const t = useT();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("overview");
@@ -109,6 +114,19 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
               {t("case.retrySave")}
             </button>
           </div>
+        )}
+
+        {caseFile.voiceCall?.demoCallId && (
+          <aside className="mb-6 sheet border-info/30 bg-info-soft px-4 py-4 no-print">
+            <p className="text-[0.9375rem] font-semibold">{t("case.sampleTitle")}</p>
+            <p className="mt-1 text-sm leading-[1.55] text-ink-2">{t("case.sampleBody")}</p>
+            <button
+              onClick={() => setTab("call")}
+              className="mt-2 text-sm font-semibold underline underline-offset-4"
+            >
+              {t("case.sampleListen")}
+            </button>
+          </aside>
         )}
 
         <CaseHeader

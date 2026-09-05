@@ -386,6 +386,8 @@ export const en = {
   "vdemo.why3": "It sent the caller to 1930 and their bank in its second breath, before asking anything else.",
   "vdemo.why4": "Nothing here was filed with anyone. The call says so out loud, and so do we.",
   "vdemo.more": "Show the rest of the call",
+  "vdemo.openCase": "Open the case this call built",
+  "vdemo.openCaseSub": "The whole file — the recovery window, the 1930 script, the NCRP complaint, the evidence checklist — from that conversation and nothing else.",
   "vdemo.disclaimer": "Recorded with consent for this demonstration. Names and identifiers are the caller's own test data.",
 
   // ── Voice call record ─────────────────────────────────────────────────────
@@ -398,6 +400,7 @@ export const en = {
   "call.recording": "Recording",
   "call.recordingNone": "No recording is available for this call.",
   "call.recordingConsent": "A recording exists only because you agreed to one. Kavach keeps no copy of its own.",
+  "call.recordingDemo": "Recorded with consent for this demonstration. The names and identifiers are the caller's own test data, and this is the whole call — nothing has been cut.",
   "call.transcript": "Transcript",
   "call.transcriptNone": "No transcript yet.",
   "call.extracted": "What the agent understood",
@@ -411,6 +414,9 @@ export const en = {
   "call.summary": "Summary",
   "call.error": "The call record could not be loaded. Your case is unaffected.",
   "call.tab": "Call",
+  "case.sampleTitle": "This is a sample case, not yours",
+  "case.sampleBody": "It was built from the recorded call on the home page, by the same code a real call runs through — nothing here was written by hand to make it look better. No part of it belongs to a real person. It is stored only on this device, and you can edit or delete it like any other case.",
+  "case.sampleListen": "Hear the call it came from",
 
   // ── Builder ───────────────────────────────────────────────────────────────
   "build.h1": "A few more things",

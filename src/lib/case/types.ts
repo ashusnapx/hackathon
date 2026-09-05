@@ -141,10 +141,18 @@ export interface CaseFile {
   /**
    * The voice call this case was opened from.
    *
-   * Only the server-issued capability is kept, never a provider call id: it is
-   * what lets the Call tab fetch this case's own recording and transcript, and
-   * it is scoped to the browser session that made the call. A second case gets
-   * its own token, so one case can never show another case's conversation.
+   * A real call is held as a server-issued capability and never as a provider
+   * call id: it is what lets the Call tab fetch this case's own recording and
+   * transcript, and it is scoped to the browser session that made the call. A
+   * second case gets its own token, so one case can never show another case's
+   * conversation. The sample case is the exception, and says so — it names the
+   * one call committed to this repository, which anyone may listen to.
    */
-  voiceCall?: { transcriptToken: string; endedAt: string };
+  voiceCall?: {
+    /** Capability for a real call, scoped to the browser session that made it. */
+    transcriptToken?: string;
+    /** Set instead on the sample case, which reads the call committed to the repo. */
+    demoCallId?: string;
+    endedAt: string;
+  };
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { readStoredVaaniSession } from "@/lib/integrations/vaani-client";
 import { caseUpdatesFromCall } from "@/lib/case/from-call";
+import demoCall from "@/lib/demo/call.json";
 import { mapVaaniCall } from "@/lib/intake/from-vaani";
 import type { CaseFile } from "@/lib/case/types";
 import { useT } from "@/lib/i18n/context";
@@ -31,6 +32,9 @@ export function CallRecord({ caseFile, transcriptToken, onApply }: {
   const t = useT();
   const [applied, setApplied] = useState(false);
   const [token, setToken] = useState<string | null>(transcriptToken ?? null);
+  // The sample case carries the call itself rather than a capability to fetch
+  // one, so it renders with no key, no network and no provider dependency.
+  const demo = caseFile.voiceCall?.demoCallId ? demoCall : null;
   const [transcript, setTranscript] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "pending" | "ready" | "error">("idle");
@@ -46,7 +50,7 @@ export function CallRecord({ caseFile, transcriptToken, onApply }: {
   }, [transcriptToken]);
 
   const load = useCallback(async () => {
-    if (!token) return;
+    if (!token || demo) return;
     setState("loading");
     const post = (path: string) => fetch(path, {
       method: "POST",
@@ -79,7 +83,7 @@ export function CallRecord({ caseFile, transcriptToken, onApply }: {
     } catch {
       setState("error");
     }
-  }, [token]);
+  }, [demo, token]);
 
   useEffect(() => { queueMicrotask(() => { void load(); }); }, [load]);
 
@@ -91,7 +95,7 @@ export function CallRecord({ caseFile, transcriptToken, onApply }: {
     [caseFile, outcome],
   );
 
-  if (!token) {
+  if (!token && !demo) {
     return (
       <Panel title={t("call.title")} sub={t("call.sub")}>
         <p className="text-sm text-ink-2">{t("call.none")}</p>
@@ -99,14 +103,28 @@ export function CallRecord({ caseFile, transcriptToken, onApply }: {
     );
   }
 
-  const extracted = Object.entries(outcome?.extracted || {}).filter(
+  const shown = demo
+    ? {
+      transcript: demo.turns
+        .map((turn) => `${turn.at ? `[${turn.at}] ` : ""}${turn.agent ? "AGENT" : "USER"}: ${turn.text}`)
+        .join("\n"),
+      outcome: { disposition: demo.disposition, extracted: demo.extracted, summary: demo.summary } as Outcome,
+      audio: demo.audio,
+    }
+    : {
+      transcript,
+      outcome,
+      audio: `/api/vaani/recording?token=${encodeURIComponent(token || "")}`,
+    };
+
+  const extracted = Object.entries(shown.outcome?.extracted || {}).filter(
     ([, value]) => value !== null && value !== undefined && value !== "",
   );
 
   return (
     <Panel title={t("call.title")} sub={t("call.sub")}>
-      {state === "error" && <p role="alert" className="text-sm text-urgent-ink">{t("call.error")}</p>}
-      {state === "pending" && (
+      {!demo && state === "error" && <p role="alert" className="text-sm text-urgent-ink">{t("call.error")}</p>}
+      {!demo && state === "pending" && (
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-sm text-ink-2 flex-1">{t("call.pending")}</p>
           <Button onClick={load} size="sm" variant="secondary">{t("call.refresh")}</Button>
@@ -115,11 +133,13 @@ export function CallRecord({ caseFile, transcriptToken, onApply }: {
 
       <section className="mt-4">
         <h3 className="text-sm font-semibold">{t("call.recording")}</h3>
-        <p className="mt-1 text-xs leading-[1.55] text-ink-3">{t("call.recordingConsent")}</p>
+        <p className="mt-1 text-xs leading-[1.55] text-ink-3">
+          {t(demo ? "call.recordingDemo" : "call.recordingConsent")}
+        </p>
         <audio
           controls
           preload="none"
-          src={`/api/vaani/recording?token=${encodeURIComponent(token)}`}
+          src={shown.audio}
           className="mt-2 w-full"
         >
           {t("call.recordingNone")}
@@ -128,9 +148,9 @@ export function CallRecord({ caseFile, transcriptToken, onApply }: {
 
       <section className="mt-5">
         <h3 className="text-sm font-semibold">{t("call.transcript")}</h3>
-        {transcript ? (
+        {shown.transcript ? (
           <div className="mt-2 max-h-80 overflow-y-auto rounded-ctl border border-rule bg-raised px-3 py-3">
-            {transcript.split("\n").filter((line) => line.trim()).map((line, index) => (
+            {shown.transcript.split("\n").filter((line) => line.trim()).map((line, index) => (
               <p key={index} className="text-sm leading-[1.6] text-ink-2 [&+p]:mt-2">{line}</p>
             ))}
           </div>
@@ -148,15 +168,15 @@ export function CallRecord({ caseFile, transcriptToken, onApply }: {
         </div>
         <p className="mt-1 text-xs leading-[1.55] text-ink-3">{t("call.draftNote")}</p>
 
-        {outcome?.disposition && (
+        {shown.outcome?.disposition && (
           <p className="mt-3 text-sm">
             <span className="text-ink-3">{t("call.disposition")}: </span>
-            <span className="num font-semibold">{outcome.disposition}</span>
+            <span className="num font-semibold">{shown.outcome.disposition}</span>
           </p>
         )}
-        {outcome?.summary && (
+        {shown.outcome?.summary && (
           <p className="mt-2 text-sm leading-[1.6] text-ink-2">
-            <span className="text-ink-3">{t("call.summary")}: </span>{outcome.summary}
+            <span className="text-ink-3">{t("call.summary")}: </span>{shown.outcome.summary}
           </p>
         )}
 
@@ -176,7 +196,7 @@ export function CallRecord({ caseFile, transcriptToken, onApply }: {
         )}
       </section>
 
-      {backfill && backfill.added.length > 0 && !applied && (
+      {!demo && backfill && backfill.added.length > 0 && !applied && (
         <div className="mt-5 rounded-ctl border border-info/30 bg-info-soft px-4 py-3">
           <p className="text-sm leading-[1.55] text-ink-2">
             {t("call.applyLead")} {backfill.added.join(" · ")}
@@ -192,9 +212,11 @@ export function CallRecord({ caseFile, transcriptToken, onApply }: {
       )}
       {applied && <p className="mt-5 text-sm text-done">{t("call.applied")}</p>}
 
-      <Button onClick={load} size="sm" variant="secondary" className="mt-5" disabled={state === "loading"}>
-        {t("call.refresh")}
-      </Button>
+      {!demo && (
+        <Button onClick={load} size="sm" variant="secondary" className="mt-5" disabled={state === "loading"}>
+          {t("call.refresh")}
+        </Button>
+      )}
     </Panel>
   );
 }

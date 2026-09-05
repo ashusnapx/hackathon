@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import call from "@/lib/demo/call.json";
+import { isPlaceholderValue } from "@/lib/intake/from-vaani";
+import { DEMO_CASE_PATH } from "@/lib/demo/case";
 import { Headline } from "@/components/ui/Split";
 import { useI18n } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
@@ -56,7 +58,7 @@ export function VoiceDemo() {
       .filter(([key]) => !HIDDEN.has(key))
       // A field the agent could not fill is not a fact it captured. Showing
       // "Suspect email: unknown" would pad this list with its own failures.
-      .filter(([, value]) => !isBlank(value))
+      .filter(([, value]) => typeof value !== "string" || !isPlaceholderValue(value))
       .map(([key, value]) => [LABELS[key] ?? key.replace(/_/g, " "), format(key, value)] as const),
     [],
   );
@@ -136,6 +138,28 @@ export function VoiceDemo() {
                 ))}
               </dl>
             </div>
+
+            {/* The call is only half the claim. This is the other half: the
+                case file it produced, which anyone can open and read. */}
+            <a
+              href={DEMO_CASE_PATH}
+              className="group flex items-center gap-4 rounded-card border border-ink/15 bg-paper px-5 py-5 no-underline transition-colors hover:border-ink"
+            >
+              <span className="min-w-0">
+                <span className="block text-[1.0625rem] font-semibold leading-snug">
+                  {t("vdemo.openCase")}
+                </span>
+                <span className="mt-1 block text-sm leading-[1.55] text-ink-2">
+                  {t("vdemo.openCaseSub")}
+                </span>
+              </span>
+              <span
+                className="ms-auto text-2xl leading-none text-ink-3 transition-transform group-hover:translate-x-1"
+                aria-hidden
+              >
+                →
+              </span>
+            </a>
           </div>
         </div>
       </div>
@@ -151,12 +175,6 @@ function Stat({ value, label }: { value: string; label: string }) {
       <p className="mt-1.5 text-xs leading-tight text-ink-3">{label}</p>
     </div>
   );
-}
-
-function isBlank(value: unknown): boolean {
-  if (value === null || value === undefined) return true;
-  if (typeof value !== "string") return false;
-  return ["", "unknown", "null", "n/a", "not provided"].includes(value.trim().toLowerCase());
 }
 
 function format(key: string, value: unknown): string {
