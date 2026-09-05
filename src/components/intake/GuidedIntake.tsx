@@ -61,6 +61,7 @@ import {
   WhatsAppHeader,
   WhatsAppSystemNote,
   WhatsAppSendButton,
+  WhatsAppInput,
   PhoneFrame,
   WHATSAPP_WALLPAPER,
 } from "@/components/intake/WhatsAppChrome";
@@ -731,13 +732,11 @@ function StepControls({
     if (draft.channel === "whatsapp") {
       return (
         <>
-          <textarea
+          <WhatsAppInput
             value={draft.narrative}
-            onChange={(e) => patch({ narrative: e.target.value, analysis: undefined, analysisConfirmed: false })}
-            rows={1}
+            onChange={(narrative) => patch({ narrative, analysis: undefined, analysisConfirmed: false })}
             placeholder={t("intake.waTypeHint")}
-            aria-label={t("intake.storyQ")}
-            className="w-full bg-transparent text-[0.9375rem] leading-[1.4] text-[#111b21] placeholder:text-[#8696a0] resize-none focus:outline-none max-h-24"
+            ariaLabel={t("intake.storyQ")}
           />
           {error && <p role="alert" className="mt-1 text-xs text-urgent-ink">{error}</p>}
         </>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -27,10 +28,11 @@ export function PhoneFrame({ children, statusTime }: { children: React.ReactNode
     <div
       className="relative sm:mx-auto"
       style={{
-        // iPhone 17 Pro Max is 440 x 956 points. Floored so a short laptop gets
-        // a usable handset, capped at the real height on a tall screen.
-        height: "clamp(620px, 82vh, 956px)",
-        width: "min(440px, calc(clamp(620px, 82vh, 956px) * 440 / 956))",
+        // iPhone 17 Pro Max is 440 x 956 points. The floor keeps a short laptop
+        // window from rendering a sliver, and is low enough that the handset
+        // still fits without the page itself having to scroll.
+        height: "clamp(540px, 80vh, 956px)",
+        width: "min(440px, calc(clamp(540px, 80vh, 956px) * 440 / 956))",
         maxWidth: "100%",
       }}
     >
@@ -278,5 +280,46 @@ export function WhatsAppSendButton({ onClick, disabled, label }: {
         <path d="M3.4 20.4 21 12 3.4 3.6 3.4 10.1 15.5 12 3.4 13.9z" />
       </svg>
     </button>
+  );
+}
+
+/**
+ * The message field, growing with what is typed.
+ *
+ * A fixed one-line box makes someone describing a fraud scroll inside a 30px
+ * window to reread their own sentence. WhatsApp grows the field to about six
+ * lines and only then scrolls, so this does the same: the height is recomputed
+ * from the content on every change, and the cap lives in CSS.
+ */
+export function WhatsAppInput({ value, onChange, placeholder, ariaLabel }: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  ariaLabel: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Collapse first, or the box can only ever grow.
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      rows={1}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      className={cn(
+        "block w-full bg-transparent resize-none focus:outline-none",
+        "text-[0.9375rem] leading-[1.45] text-[#111b21] placeholder:text-[#8696a0]",
+        "max-h-32 overflow-y-auto",
+      )}
+    />
   );
 }
