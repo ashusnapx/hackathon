@@ -57,6 +57,7 @@ import {
   WhatsAppComposer,
   WhatsAppHeader,
   WhatsAppSystemNote,
+  WhatsAppSendButton,
   PhoneFrame,
   WHATSAPP_WALLPAPER,
 } from "@/components/intake/WhatsAppChrome";
@@ -479,7 +480,30 @@ export function GuidedIntake() {
             {/* On the WhatsApp screen the answers belong on the composer strip,
                 where that app puts everything you can do. */}
             {whatsapp && (
-              <WhatsAppComposer attachmentNote={t("intake.waAttachLater")}>
+              <WhatsAppComposer
+                attachmentNote={t("intake.waAttachLater")}
+                trailing={step === "story" ? (
+                  // WhatsApp's own rule: a microphone until there is something
+                  // to send, then a send button in the same place.
+                  draft.narrative.trim() ? (
+                    <WhatsAppSendButton
+                      onClick={analyse}
+                      disabled={busy}
+                      label={t("intake.waSend")}
+                    />
+                  ) : (
+                    <VoiceInput
+                      variant="compact"
+                      disabled={busy}
+                      onResult={(chunk) => patch({
+                        narrative: [draft.narrative.trim(), chunk].filter(Boolean).join(" "),
+                        analysis: undefined,
+                        analysisConfirmed: false,
+                      })}
+                    />
+                  )
+                ) : undefined}
+              >
                 <div ref={currentRef} tabIndex={-1} className="focus:outline-none">
                   {controls}
                 </div>
@@ -623,6 +647,21 @@ function StepControls({
   }
 
   if (step === "story") {
+    if (draft.channel === "whatsapp") {
+      return (
+        <>
+          <textarea
+            value={draft.narrative}
+            onChange={(e) => patch({ narrative: e.target.value, analysis: undefined, analysisConfirmed: false })}
+            rows={1}
+            placeholder={t("intake.waTypeHint")}
+            aria-label={t("intake.storyQ")}
+            className="w-full bg-transparent text-[0.9375rem] leading-[1.4] text-[#111b21] placeholder:text-[#8696a0] resize-none focus:outline-none max-h-24"
+          />
+          {error && <p role="alert" className="mt-1 text-xs text-urgent-ink">{error}</p>}
+        </>
+      );
+    }
     return (
       <ActionCard>
         <div className="flex justify-center py-2">

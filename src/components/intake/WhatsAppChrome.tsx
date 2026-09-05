@@ -155,9 +155,11 @@ export function WhatsAppBubble({ children, outgoing, time, urgent }: {
  * kept. A control that looks live and does nothing is worse than one that says
  * what it is.
  */
-export function WhatsAppComposer({ children, attachmentNote }: {
+export function WhatsAppComposer({ children, attachmentNote, trailing }: {
   children: React.ReactNode;
   attachmentNote: string;
+  /** The green circle at the end of the row: microphone, or send. */
+  trailing?: React.ReactNode;
 }) {
   return (
     <div className="shrink-0 px-2 py-2 bg-[#f0f2f5] border-t border-black/5">
@@ -184,6 +186,7 @@ export function WhatsAppComposer({ children, attachmentNote }: {
             <CameraIcon />
           </span>
         </div>
+        {trailing}
       </div>
     </div>
   );
@@ -236,4 +239,25 @@ function ClipIcon() {
 
 function CameraIcon() {
   return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" /><circle cx="12" cy="13" r="3.2" /></svg>;
+}
+
+/** WhatsApp's send button: the same circle the microphone occupies when empty. */
+export function WhatsAppSendButton({ onClick, disabled, label }: {
+  onClick: () => void;
+  disabled?: boolean;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className="grid place-items-center w-11 h-11 shrink-0 rounded-full bg-[#008069] text-white disabled:opacity-50"
+    >
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        <path d="M3.4 20.4 21 12 3.4 3.6 3.4 10.1 15.5 12 3.4 13.9z" />
+      </svg>
+    </button>
+  );
 }

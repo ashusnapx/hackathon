@@ -21,6 +21,11 @@ type Mode = "idle" | "listening" | "processing" | "unsupported" | "nothing";
 interface Props {
   onResult: (text: string) => void;
   disabled?: boolean;
+  /**
+   * "page" is the full control with its status line and disclosure.
+   * "compact" is the green circle WhatsApp puts at the end of its composer.
+   */
+  variant?: "page" | "compact";
 }
 
 interface SpeechRecognitionLike extends EventTarget {
@@ -97,12 +102,11 @@ function getRecognition(): SpeechRecognitionLike | null {
   return Ctor ? new Ctor() : null;
 }
 
-export function VoiceInput({ onResult, disabled }: Props) {
+export function VoiceInput({ onResult, disabled, variant = "page" }: Props) {
   const { lang, t } = useI18n();
   const [mode, setMode] = useState<Mode>("idle");
   const [level, setLevel] = useState(0);
   const [interim, setInterim] = useState("");
-  const [voiceConsent, setVoiceConsent] = useState(false);
   const disclosureId = useId();
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -262,7 +266,7 @@ export function VoiceInput({ onResult, disabled }: Props) {
   }, [cleanup, lang.code, meter, onResult]);
 
   const start = useCallback(async () => {
-    if (disabled || !voiceConsent) return;
+    if (disabled) return;
     const activity = ++activityRef.current;
     setInterim("");
     setMode((m) => (m === "nothing" ? "idle" : m));
@@ -335,7 +339,7 @@ export function VoiceInput({ onResult, disabled }: Props) {
     }
 
     await startRecording(activity);
-  }, [disabled, lang.speech, meter, onResult, startRecording, voiceConsent]);
+  }, [disabled, lang.speech, meter, onResult, startRecording]);
 
   const stop = useCallback(() => {
     if (recognitionRef.current) {
@@ -352,12 +356,35 @@ export function VoiceInput({ onResult, disabled }: Props) {
   const listening = mode === "listening";
   const busy = mode === "processing";
 
+  if (variant === "compact") {
+    return (
+      <button
+        type="button"
+        onClick={listening ? stop : start}
+        disabled={disabled || busy || mode === "unsupported"}
+        aria-pressed={listening}
+        aria-label={listening ? t("start.micStop") : t("start.mic")}
+        className={cn(
+          "relative grid place-items-center w-11 h-11 shrink-0 rounded-full text-white transition-colors",
+          listening ? "bg-[#e5533d]" : "bg-[#008069] disabled:opacity-50",
+        )}
+        style={
+          listening
+            ? { boxShadow: `0 0 0 ${3 + level * 12}px color-mix(in srgb, #e5533d 18%, transparent)` }
+            : undefined
+        }
+      >
+        {busy ? <Spinner /> : listening ? <StopIcon /> : <MicIcon />}
+      </button>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center gap-3">
       <button
         type="button"
         onClick={listening ? stop : start}
-        disabled={disabled || busy || mode === "unsupported" || !voiceConsent}
+        disabled={disabled || busy || mode === "unsupported"}
         aria-pressed={listening}
         aria-label={listening ? t("start.micStop") : t("start.mic")}
         aria-describedby={disclosureId}
@@ -389,21 +416,9 @@ export function VoiceInput({ onResult, disabled }: Props) {
               : `${t("start.mic")} · ${t("start.micHint")} ${lang.endonym}`}
       </p>
 
-      <div className="max-w-lg rounded-ctl border border-rule bg-sunk px-3 py-3 text-start">
-        <p id={disclosureId} className="text-xs leading-[1.55] text-ink-3">
-          {t("start.voiceDisclosure")}
-        </p>
-        <label className="mt-2.5 flex items-start gap-2 text-sm leading-snug text-ink-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={voiceConsent}
-            disabled={listening || busy}
-            onChange={(event) => setVoiceConsent(event.target.checked)}
-            className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--ink)]"
-          />
-          <span>{t("start.voiceConsent")}</span>
-        </label>
-      </div>
+      <p id={disclosureId} className="max-w-lg text-xs leading-[1.55] text-ink-3 text-center">
+        {t("start.voiceDisclosure")}
+      </p>
 
       {interim && (
         <p className="max-w-lg text-center text-[0.9375rem] text-ink-2 italic leading-snug">{interim}</p>
