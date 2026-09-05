@@ -25,33 +25,39 @@ import { cn } from "@/lib/utils";
 export function PhoneFrame({ children, statusTime }: { children: React.ReactNode; statusTime: string }) {
   return (
     <div
-      className={cn(
-        "sm:mx-auto sm:rounded-[3.2rem] sm:border-[11px] sm:border-[#1c1c1e] sm:bg-[#1c1c1e]",
-        "sm:shadow-[0_40px_80px_-32px_rgba(11,20,26,0.6),0_0_0_2px_#3a3a3c]",
-      )}
-      // iPhone 17 Pro Max is 440 x 956 points. Both dimensions are stated
-      // rather than left to aspect-ratio, because as a grid item the frame gets
-      // a definite width from the column and the ratio never applies. Height
-      // leads so the handset fits a short laptop screen, and the conversation
-      // scrolls inside it instead of stretching the page.
+      className="relative sm:mx-auto"
       style={{
-        // Floored so a short laptop window gets a usable handset rather than a
-        // 220px sliver, capped at the real 956pt height on a tall screen.
-        height: "clamp(600px, 82vh, 956px)",
-        width: "min(440px, calc(clamp(600px, 82vh, 956px) * 440 / 956))",
+        // iPhone 17 Pro Max is 440 x 956 points. Floored so a short laptop gets
+        // a usable handset, capped at the real height on a tall screen.
+        height: "clamp(620px, 82vh, 956px)",
+        width: "min(440px, calc(clamp(620px, 82vh, 956px) * 440 / 956))",
         maxWidth: "100%",
       }}
     >
-      <div className="h-full sm:rounded-[2.4rem] overflow-hidden bg-white flex flex-col">
-        <div className="relative hidden sm:flex items-center justify-between px-6 pt-3 pb-1.5 bg-[#008069] text-white text-[0.8125rem] font-semibold shrink-0">
-          <span className="tabular-nums">{statusTime}</span>
-          {/* Dynamic Island */}
-          <span className="absolute left-1/2 -translate-x-1/2 top-2 h-[26px] w-[92px] rounded-full bg-black" aria-hidden />
-          <span className="flex items-center gap-1.5" aria-hidden>
-            <SignalIcon />
-            <WifiIcon />
-            <BatteryIcon />
-          </span>
+      {/* Titanium body: a flat rounded rectangle reads as a wireframe, so the
+          frame gets an edge highlight, a darker core and real side buttons. */}
+      <div className="absolute inset-0 rounded-[3.1rem] bg-gradient-to-br from-[#6f6f76] via-[#26262a] to-[#5b5b62] shadow-[0_45px_90px_-35px_rgba(11,20,26,0.75)]" aria-hidden />
+      <div className="absolute inset-[3px] rounded-[3rem] bg-[#111114]" aria-hidden />
+
+      <span className="absolute -left-[2px] top-[19%] h-7 w-[3px] rounded-l-sm bg-gradient-to-b from-[#7b7b82] to-[#3f3f45]" aria-hidden />
+      <span className="absolute -left-[2px] top-[27%] h-12 w-[3px] rounded-l-sm bg-gradient-to-b from-[#7b7b82] to-[#3f3f45]" aria-hidden />
+      <span className="absolute -left-[2px] top-[37%] h-12 w-[3px] rounded-l-sm bg-gradient-to-b from-[#7b7b82] to-[#3f3f45]" aria-hidden />
+      <span className="absolute -right-[2px] top-[30%] h-16 w-[3px] rounded-r-sm bg-gradient-to-b from-[#7b7b82] to-[#3f3f45]" aria-hidden />
+
+      <div className="absolute inset-[10px] rounded-[2.65rem] overflow-hidden bg-white flex flex-col">
+        <div className="relative shrink-0 bg-[#008069] text-white">
+          <div className="flex items-center justify-between px-7 pt-2.5 pb-1 text-[0.8125rem] font-semibold">
+            <span className="tabular-nums">{statusTime}</span>
+            <span className="flex items-center gap-1.5" aria-hidden>
+              <SignalIcon />
+              <WifiIcon />
+              <BatteryIcon />
+            </span>
+          </div>
+          <span
+            className="absolute left-1/2 top-1.5 -translate-x-1/2 h-[26px] w-[86px] rounded-full bg-black"
+            aria-hidden
+          />
         </div>
         {children}
       </div>
@@ -149,42 +155,55 @@ export function WhatsAppBubble({ children, outgoing, time, urgent }: {
 }
 
 /**
- * The composer. Emoji, attachment and camera are shown because the screen is
- * incomplete without them, and disabled because this preview cannot honour them
- * — evidence is attached later, in the case file, where it can be hashed and
- * kept. A control that looks live and does nothing is worse than one that says
- * what it is.
+ * The composer.
+ *
+ * Two rows, like a chat bot on WhatsApp actually looks: suggested replies
+ * scrolling above, and the real input bar below. The previous version put every
+ * step's controls inside the input pill, which meant a paragraph of consent text
+ * rendered one word per line inside a text field.
+ *
+ * Emoji, attachment and camera are shown because the bar is incomplete without
+ * them, and are inert because this preview cannot honour them — evidence is
+ * attached later, in the case file, where it can be hashed and kept.
  */
-export function WhatsAppComposer({ children, attachmentNote, trailing }: {
-  children: React.ReactNode;
-  attachmentNote: string;
-  /** The green circle at the end of the row: microphone, or send. */
+export function WhatsAppComposer({ suggestions, input, trailing, attachmentNote, hideCamera }: {
+  /** Quick replies for the current question, scrolling in one row. */
+  suggestions?: React.ReactNode;
+  /** The text field, or a hint when the question expects a tap. */
+  input: React.ReactNode;
+  /** The green circle: microphone, or send. */
   trailing?: React.ReactNode;
+  attachmentNote: string;
+  /** WhatsApp drops the camera the moment you start typing. */
+  hideCamera?: boolean;
 }) {
   return (
-    <div className="shrink-0 px-2 py-2 bg-[#f0f2f5] border-t border-black/5">
-      <div className="flex items-end gap-1.5">
+    <div className="shrink-0 bg-[#f0f2f5] border-t border-black/5">
+      {suggestions && (
+        <div
+          className={cn(
+            "px-2 pt-2 pb-1 flex gap-2 overflow-x-auto",
+            "[&_[role=group]]:flex-nowrap [&_[role=group]]:justify-start [&_[role=group]]:gap-2",
+            "[&_button]:whitespace-nowrap [&_button]:shrink-0",
+          )}
+        >
+          {suggestions}
+        </div>
+      )}
+      <div className="px-2 py-2 flex items-end gap-1.5">
         <div className="flex-1 min-w-0 rounded-[1.5rem] bg-white px-2 py-1.5 flex items-end gap-1.5 shadow-[0_1px_1px_rgba(11,20,26,0.06)]">
           <span className="grid place-items-center w-8 h-8 shrink-0 text-[#54656f]" title={attachmentNote} aria-hidden>
             <EmojiIcon />
           </span>
-          {/* One scrolling row, like WhatsApp's suggested replies. Stacked
-              buttons ate half the screen on a 440pt handset. */}
-          <div
-            className={cn(
-              "flex-1 min-w-0 py-0.5 max-h-[7.5rem] overflow-y-auto",
-              "[&_[role=group]]:flex-nowrap [&_[role=group]]:overflow-x-auto [&_[role=group]]:justify-start",
-              "[&_[role=group]]:pb-1 [&_[role=group]_button]:whitespace-nowrap [&_[role=group]_button]:shrink-0",
-            )}
-          >
-            {children}
-          </div>
+          <div className="flex-1 min-w-0 py-1">{input}</div>
           <span className="grid place-items-center w-8 h-8 shrink-0 text-[#54656f] rotate-[-45deg]" title={attachmentNote} aria-hidden>
             <ClipIcon />
           </span>
-          <span className="grid place-items-center w-8 h-8 shrink-0 text-[#54656f]" title={attachmentNote} aria-hidden>
-            <CameraIcon />
-          </span>
+          {!hideCamera && (
+            <span className="grid place-items-center w-8 h-8 shrink-0 text-[#54656f]" title={attachmentNote} aria-hidden>
+              <CameraIcon />
+            </span>
+          )}
         </div>
         {trailing}
       </div>

@@ -108,6 +108,12 @@ export function GuidedIntake() {
   const whatsapp = draft.channel === "whatsapp";
   // The voice channel is a microphone, not a chat with a microphone above it.
   const voiceOnly = draft.channel === "voice";
+  // A tap-to-answer step belongs on the suggestion row; everything else is a
+  // card and belongs in the conversation, where there is room to read it.
+  const CHIP_STEPS = new Set<string>([
+    "safety", "age", "money", "timing",
+    "rbi-initiation", "rbi-credentials", "rbi-bank-fault", "rbi-report-timing",
+  ]);
   const [chatClock, setChatClock] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -542,8 +548,12 @@ export function GuidedIntake() {
                 ))}
               </div>
 
-              {!whatsapp && (
-                <div ref={currentRef} tabIndex={-1} className="pt-2 focus:outline-none">
+              {(!whatsapp || (!CHIP_STEPS.has(step) && step !== "story")) && (
+                <div
+                  ref={currentRef}
+                  tabIndex={-1}
+                  className={cn("pt-2 focus:outline-none", whatsapp && "[&_.intake-action-card]:bg-white")}
+                >
                   {controls}
                 </div>
               )}
@@ -554,15 +564,18 @@ export function GuidedIntake() {
             {whatsapp && (
               <WhatsAppComposer
                 attachmentNote={t("intake.waAttachLater")}
+                hideCamera={step === "story" && Boolean(draft.narrative.trim())}
+                suggestions={CHIP_STEPS.has(step) ? controls : undefined}
+                input={step === "story" ? controls : (
+                  <p className="text-[0.9375rem] leading-[1.4] text-[#8696a0] truncate">
+                    {CHIP_STEPS.has(step) ? t("intake.waTapAbove") : t("intake.waReadAbove")}
+                  </p>
+                )}
                 trailing={step === "story" ? (
                   // WhatsApp's own rule: a microphone until there is something
                   // to send, then a send button in the same place.
                   draft.narrative.trim() ? (
-                    <WhatsAppSendButton
-                      onClick={analyse}
-                      disabled={busy}
-                      label={t("intake.waSend")}
-                    />
+                    <WhatsAppSendButton onClick={analyse} disabled={busy} label={t("intake.waSend")} />
                   ) : (
                     <VoiceInput
                       variant="compact"
@@ -575,11 +588,7 @@ export function GuidedIntake() {
                     />
                   )
                 ) : undefined}
-              >
-                <div ref={currentRef} tabIndex={-1} className="focus:outline-none">
-                  {controls}
-                </div>
-              </WhatsAppComposer>
+              />
             )}
           </Shell>
           )}

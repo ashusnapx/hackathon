@@ -854,8 +854,10 @@ export const en = {
   "intake.agentName": "Kavach Saathi",
   "intake.waStatus": "online",
   "intake.waNotReal": "Preview only — nothing is sent to WhatsApp",
+  "intake.waTapAbove": "Tap an answer",
+  "intake.waReadAbove": "Read the message",
   "intake.waSend": "Send",
-  "intake.waTypeHint": "Type a message, or hold the microphone to speak",
+  "intake.waTypeHint": "Message",
   "intake.waAttachLater": "Attachments come later, in your case file",
   "intake.agentRole": "case guide",
   // ── Start flow ────────────────────────────────────────────────────────────
