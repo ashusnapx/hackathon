@@ -56,6 +56,8 @@ import {
   WhatsAppBubble,
   WhatsAppComposer,
   WhatsAppHeader,
+  WhatsAppSystemNote,
+  PhoneFrame,
   WHATSAPP_WALLPAPER,
 } from "@/components/intake/WhatsAppChrome";
 import { cn, inr } from "@/lib/utils";
@@ -100,6 +102,8 @@ export function GuidedIntake() {
   const progress = intakeProgress(draft);
   const voiceGateComplete = hasCompletedSafetyGate(draft);
   const whatsapp = draft.channel === "whatsapp";
+  // The voice channel is a microphone, not a chat with a microphone above it.
+  const voiceOnly = draft.channel === "voice";
   const [chatClock, setChatClock] = useState("");
   useEffect(() => {
     queueMicrotask(() => setChatClock(
@@ -391,15 +395,6 @@ export function GuidedIntake() {
           </div>
         </section>
 
-        {draft.channel === "voice" && (
-          <VaaniPanel
-            language={lang.code}
-            onTranscript={appendNarrative}
-            t={t}
-            unlocked={voiceGateComplete}
-          />
-        )}
-
         {needsFastFinancialAction(draft) && (
           <aside className="mt-5 rounded-card border border-urgent/40 bg-urgent-soft px-5 py-5" role="alert">
             <p className="label !text-urgent-ink/75">{t("triage.firstAction")}</p>
@@ -412,16 +407,17 @@ export function GuidedIntake() {
         )}
 
         <div className="mt-7 grid lg:grid-cols-[minmax(0,1fr)_19rem] gap-6 lg:items-start">
-          <section
-            className="rounded-card border border-rule-strong bg-raised overflow-hidden shadow-[0_18px_55px_-38px_rgba(26,26,26,0.5)]"
-            aria-label={t("intake.agentName")}
-          >
+          {voiceOnly ? (
+            <VaaniPanel
+              language={lang.code}
+              onTranscript={appendNarrative}
+              t={t}
+              unlocked={voiceGateComplete}
+            />
+          ) : (
+          <Shell whatsapp={whatsapp} statusTime={chatClock} label={t("intake.agentName")}>
             {whatsapp ? (
-              <WhatsAppHeader
-                name={t("intake.agentName")}
-                status={t("intake.waStatus")}
-                note={t("intake.waNotReal")}
-              />
+              <WhatsAppHeader name={t("intake.agentName")} status={t("intake.waStatus")} />
             ) : (
             <div className="px-4 sm:px-5 py-3.5 border-b border-rule bg-sunk flex items-center gap-3"> 
               <span className="w-9 h-9 rounded-full grid place-items-center font-semibold bg-deep text-[#ffffeb]" aria-hidden>K</span>
@@ -442,6 +438,7 @@ export function GuidedIntake() {
             )}
 
             <div className={cn("px-3 sm:px-5 py-5 space-y-3", whatsapp && WHATSAPP_WALLPAPER)}> 
+              {whatsapp && <WhatsAppSystemNote>{t("intake.waNotReal")}</WhatsAppSystemNote>}
               <div role="log" aria-live="polite" aria-relevant="additions" className="space-y-3">
                 {messages.map((message, index) => (
                   whatsapp ? (
@@ -475,7 +472,8 @@ export function GuidedIntake() {
                 </div>
               </WhatsAppComposer>
             )}
-          </section>
+          </Shell>
+          )}
 
           <aside className="lg:sticky lg:top-28 space-y-4">
             <CaseBrief draft={draft} progress={progress} t={t} />
@@ -1246,6 +1244,29 @@ function ChannelButton({ active, title, note, icon, onClick }: { active: boolean
       </span>
     </button>
   );
+}
+
+/** A card on the web, a handset for the WhatsApp preview. */
+function Shell({ whatsapp, statusTime, label, children }: {
+  whatsapp: boolean;
+  statusTime: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  const card = (
+    <section
+      className={cn(
+        "overflow-hidden",
+        whatsapp
+          ? "sm:rounded-none"
+          : "rounded-card border border-rule-strong bg-raised shadow-[0_18px_55px_-38px_rgba(26,26,26,0.5)]",
+      )}
+      aria-label={label}
+    >
+      {children}
+    </section>
+  );
+  return whatsapp ? <PhoneFrame statusTime={statusTime}>{card}</PhoneFrame> : card;
 }
 
 function MessageBubble({ message }: { message: Message }) {

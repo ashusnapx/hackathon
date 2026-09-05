@@ -14,7 +14,45 @@ import { cn } from "@/lib/utils";
  * says so rather than implying a WhatsApp integration that does not exist.
  */
 
-export function WhatsAppHeader({ name, status, note }: { name: string; status: string; note: string }) {
+/**
+ * A phone around the preview.
+ *
+ * On a desktop the WhatsApp screen otherwise reads as a website pretending to
+ * be a chat. In a handset, with a status bar above it, it reads as the thing
+ * people will actually use — which is the whole argument this product makes.
+ * On a real phone the frame is dropped: you are already holding one.
+ */
+export function PhoneFrame({ children, statusTime }: { children: React.ReactNode; statusTime: string }) {
+  return (
+    <div className="sm:mx-auto sm:w-[392px] sm:max-w-full sm:rounded-[2.6rem] sm:border-[9px] sm:border-[#111214] sm:shadow-[0_30px_70px_-30px_rgba(11,20,26,0.65)] sm:bg-[#111214]">
+      <div className="sm:rounded-[2rem] overflow-hidden bg-white">
+        <div className="hidden sm:flex items-center justify-between px-5 pt-2 pb-1 bg-[#008069] text-white text-[0.6875rem] font-medium">
+          <span className="tabular-nums">{statusTime}</span>
+          <span className="flex items-center gap-1" aria-hidden>
+            <SignalIcon />
+            <WifiIcon />
+            <BatteryIcon />
+          </span>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function SignalIcon() {
+  return <svg width="16" height="11" viewBox="0 0 18 12" fill="currentColor" aria-hidden><rect x="0" y="8" width="3" height="4" rx="1" /><rect x="5" y="5.5" width="3" height="6.5" rx="1" /><rect x="10" y="3" width="3" height="9" rx="1" /><rect x="15" y="0.5" width="3" height="11.5" rx="1" opacity=".45" /></svg>;
+}
+
+function WifiIcon() {
+  return <svg width="15" height="11" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden><path d="M1 4.2a10.5 10.5 0 0 1 14 0M3.6 7a6.8 6.8 0 0 1 8.8 0" /><circle cx="8" cy="10" r="1" fill="currentColor" stroke="none" /></svg>;
+}
+
+function BatteryIcon() {
+  return <svg width="24" height="12" viewBox="0 0 26 12" fill="none" aria-hidden><rect x="0.7" y="0.7" width="21" height="10.6" rx="3" stroke="currentColor" strokeOpacity=".55" /><rect x="2.4" y="2.4" width="16" height="7.2" rx="1.8" fill="currentColor" /><path d="M23.5 4.2v3.6a2 2 0 0 0 0-3.6z" fill="currentColor" fillOpacity=".55" /></svg>;
+}
+
+export function WhatsAppHeader({ name, status }: { name: string; status: string }) {
   return (
     <div className="flex items-center gap-3 px-3 sm:px-4 py-2.5 bg-[#008069] text-white">
       {/* The display picture is the site's own shield, the way a real contact
@@ -26,11 +64,25 @@ export function WhatsAppHeader({ name, status, note }: { name: string; status: s
         <p className="text-[0.9375rem] font-medium leading-tight truncate">{name}</p>
         <p className="text-[0.6875rem] leading-tight text-white/80 truncate">{status}</p>
       </div>
-      <span className="text-[0.625rem] leading-tight text-white/75 text-end max-w-[8.5rem]">{note}</span>
       <span className="flex items-center gap-3.5 ps-1 text-white/90" aria-hidden>
         <VideoIcon />
         <PhoneIcon />
         <DotsIcon />
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The centred notice WhatsApp puts at the head of a chat. It carries the
+ * disclaimer where that app carries its encryption notice — read as part of the
+ * conversation, and out of the header, where it was crushing the contact name.
+ */
+export function WhatsAppSystemNote({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex justify-center pb-1">
+      <span className="rounded-md bg-[#ffeecd] px-2.5 py-1.5 text-center text-[0.6875rem] leading-[1.4] text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
+        {children}
       </span>
     </div>
   );

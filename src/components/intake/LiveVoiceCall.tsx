@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/utils";
 import { writeStoredVaaniSession } from "@/lib/integrations/vaani-client";
 import { parseCaption, type Caption } from "@/lib/integrations/vaani-captions";
 import { useT } from "@/lib/i18n/context";
@@ -160,28 +161,42 @@ export function LiveVoiceCall({
       {/* The agent's voice. Its captions are rendered below, in the caller's language. */}
       <audio ref={audioRef} autoPlay className="hidden" />
 
-      {(phase === "idle" || phase === "ended" || phase === "error") && (
-        <>
-          <Button onClick={start} size="sm" className="mt-3">
-            {phase === "ended" ? t("intake.vaaniBrowserAgain") : t("intake.vaaniBrowserOpen")}
-          </Button>
-        </>
-      )}
-      {phase === "connecting" && (
-        <p className="mt-3 text-sm text-ink-2">{t("intake.vaaniBrowserOpening")}…</p>
-      )}
-      {phase === "live" && (
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-2 text-sm font-semibold text-done">
-            <span className="h-2 w-2 rounded-full bg-done animate-pulse" aria-hidden />
-            {t("intake.vaaniBrowserLive")}
-          </span>
-          <Button onClick={toggleMute} size="sm" variant="secondary">
+      {/* One control, the size of a thumb. Tapping it starts the conversation. */}
+      <div className="mt-4 flex flex-col items-center text-center">
+        <button
+          onClick={phase === "live" ? end : start}
+          disabled={phase === "connecting"}
+          aria-label={phase === "live" ? t("intake.vaaniBrowserEnd") : t("intake.vaaniBrowserOpen")}
+          className={cn(
+            "relative grid place-items-center w-24 h-24 rounded-full transition-colors",
+            "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4",
+            phase === "live"
+              ? "bg-urgent text-white"
+              : "bg-ink text-paper hover:opacity-90 disabled:opacity-60",
+          )}
+        >
+          {phase === "live" && (
+            <span className="absolute inset-0 rounded-full bg-urgent/35 animate-ping" aria-hidden />
+          )}
+          <span className="relative">{phase === "live" ? <StopGlyph /> : <MicGlyph />}</span>
+        </button>
+
+        <p className="mt-3 text-[0.9375rem] font-semibold">
+          {phase === "live"
+            ? t("intake.vaaniBrowserLive")
+            : phase === "connecting"
+              ? `${t("intake.vaaniBrowserOpening")}…`
+              : phase === "ended"
+                ? t("intake.vaaniBrowserAgain")
+                : t("intake.vaaniBrowserOpen")}
+        </p>
+
+        {phase === "live" && (
+          <Button onClick={toggleMute} size="sm" variant="secondary" className="mt-3">
             {muted ? t("intake.vaaniBrowserUnmute") : t("intake.vaaniBrowserMute")}
           </Button>
-          <Button onClick={end} size="sm" variant="secondary">{t("intake.vaaniBrowserEnd")}</Button>
-        </div>
-      )}
+        )}
+      </div>
       {phase === "error" && (
         <p role="alert" className="mt-2 text-sm text-urgent-ink">
           {failure === "microphone" ? t("intake.vaaniBrowserMicDenied") : t("intake.vaaniBrowserError")}
@@ -204,4 +219,17 @@ export function LiveVoiceCall({
       <p className="mt-2 text-xs leading-[1.55] text-ink-3">{t("intake.vaaniBrowserAfter")}</p>
     </div>
   );
+}
+
+function MicGlyph() {
+  return (
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+      <rect x="9" y="2.5" width="6" height="11" rx="3" fill="currentColor" stroke="none" />
+      <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" />
+    </svg>
+  );
+}
+
+function StopGlyph() {
+  return <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden><rect x="6.5" y="6.5" width="11" height="11" rx="2.5" /></svg>;
 }
