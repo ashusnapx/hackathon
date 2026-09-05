@@ -23,7 +23,7 @@ export function WhatsAppDemo() {
   return (
     <>
       <SiteHeader width="6xl" />
-      <section className="mx-auto max-w-6xl px-4 sm:px-8 pt-8 sm:pt-10">
+      <main id="main" className="mx-auto max-w-6xl px-4 sm:px-8 pt-8 sm:pt-10 pb-10">
         <p className="label">{t("wa.eyebrow")}</p>
         <h1 className="h1-long mt-3">{t("wa.title")}</h1>
         <p className="mt-5 max-w-2xl text-[1.0625rem] leading-[1.65] text-ink-2">{t("wa.sub")}</p>
@@ -35,8 +35,10 @@ export function WhatsAppDemo() {
             <li key={key} className="sheet px-4 py-3.5 text-sm leading-[1.55] text-ink-2">{t(key)}</li>
           ))}
         </ul>
-      </section>
-      <GuidedIntake lockChannel="whatsapp" />
+        <div className="mt-8">
+          <GuidedIntake lockChannel="whatsapp" />
+        </div>
+      </main>
     </>
   );
 }

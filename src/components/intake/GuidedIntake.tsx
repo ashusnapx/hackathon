@@ -748,7 +748,7 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
   );
 
   return (
-    <div className="min-h-dvh">
+    <div className={lockChannel ? "" : "min-h-dvh"}>
       {!lockChannel && (
       <SiteHeader
         width="6xl"
@@ -764,7 +764,7 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
       />
       )}
 
-      <main id="main" className="mx-auto max-w-6xl px-4 sm:px-8 py-8 sm:py-12">
+      <Frame lockChannel={lockChannel}>
         {persistence === "error" && (
           <p role="alert" className="mb-5 rounded-ctl border border-urgent/35 bg-urgent-soft px-4 py-3 text-sm leading-[1.55] text-urgent-ink">
             {t("rep.save.error")}
@@ -822,8 +822,11 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
             keeps the wide column it had: it is a microphone, and a form of
             twenty boxes next to "just talk" argues against the whole idea. */}
         <div className={cn(
-          "mt-7 grid gap-6 lg:items-start",
-          voiceOnly ? "lg:grid-cols-[minmax(0,1fr)_19rem]" : "lg:grid-cols-2",
+          "grid gap-6 lg:items-start",
+          lockChannel ? "mt-0" : "mt-7",
+          voiceOnly && lockChannel ? "max-w-xl mx-auto"
+            : voiceOnly ? "lg:grid-cols-[minmax(0,1fr)_19rem]"
+              : "lg:grid-cols-2",
         )}>
           {voiceOnly ? (
             <VaaniPanel
@@ -1008,6 +1011,7 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
           </Shell>
           )}
 
+          {!(voiceOnly && lockChannel) && (
           <aside className="no-scrollbar lg:sticky lg:top-28 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto space-y-4 lg:pb-4">
             {!voiceOnly && (
               <CaseForm
@@ -1048,10 +1052,21 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
               </div>
             )}
           </aside>
+          )}
         </div>
-      </main>
+      </Frame>
     </div>
   );
+}
+
+/**
+ * The page body, or a plain block when this interview is embedded in a page
+ * that already has one. Two <main> elements on a document give the skip link
+ * two targets and a screen reader two landmarks named the same thing.
+ */
+function Frame({ lockChannel, children }: { lockChannel?: IntakeChannel; children: React.ReactNode }) {
+  if (lockChannel) return <div className="min-w-0">{children}</div>;
+  return <main id="main" className="mx-auto max-w-6xl px-4 sm:px-8 py-8 sm:py-12">{children}</main>;
 }
 
 function StepControls({

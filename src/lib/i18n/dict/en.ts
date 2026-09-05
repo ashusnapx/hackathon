@@ -773,6 +773,7 @@ export const en = {
 
   "cmp.cta": "Try the rebuilt form",
   "cmp.ctaOfficial": "File on the official portal",
+  "nav.talk": "Talk to Kavach",
   "nav.whatsapp": "On WhatsApp",
   "nav.compare": "The comparison",
 
@@ -965,12 +966,16 @@ export const en = {
   "wa.point1": "Reply buttons, list pickers and voice notes — the parts of WhatsApp a bot actually gets, used the way that app uses them.",
   "wa.point2": "The same twenty-three languages, the same triage, and the same letters at the end of it.",
   "wa.point3": "No install, no portal, no account to invent while somebody is being defrauded.",
+  "talk.h": "Tell us out loud.",
+  "talk.sub": "No phone number and no call charge — it runs in this tab. Say what happened in your own language, and hang up when you are done. The case is built from the call.",
+  "talk.typeLink": "Rather type it",
   "begin.storyH": "What happened?",
   "begin.storySub": "Tell it once, in your own words and your own language. We will work out the rest — the type of fraud, the money, the deadlines and who to write to.",
   "begin.storyHint": "Speak or type. Nothing is filed with anyone.",
   "begin.storyCta": "Continue",
   "begin.call1930": "Call 1930 — money fraud",
   "begin.call112": "Call 112 — emergency",
+  "begin.waLink": "See it on WhatsApp",
   "begin.voiceLink": "Rather talk to someone",
   "begin.boundaryNote": "We only ask what helps your case. Never share an OTP, PIN, password, CVV, full card number or Aadhaar number. Kavach is independent — not police, not government.",
 

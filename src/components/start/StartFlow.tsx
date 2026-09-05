@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 import { Button } from "@/components/ui/Button";
+import { SiteHeader } from "@/components/SiteHeader";
 import { VoiceInput } from "@/components/start/VoiceInput";
 import { emptyIntake } from "@/lib/intake/interview";
 import { draftFromStory } from "@/lib/intake/infer";
@@ -64,8 +65,10 @@ export function StartFlow() {
   };
 
   return (
-    <main id="main" className="min-h-dvh px-4 py-8 sm:py-14 flex items-start sm:items-center justify-center">
-      <div className="w-full max-w-xl">
+    <>
+      <SiteHeader width="2xl" />
+      <main id="main" className="px-4 py-8 sm:py-12 flex items-start justify-center">
+        <div className="w-full max-w-xl">
         <h1 className="text-2xl sm:text-3xl leading-tight">{t("begin.storyH")}</h1>
         <p className="mt-3 text-[1.0625rem] leading-[1.6] text-ink-2">{t("begin.storySub")}</p>
 
@@ -104,16 +107,22 @@ export function StartFlow() {
 
         <p className="mt-5 text-xs leading-[1.55] text-ink-3">{t("begin.boundaryNote")}</p>
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
-          <a href="/assist?channel=voice" className={cn("inline-flex items-center gap-2 text-sm font-medium underline underline-offset-4")}>
+        {/* The other three ways in, named rather than hidden: the same case
+            file comes out of all of them. */}
+        <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2.5">
+          <a href="/talk" className={cn("inline-flex items-center gap-2 text-sm font-medium underline underline-offset-4")}>
             <Image src="/vaani/vaani-mark.png" alt="" width={72} height={72} className="w-4 h-4" />
             {t("begin.voiceLink")} →
+          </a>
+          <a href="/whatsapp" className="text-sm font-medium underline underline-offset-4">
+            {t("begin.waLink")} →
           </a>
           <a href="/report" className="text-sm font-medium underline underline-offset-4">
             {t("begin.formLink")} →
           </a>
         </div>
-      </div>
-    </main>
+        </div>
+      </main>
+    </>
   );
 }
