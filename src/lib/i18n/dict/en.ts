@@ -1025,6 +1025,8 @@ export const en = {
   "intake.vaaniImport": "Fetch transcript for review",
   "intake.vaaniNotReady": "The transcript is not ready or the provider is temporarily unavailable. No second call will be placed. Check again after about",
   "intake.vaaniCheckAgain": "Check transcript again",
+  "intake.vaaniFullTranscript": "Your call, word for word",
+  "intake.vaaniFullSub": "Both sides, exactly as the provider transcribed it. Only your own words are sent for analysis — the agent's questions are removed first.",
   "intake.vaaniReview": "Review the victim's account before using it",
   "intake.vaaniReviewSub": "Agent questions and obvious speaker labels are filtered, but speech recognition can still be wrong. Edit or remove any line. This text remains staged until you choose Use reviewed account.",
   "intake.vaaniUse": "Use reviewed account",

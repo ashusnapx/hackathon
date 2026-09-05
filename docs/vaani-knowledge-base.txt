@@ -62,27 +62,19 @@ and must never be spoken back to them.
       console placeholder (never speak): Caller reported suspected UPI fraud via Paytm link, money left account, seeks help recovering funds.
 
   {{preferred_language}}
-      Language code the caller chose on the website, e.g. hi.
+      The language the caller chose before the microphone opened. The agent opens in it.
       Source: supplied by the Kavach web flow for this caller
 
-  {{channel}}
-      How this call is carried: webrtc, pstn or whatsapp_sip.
-      Source: server-generated from configuration and consent records; no console default
+  {{safety_answer}}
+      Whether the caller said they were in immediate danger, answered on the website before the call.
+      Source: supplied by the Kavach web flow for this caller
 
-  {{recording_state}}
-      The verified provider recording state for this call.
-      Source: server-generated from configuration and consent records; no console default
-
-  {{recording_disclosure}}
-      The exact recording sentence for that verified state. Never generic.
-      Source: server-generated from configuration and consent records; no console default
+  {{child_context}}
+      Whether a child is involved, answered on the website before the call.
+      Source: supplied by the Kavach web flow for this caller
 
   {{human_transfer_available}}
       Whether a trained human can actually take a transfer right now.
-      Source: server-generated from configuration and consent records; no console default
-
-  {{consent_policy_version}}
-      Version of the consent notice the caller accepted.
       Source: server-generated from configuration and consent records; no console default
 
 

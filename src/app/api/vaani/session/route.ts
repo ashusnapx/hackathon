@@ -49,6 +49,7 @@ export async function POST(req: Request) {
   const body = parsed.value as Record<string, unknown>;
   const permitted = new Set([
     "language", "caseReference", "safeToSpeak", "transcriptionConsent", "recordingConsent",
+    "safetyAnswer", "childContext",
   ]);
   if (Object.keys(body).some((key) => !permitted.has(key))) {
     return json({ error: "unexpected-field" }, 400);
@@ -88,6 +89,8 @@ export async function POST(req: Request) {
       language: body.language,
       channel: "webrtc",
       consentedFields,
+      safetyAnswer: typeof body.safetyAnswer === "string" ? body.safetyAnswer : undefined,
+      childContext: typeof body.childContext === "string" ? body.childContext : undefined,
     });
     return jsonWithSession({
       ok: true,

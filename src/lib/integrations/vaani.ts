@@ -596,10 +596,16 @@ const CONSENT_POLICY_VERSION_FALLBACK = "prototype-unversioned";
  * they already read on the website.
  */
 const GREETINGS: Record<string, string> = {
-  en: "Hello, I'm Kavach Saathi, an AI assistant from Kavach — not the police or government. Is it safe for you to speak right now?",
-  hi: "नमस्ते, मैं कवच साथी हूँ — कवच की AI सहायक, पुलिस या सरकार नहीं। क्या अभी बात करना सुरक्षित है?",
+  en: "Hello, I'm Kavach Saathi, an AI assistant from Kavach — not the police or government. Please tell me what happened.",
+  hi: "नमस्ते, मैं कवच साथी हूँ — कवच की AI सहायक, पुलिस या सरकार नहीं। बताइए, क्या हुआ?",
 };
 
+/**
+ * Only languages a person has checked are listed. A first sentence to someone
+ * who has just been defrauded is the wrong place for an unreviewed machine
+ * translation, so anything else opens in English and the agent switches to the
+ * caller's language from their first reply, as the prompt instructs.
+ */
 export function vaaniGreeting(language: string): string {
   return GREETINGS[language] ?? GREETINGS.en;
 }
@@ -640,6 +646,9 @@ export interface VaaniCallContext {
   language: string;
   channel: "webrtc" | "pstn";
   consentedFields: readonly string[];
+  /** Answered on the website before the microphone opened, so the agent does not re-ask. */
+  safetyAnswer?: string;
+  childContext?: string;
 }
 
 /**
@@ -663,15 +672,23 @@ export function buildVaaniCallMetadata(
     .filter((purpose) => CONSENTABLE_PURPOSES.has(purpose))
     .sort();
 
+  const known = new Set(["safe", "danger", "prefer-not", "adult-or-no-child", "self-minor", "child-other", "unknown"]);
+
   return {
     case_id: caseReference,
     consented_fields: consented.join(","),
     summarised_problem: "",
     preferred_language: context.language,
+    // Answered on screen already. Sent so the agent can skip them rather than
+    // making someone repeat, on a call, what they just tapped.
+    safety_answer: context.safetyAnswer && known.has(context.safetyAnswer) ? context.safetyAnswer : "",
+    child_context: context.childContext && known.has(context.childContext) ? context.childContext : "",
+    human_transfer_available: env.VAANI_HUMAN_TRANSFER_AVAILABLE === "true" ? "true" : "false",
+    // Operational, not read by the prompt: kept so the call record says what the
+    // caller was actually told about recording.
     channel: context.channel,
     recording_state: recordingState,
     recording_disclosure: vaaniRecordingDisclosure(recordingState),
-    human_transfer_available: env.VAANI_HUMAN_TRANSFER_AVAILABLE === "true" ? "true" : "false",
     consent_policy_version: env.VAANI_CONSENT_POLICY_VERSION?.trim() || CONSENT_POLICY_VERSION_FALLBACK,
     consent_source: "kavach-web",
   };
@@ -762,6 +779,22 @@ export async function startVaaniBrowserCall(context: VaaniCallContext): Promise<
       primary_language: context.language,
       welcome_message: vaaniGreeting(context.language),
       welcome_interruptible: true,
+      // The greeting has to be overridden per call, not per agent. A configured
+      // greeting can only be in one language, an empty one makes Vaani fall back
+      // to its own "you have reached our customer service" line, and the
+      // top-level welcome_message is ignored on this medium — which together
+      // produced two introductions, the first in the wrong language.
+      modify_agent: {
+        persona: {
+          identity: {
+            greeting_message: {
+              agent_message: vaaniGreeting(context.language),
+              interruptible: true,
+              let_user_speak_first: false,
+            },
+          },
+        },
+      },
       metadata: buildVaaniCallMetadata({ ...context, channel: "webrtc" }),
     }),
   });

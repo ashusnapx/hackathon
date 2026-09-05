@@ -12,19 +12,14 @@
     "name": "Kavach Saathi",
     "service": "Kavach",
     "targetLanguage": "hi",
-    "welcomeMessage": "नमस्ते, मैं कवच साथी हूँ — कवच की AI सहायक, पुलिस या सरकार नहीं। क्या अभी बात करना सुरक्षित है?",
+    "welcomeMessage": "नमस्ते, मैं कवच साथी हूँ — कवच की AI सहायक, पुलिस या सरकार नहीं। बताइए, क्या हुआ?",
     "greeting": {
       "interruptible": true,
       "letUserSpeakFirst": false,
       "note": "The disclosure must be spoken before anything else, so the agent speaks first; the caller may still interrupt it."
     },
-    "welcomeNote": "Two sentences, in the agent's target language. A live call proved that the per-call welcome_message sent with trigger-call is ignored for the WebRTC medium: a Hindi caller still heard the configured English greeting, then the agent switched to Hindi on its own. Since the target language is Hindi, the configured greeting is Hindi; the prompt still tells the agent to continue in whatever language the caller uses.",
-    "perCallLanguage": "primary_language is sent per call from the language the caller chose on the website, so a Hindi caller is not read English text by a Hindi voice.",
-    "welcomeByLanguage": {
-      "en": "Hello, I'm Kavach Saathi, an AI assistant from Kavach — not the police or government. Is it safe for you to speak right now?",
-      "hi": "नमस्ते, मैं कवच साथी हूँ — कवच की AI सहायक, पुलिस या सरकार नहीं। क्या अभी बात करना सुरक्षित है?",
-      "_note": "Sent per call as welcome_message, so a Hindi caller is greeted in Hindi instead of hearing English words in a Hindi voice."
-    }
+    "welcomeNote": "A real greeting, never empty: an empty one makes Vaani speak its own generic customer-service line, and the agent then introduced itself a second time, in a second language. This configured value is the fallback in the agent's target language; every call overrides it through modify_agent with the language the caller picked.",
+    "perCallLanguage": "primary_language is sent per call from the language the caller chose on the website, so a Hindi caller is not read English text by a Hindi voice."
   },
   "dynamicVariables": [
     {
@@ -50,32 +45,22 @@
     },
     {
       "name": "preferred_language",
-      "meaning": "Language code the caller chose on the website, e.g. hi.",
+      "meaning": "The language the caller chose before the microphone opened. The agent opens in it.",
       "source": "website_session"
     },
     {
-      "name": "channel",
-      "meaning": "How this call is carried: webrtc, pstn or whatsapp_sip.",
-      "source": "trusted_runtime_config"
+      "name": "safety_answer",
+      "meaning": "Whether the caller said they were in immediate danger, answered on the website before the call.",
+      "source": "website_session"
     },
     {
-      "name": "recording_state",
-      "meaning": "The verified provider recording state for this call.",
-      "source": "trusted_runtime_config"
-    },
-    {
-      "name": "recording_disclosure",
-      "meaning": "The exact recording sentence for that verified state. Never generic.",
-      "source": "trusted_runtime_config"
+      "name": "child_context",
+      "meaning": "Whether a child is involved, answered on the website before the call.",
+      "source": "website_session"
     },
     {
       "name": "human_transfer_available",
       "meaning": "Whether a trained human can actually take a transfer right now.",
-      "source": "trusted_runtime_config"
-    },
-    {
-      "name": "consent_policy_version",
-      "meaning": "Version of the consent notice the caller accepted.",
       "source": "trusted_runtime_config"
     }
   ],

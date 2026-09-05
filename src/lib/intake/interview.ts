@@ -220,10 +220,45 @@ export function victimTurnsFromTranscript(transcript: string): string {
   const turns: string[] = [];
   for (let i = 1; i < chunks.length; i += 2) {
     const speaker = chunks[i].toLowerCase();
-    const text = (chunks[i + 1] || "").replace(/\s+/g, " ").trim();
+    const text = (chunks[i + 1] || "")
+      // The provider's own furniture rides along with each turn: the timestamp
+      // that opens the next line, and an "interrupted" flag. Neither is
+      // something the caller said, and both would end up in a police complaint.
+      .replace(/\binterrupted\s*:\s*(true|false)/gi, " ")
+      .replace(/\[\s*\d{1,2}:\d{2}(:\d{2})?\s*\]/g, " ")
+      .replace(/\[\s*\d{4}-\d{2}-\d{2}[^\]]*\]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
     if ((speaker === "user" || speaker === "victim") && text) turns.push(text);
   }
   // Some deployments return an unlabelled transcript. Preserve it for review
   // rather than silently returning an empty case, but never claim who said it.
   return turns.length ? turns.join(" ") : transcript.replace(/\s+/g, " ").trim();
+}
+
+/** Tidy a provider transcript for reading: no synthesis markup, no flags. */
+export function cleanCallTranscript(transcript: string): string {
+  return transcript
+    .replace(/<\/?(?:speed|break|prosody|emphasis|say-as|phoneme|sub|voice|lang|p|s)\b[^>]*>/gi, "")
+    .replace(/\binterrupted\s*:\s*(true|false)/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+export interface CallTurn { agent: boolean; text: string }
+
+/** Split a transcript into turns, for showing the caller their own call. */
+export function callTurns(transcript: string): CallTurn[] {
+  const chunks = cleanCallTranscript(transcript).split(/\b(AGENT|USER|ASSISTANT|VICTIM)\s*:\s*/gi);
+  const turns: CallTurn[] = [];
+  for (let i = 1; i < chunks.length; i += 2) {
+    const speaker = chunks[i].toLowerCase();
+    const text = (chunks[i + 1] || "")
+      .replace(/\[\s*\d{1,2}:\d{2}(:\d{2})?\s*\]/g, " ")
+      .replace(/\[\s*\d{4}-\d{2}-\d{2}[^\]]*\]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (text) turns.push({ agent: speaker === "agent" || speaker === "assistant", text });
+  }
+  return turns;
 }

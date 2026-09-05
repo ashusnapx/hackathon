@@ -23,12 +23,17 @@ type Failure = "connect" | "microphone";
 export function LiveVoiceCall({
   language,
   caseReference,
+  safetyAnswer,
+  childContext,
   onTranscriptToken,
   onCallEnded,
 }: {
   /** The site language, used only to order the picker. */
   language: string;
   caseReference?: string;
+  /** Already answered on screen; sent so the agent does not ask again. */
+  safetyAnswer?: string;
+  childContext?: string;
   /** Handed up so the panel can offer the transcript for review afterwards. */
   onTranscriptToken?: (token: string) => void;
   onCallEnded?: () => void;
@@ -72,6 +77,8 @@ export function LiveVoiceCall({
         body: JSON.stringify({
           language: spokenLanguage,
           ...(caseReference ? { caseReference } : {}),
+          ...(safetyAnswer ? { safetyAnswer } : {}),
+          ...(childContext ? { childContext } : {}),
           // Starting the call is the consent: the line above the button states
           // that Vaani processes and records it, and Kavach Saathi confirms
           // safety, transcription and recording again in its first turn.

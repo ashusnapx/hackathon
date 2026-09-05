@@ -139,3 +139,29 @@ describe("adaptive intake interview", () => {
     expect(victimTurnsFromTranscript(transcript)).toBe("I paid 5000 rupees. This morning.");
   });
 });
+
+describe("keeping only what the caller said", () => {
+  it("drops the agent, the timestamps and the interrupted flags", async () => {
+    const { victimTurnsFromTranscript } = await import("../interview");
+    const raw = [
+      "[04:33:49] AGENT: Hi, how can I help?",
+      " interrupted: False",
+      "",
+      "[04:33:55] USER: मेरे साथ एक UPI fraud हुआ है. दस हज़ार रुपए का.",
+      " interrupted: False",
+      "",
+      "[04:34:04] AGENT: यह सुनकर बहुत दुख हुआ।",
+      " interrupted: True",
+      "",
+      "[04:35:09] USER: Paytm app से और bank था HDFC.",
+      " interrupted: False",
+    ].join("\n");
+
+    const kept = victimTurnsFromTranscript(raw);
+    expect(kept).toContain("UPI fraud");
+    expect(kept).toContain("Paytm app से और bank था HDFC.");
+    expect(kept).not.toContain("how can I help");
+    expect(kept).not.toContain("interrupted");
+    expect(kept).not.toMatch(/\[\d{1,2}:\d{2}/);
+  });
+});

@@ -22,6 +22,8 @@ import {
   needsFastFinancialAction,
   nextIntakeStep,
   timingEstimate,
+  callTurns,
+  cleanCallTranscript,
   victimTurnsFromTranscript,
   type ChildContext,
   type EvidenceKind,
@@ -418,6 +420,13 @@ export function GuidedIntake() {
           {voiceOnly ? (
             <VaaniPanel
               language={lang.code}
+              safetyAnswer={draft.safety}
+              childContext={draft.childContext}
+              // The voice channel has no interview under it, so approving the
+              // transcript used to end on a sentence pointing at facts that were
+              // not on screen. Hand back to the chat, where the story now sits
+              // ready to be read and confirmed.
+              onAccepted={() => patch({ channel: "web" })}
               onTranscript={appendNarrative}
               t={t}
               unlocked={voiceGateComplete}
@@ -1058,12 +1067,19 @@ function RbiReviewCard({ assessment, t, children }: { assessment: RbiEligibility
 
 function VaaniPanel({
   language,
+  safetyAnswer,
+  childContext,
   onTranscript,
+  onAccepted,
   t,
   unlocked,
 }: {
   language: string;
+  safetyAnswer?: string;
+  childContext?: string;
   onTranscript: (text: string) => void;
+  /** Called once the caller has approved their own words. */
+  onAccepted: () => void;
   t: T;
   unlocked: boolean;
 }) {
@@ -1075,6 +1091,7 @@ function VaaniPanel({
     () => restoredSession?.transcriptToken ?? null,
   );
   const [stagedTranscript, setStagedTranscript] = useState("");
+  const [fullTranscript, setFullTranscript] = useState("");
   const [reviewSource, setReviewSource] = useState<"sample" | "live" | null>(null);
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
   const requestIdRef = useRef<string | null>(restoredSession?.requestId ?? null);
@@ -1147,6 +1164,7 @@ function VaaniPanel({
         return;
       }
       setStagedTranscript(victimTurns);
+      setFullTranscript(cleanCallTranscript(data.transcript || ""));
       setReviewSource("live");
       setState("reviewing");
     } catch {
@@ -1168,6 +1186,7 @@ function VaaniPanel({
     const reviewed = stagedTranscript.replace(/\s+/g, " ").trim();
     if (!reviewed) return;
     onTranscript(reviewed);
+    onAccepted();
     if (requestIdRef.current) {
       writeStoredVaaniSession({
         version: 1,
@@ -1198,6 +1217,8 @@ function VaaniPanel({
       {unlocked && browserVoice?.available && (state === "idle" || state === "requested") && (
         <LiveVoiceCall
           language={language}
+          safetyAnswer={safetyAnswer}
+          childContext={childContext}
           onTranscriptToken={setTranscriptToken}
           onCallEnded={() => setState("requested")}
         />
@@ -1219,6 +1240,22 @@ function VaaniPanel({
       {unlocked && state === "reviewing" && (
         <div className="mt-4 max-w-2xl">
           {reviewSource === "sample" && <p className="mb-2 text-sm text-info">{t("intake.vaaniSampleLoaded")}</p>}
+          {fullTranscript && (
+            <div className="mb-4">
+              <p className="text-sm font-semibold">{t("intake.vaaniFullTranscript")}</p>
+              <p className="mt-1 text-xs leading-[1.55] text-ink-3">{t("intake.vaaniFullSub")}</p>
+              <div className="mt-2 max-h-64 overflow-y-auto rounded-ctl border border-rule bg-raised px-3 py-3 space-y-2">
+                {callTurns(fullTranscript).map((turn, index) => (
+                  <p key={index} className="text-sm leading-[1.55]">
+                    <span className={cn("font-semibold", turn.agent ? "text-ink-3" : "text-ink")}>
+                      {turn.agent ? t("intake.agentName") : t("intake.vaaniBrowserYou")}:{" "}
+                    </span>
+                    <span className={turn.agent ? "text-ink-3" : "text-ink-2"}>{turn.text}</span>
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
           <label htmlFor="vaani-reviewed-transcript" className="block text-sm font-semibold">{t("intake.vaaniReview")}</label>
           <p id="vaani-reviewed-transcript-help" className="mt-1 text-xs leading-[1.55] text-ink-3">{t("intake.vaaniReviewSub")}</p>
           <textarea
