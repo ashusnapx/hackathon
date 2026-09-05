@@ -24,11 +24,30 @@ import { cn } from "@/lib/utils";
  */
 export function PhoneFrame({ children, statusTime }: { children: React.ReactNode; statusTime: string }) {
   return (
-    <div className="sm:mx-auto sm:w-[392px] sm:max-w-full sm:rounded-[2.6rem] sm:border-[9px] sm:border-[#111214] sm:shadow-[0_30px_70px_-30px_rgba(11,20,26,0.65)] sm:bg-[#111214]">
-      <div className="sm:rounded-[2rem] overflow-hidden bg-white">
-        <div className="hidden sm:flex items-center justify-between px-5 pt-2 pb-1 bg-[#008069] text-white text-[0.6875rem] font-medium">
+    <div
+      className={cn(
+        "sm:mx-auto sm:rounded-[3.2rem] sm:border-[11px] sm:border-[#1c1c1e] sm:bg-[#1c1c1e]",
+        "sm:shadow-[0_40px_80px_-32px_rgba(11,20,26,0.6),0_0_0_2px_#3a3a3c]",
+      )}
+      // iPhone 17 Pro Max is 440 x 956 points. Both dimensions are stated
+      // rather than left to aspect-ratio, because as a grid item the frame gets
+      // a definite width from the column and the ratio never applies. Height
+      // leads so the handset fits a short laptop screen, and the conversation
+      // scrolls inside it instead of stretching the page.
+      style={{
+        // Floored so a short laptop window gets a usable handset rather than a
+        // 220px sliver, capped at the real 956pt height on a tall screen.
+        height: "clamp(600px, 82vh, 956px)",
+        width: "min(440px, calc(clamp(600px, 82vh, 956px) * 440 / 956))",
+        maxWidth: "100%",
+      }}
+    >
+      <div className="h-full sm:rounded-[2.4rem] overflow-hidden bg-white flex flex-col">
+        <div className="relative hidden sm:flex items-center justify-between px-6 pt-3 pb-1.5 bg-[#008069] text-white text-[0.8125rem] font-semibold shrink-0">
           <span className="tabular-nums">{statusTime}</span>
-          <span className="flex items-center gap-1" aria-hidden>
+          {/* Dynamic Island */}
+          <span className="absolute left-1/2 -translate-x-1/2 top-2 h-[26px] w-[92px] rounded-full bg-black" aria-hidden />
+          <span className="flex items-center gap-1.5" aria-hidden>
             <SignalIcon />
             <WifiIcon />
             <BatteryIcon />
@@ -54,7 +73,7 @@ function BatteryIcon() {
 
 export function WhatsAppHeader({ name, status }: { name: string; status: string }) {
   return (
-    <div className="flex items-center gap-3 px-3 sm:px-4 py-2.5 bg-[#008069] text-white">
+    <div className="shrink-0 flex items-center gap-3 px-3 sm:px-4 py-2.5 bg-[#008069] text-white">
       {/* The display picture is the site's own shield, the way a real contact
           photo would be — not an initial standing in for one. */}
       <span className="grid place-items-center w-10 h-10 rounded-full bg-white shrink-0 overflow-hidden" aria-hidden>
@@ -141,13 +160,23 @@ export function WhatsAppComposer({ children, attachmentNote }: {
   attachmentNote: string;
 }) {
   return (
-    <div className="px-2 py-2 bg-[#f0f2f5] border-t border-black/5">
+    <div className="shrink-0 px-2 py-2 bg-[#f0f2f5] border-t border-black/5">
       <div className="flex items-end gap-1.5">
         <div className="flex-1 min-w-0 rounded-[1.5rem] bg-white px-2 py-1.5 flex items-end gap-1.5 shadow-[0_1px_1px_rgba(11,20,26,0.06)]">
           <span className="grid place-items-center w-8 h-8 shrink-0 text-[#54656f]" title={attachmentNote} aria-hidden>
             <EmojiIcon />
           </span>
-          <div className="flex-1 min-w-0 py-0.5">{children}</div>
+          {/* One scrolling row, like WhatsApp's suggested replies. Stacked
+              buttons ate half the screen on a 440pt handset. */}
+          <div
+            className={cn(
+              "flex-1 min-w-0 py-0.5 max-h-[7.5rem] overflow-y-auto",
+              "[&_[role=group]]:flex-nowrap [&_[role=group]]:overflow-x-auto [&_[role=group]]:justify-start",
+              "[&_[role=group]]:pb-1 [&_[role=group]_button]:whitespace-nowrap [&_[role=group]_button]:shrink-0",
+            )}
+          >
+            {children}
+          </div>
           <span className="grid place-items-center w-8 h-8 shrink-0 text-[#54656f] rotate-[-45deg]" title={attachmentNote} aria-hidden>
             <ClipIcon />
           </span>

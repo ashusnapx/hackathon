@@ -364,6 +364,7 @@ export const en = {
   "intake.vaaniBrowserAfter": "When you finish, the recording and transcript appear on your case page under Call.",
 
   // ── Voice call record ─────────────────────────────────────────────────────
+  "case.emailSent": "A copy of this case, with your reference and next steps, was emailed to",
   "call.title": "Your call with Kavach Saathi",
   "call.sub": "The recording and transcript come from the voice provider. Everything the agent understood is a draft until you confirm it.",
   "call.none": "No voice call on this device yet. Start one from the intake page and it will appear here.",

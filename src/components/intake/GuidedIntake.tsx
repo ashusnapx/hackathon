@@ -105,6 +105,7 @@ export function GuidedIntake() {
   // The voice channel is a microphone, not a chat with a microphone above it.
   const voiceOnly = draft.channel === "voice";
   const [chatClock, setChatClock] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     queueMicrotask(() => setChatClock(
       new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
@@ -314,6 +315,12 @@ export function GuidedIntake() {
     setShowReset(false);
   }, [draft.channel]);
 
+  // A phone screen keeps the newest message in view; a web page would just grow.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages.length, step, whatsapp]);
+
   if (!hydrated) return <main id="main" className="min-h-dvh" aria-busy />;
 
   const persistenceLabel = persistence === "error"
@@ -437,7 +444,13 @@ export function GuidedIntake() {
             </div>
             )}
 
-            <div className={cn("px-3 sm:px-5 py-5 space-y-3", whatsapp && WHATSAPP_WALLPAPER)}> 
+            <div
+              ref={scrollRef}
+              className={cn(
+                "px-3 sm:px-5 py-5 space-y-3",
+                whatsapp && `${WHATSAPP_WALLPAPER} sm:flex-1 sm:min-h-0 sm:overflow-y-auto`,
+              )}
+            > 
               {whatsapp && <WhatsAppSystemNote>{t("intake.waNotReal")}</WhatsAppSystemNote>}
               <div role="log" aria-live="polite" aria-relevant="additions" className="space-y-3">
                 {messages.map((message, index) => (
@@ -1258,7 +1271,7 @@ function Shell({ whatsapp, statusTime, label, children }: {
       className={cn(
         "overflow-hidden",
         whatsapp
-          ? "sm:rounded-none"
+          ? "sm:h-full sm:min-h-0 sm:flex sm:flex-col sm:rounded-none"
           : "rounded-card border border-rule-strong bg-raised shadow-[0_18px_55px_-38px_rgba(26,26,26,0.5)]",
       )}
       aria-label={label}

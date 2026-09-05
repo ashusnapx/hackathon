@@ -18,6 +18,7 @@ import { Escalation } from "@/components/case/Escalation";
 import { Aftercare } from "@/components/case/Aftercare";
 import { CaseHeader } from "@/components/case/CaseHeader";
 import { CallRecord } from "@/components/case/CallRecord";
+import { CaseEmail } from "@/components/case/CaseEmail";
 import { useCase } from "@/lib/case/store";
 import { isFinancial } from "@/lib/case/tracks";
 import { useT } from "@/lib/i18n/context";
@@ -61,8 +62,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   if (!caseFile) {
     return (
       <Centered>
-        <p className="text-lg">No case file with that reference exists in this browser.</p>
-        <Link href="/assist" className="link mt-4 inline-block">Start a new one →</Link>
+        <p className="text-lg">{t("case.notFound")}</p>
+        <Link href="/assist" className="link mt-4 inline-block">{t("case.startNew")}</Link>
       </Centered>
     );
   }
@@ -90,13 +91,13 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       <main id="main" className="mx-auto max-w-5xl px-5 sm:px-8 py-8 sm:py-10">
         {externalConflict && (
           <div role="alert" className="mb-6 sheet border-wait/40 bg-wait-soft px-4 py-3 text-sm text-ink-2">
-            <p>This case changed in another tab. Your unsaved edits are still on this screen and will not overwrite the other version until you choose.</p>
+            <p>{t("case.conflict")}</p>
             <div className="mt-3 flex flex-wrap gap-3">
               <button onClick={() => resolveExternalConflict("keep-local")} className="font-semibold underline underline-offset-4">
-                Keep this tab&apos;s edits
+                {t("case.keepLocal")}
               </button>
               <button onClick={() => resolveExternalConflict("load-stored")} className="underline underline-offset-4">
-                Load the other tab&apos;s version
+                {t("case.loadStored")}
               </button>
             </div>
           </div>
@@ -157,6 +158,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
               <Escalation caseFile={caseFile} />
               <Aftercare />
               <CaseBuilder caseFile={caseFile} update={update} />
+              <CaseEmail caseFile={caseFile} />
             </>
           )}
 
@@ -181,41 +183,42 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 }
 
 function EvidenceOverviewCard({ caseFile, onGoEvidence }: { caseFile: import("@/lib/case/types").CaseFile; onGoEvidence: () => void }) {
+  const t = useT();
   const readiness = calculateReadiness(caseFile);
   const tone =
     readiness.level === "READY" ? "bg-done" : readiness.level === "PARTIALLY_READY" ? "bg-wait" : "bg-urgent";
-  const label = readiness.counts.totalApplicable === 0
-    ? "No applicable items"
+  const labelKey = readiness.counts.totalApplicable === 0
+    ? "ev.noApplicableItems"
     : readiness.level === "READY"
-      ? "Most items addressed"
+      ? "ev.mostAddressed"
       : readiness.level === "PARTIALLY_READY"
-        ? "Checklist in progress"
-        : "Checklist just started";
+        ? "ev.inProgress"
+        : "ev.justStarted";
   return (
     <section className="sheet px-5 py-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <p className="label">Evidence checklist</p>
-        <p className="num text-2xl font-medium">{readiness.percentage}% addressed</p>
+        <p className="label">{t("ev.overviewTitle")}</p>
+        <p className="num text-2xl font-medium">{readiness.percentage}% {t("ev.addressed")}</p>
       </div>
-      <div className="mt-3 h-1.5 bg-sunk rounded-full overflow-hidden" role="progressbar" aria-label="Weighted evidence checklist completion" aria-valuenow={readiness.percentage} aria-valuemin={0} aria-valuemax={100}>
+      <div className="mt-3 h-1.5 bg-sunk rounded-full overflow-hidden" role="progressbar" aria-label={t("ev.overviewAria")} aria-valuenow={readiness.percentage} aria-valuemin={0} aria-valuemax={100}>
         <div className={cn("h-full rounded-full transition-[width] duration-500", tone)} style={{ width: `${readiness.percentage}%` }} />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <span className={cn("chip px-2 py-1 rounded-ctl border", readiness.level === "READY" ? "bg-done-soft text-done border-done/25" : readiness.level === "PARTIALLY_READY" ? "bg-sunk text-ink-3 border-rule" : "bg-urgent-soft text-urgent-ink border-urgent/30")}>
-          {label}
+          {t(labelKey)}
         </span>
         <span className="text-sm text-ink-3">
-          {readiness.counts.added} marked held · {readiness.counts.storedLocally} local files · {readiness.counts.missing} missing
+          {readiness.counts.added} {t("ev.markedHeld")} · {readiness.counts.storedLocally} {t("ev.localFiles")} · {readiness.counts.missing} {t("ev.missingN")}
         </span>
       </div>
       {readiness.recommendations.length > 0 && (
         <p className="mt-3 text-sm text-ink-2 leading-snug">
-          Next: {readiness.recommendations.map((r) => r.title).join(" · ")}
+          {t("ev.next")} {readiness.recommendations.map((r) => t(`ev.tpl.${r.id}.title` as Parameters<typeof t>[0])).join(" · ")}
         </p>
       )}
-      <p className="mt-3 text-xs leading-snug text-ink-3">Checklist completion is not proof that evidence is authentic, sufficient or stored in Kavach.</p>
+      <p className="mt-3 text-xs leading-snug text-ink-3">{t("ev.overviewDisclaimer")}</p>
       <button onClick={onGoEvidence} className="mt-4 text-sm font-medium underline underline-offset-4 hover:text-ink">
-        Open Evidence Vault →
+        {t("ev.openVault")}
       </button>
     </section>
   );
