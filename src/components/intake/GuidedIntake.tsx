@@ -52,6 +52,12 @@ import {
 } from "@/lib/integrations/vaani-client";
 import Image from "next/image";
 import { LiveVoiceCall } from "@/components/intake/LiveVoiceCall";
+import {
+  WhatsAppBubble,
+  WhatsAppComposer,
+  WhatsAppHeader,
+  WHATSAPP_WALLPAPER,
+} from "@/components/intake/WhatsAppChrome";
 import { cn, inr } from "@/lib/utils";
 
 const OBSOLETE_WHATSAPP_SIMULATION_KEYS = [
@@ -93,6 +99,13 @@ export function GuidedIntake() {
   const step = nextIntakeStep(draft);
   const progress = intakeProgress(draft);
   const voiceGateComplete = hasCompletedSafetyGate(draft);
+  const whatsapp = draft.channel === "whatsapp";
+  const [chatClock, setChatClock] = useState("");
+  useEffect(() => {
+    queueMicrotask(() => setChatClock(
+      new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+    ));
+  }, []);
   const safetyAnswerTime = Date.parse(draft.safetyCheckedAt ?? "");
   const messages = useMemo(
     () => buildMessages(
@@ -304,6 +317,23 @@ export function GuidedIntake() {
     : persistence === "saved"
       ? t("intake.saved")
       : `${t("build.saving")}…`;
+  const controls = (
+    <StepControls
+      step={step}
+      draft={draft}
+      patch={patch}
+      answer={answer}
+      t={t}
+      busy={busy}
+      error={error}
+      analyse={analyse}
+      updateTriage={updateTriage}
+      updateEntity={updateEntity}
+      evidenceChoice={evidenceChoice}
+      openCase={openCase}
+    />
+  );
+
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-40 px-3 sm:px-5 pt-3 sm:pt-4 pointer-events-none">
@@ -386,6 +416,13 @@ export function GuidedIntake() {
             className="rounded-card border border-rule-strong bg-raised overflow-hidden shadow-[0_18px_55px_-38px_rgba(26,26,26,0.5)]"
             aria-label={t("intake.agentName")}
           >
+            {whatsapp ? (
+              <WhatsAppHeader
+                name={t("intake.agentName")}
+                status={t("intake.waStatus")}
+                note={t("intake.waNotReal")}
+              />
+            ) : (
             <div className="px-4 sm:px-5 py-3.5 border-b border-rule bg-sunk flex items-center gap-3"> 
               <span className="w-9 h-9 rounded-full grid place-items-center font-semibold bg-deep text-[#ffffeb]" aria-hidden>K</span>
               <div className="min-w-0">
@@ -402,31 +439,42 @@ export function GuidedIntake() {
                 {persistenceLabel}
               </span>
             </div>
+            )}
 
-            <div className="px-3 sm:px-5 py-5 space-y-3"> 
+            <div className={cn("px-3 sm:px-5 py-5 space-y-3", whatsapp && WHATSAPP_WALLPAPER)}> 
               <div role="log" aria-live="polite" aria-relevant="additions" className="space-y-3">
                 {messages.map((message, index) => (
-                  <MessageBubble key={`${message.role}-${index}`} message={message} />
+                  whatsapp ? (
+                    <WhatsAppBubble
+                      key={`${message.role}-${index}`}
+                      outgoing={message.role === "user"}
+                      urgent={message.urgent}
+                      time={chatClock}
+                    >
+                      {message.text}
+                    </WhatsAppBubble>
+                  ) : (
+                    <MessageBubble key={`${message.role}-${index}`} message={message} />
+                  )
                 ))}
               </div>
 
-              <div ref={currentRef} tabIndex={-1} className="pt-2 focus:outline-none">
-                <StepControls
-                  step={step}
-                  draft={draft}
-                  patch={patch}
-                  answer={answer}
-                  t={t}
-                  busy={busy}
-                  error={error}
-                  analyse={analyse}
-                  updateTriage={updateTriage}
-                  updateEntity={updateEntity}
-                  evidenceChoice={evidenceChoice}
-                  openCase={openCase}
-                />
-              </div>
+              {!whatsapp && (
+                <div ref={currentRef} tabIndex={-1} className="pt-2 focus:outline-none">
+                  {controls}
+                </div>
+              )}
             </div>
+
+            {/* On the WhatsApp screen the answers belong on the composer strip,
+                where that app puts everything you can do. */}
+            {whatsapp && (
+              <WhatsAppComposer attachmentNote={t("intake.waAttachLater")}>
+                <div ref={currentRef} tabIndex={-1} className="focus:outline-none">
+                  {controls}
+                </div>
+              </WhatsAppComposer>
+            )}
           </section>
 
           <aside className="lg:sticky lg:top-28 space-y-4">

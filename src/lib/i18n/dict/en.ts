@@ -826,6 +826,9 @@ export const en = {
   "intake.channel.whatsappNote": "Continue the same guided flow",
   "intake.channel.voiceNote": "Vaani-ready voice interview",
   "intake.agentName": "Kavach Saathi",
+  "intake.waStatus": "online",
+  "intake.waNotReal": "Preview only — nothing is sent to WhatsApp",
+  "intake.waAttachLater": "Attachments come later, in your case file",
   "intake.agentRole": "case guide",
   // ── Start flow ────────────────────────────────────────────────────────────
   "begin.h1": "Let's get you help.",
