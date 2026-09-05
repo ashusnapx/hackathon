@@ -106,10 +106,14 @@ export interface CaseFile {
   victim: {
     name?: string; phone?: string; email?: string;
     state?: string; district?: string; address?: string;
+    /** Named on an FIR application, where a district alone will not do. */
+    policeStation?: string;
     ageContext?: "adult-or-no-child" | "self-minor" | "child-other" | "unknown";
   };
   bank: {
     name?: string;
+    /** The branch the dispute letter is addressed to. */
+    branchAddress?: string;
     last4?: string;
     ackRef?: string;
     notifiedAt?: string;

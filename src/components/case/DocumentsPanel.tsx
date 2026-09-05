@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { downloadCasePack } from "@/lib/case/pack";
 import { downloadLetter } from "@/lib/case/letter";
+import { DocumentFields } from "@/components/case/DocumentFields";
+import { fillDocument } from "@/lib/case/placeholders";
 import {
   applicableDocumentKeys,
   documentInputFingerprint,
@@ -18,6 +20,9 @@ import { cn, writeToClipboard } from "@/lib/utils";
 import { useIsClient } from "@/lib/useIsClient";
 
 type DocKey = DocumentKey;
+
+/** A filename someone can find again, with nothing of ours in it. */
+const fileDate = () => new Date().toISOString().slice(0, 10);
 
 const DOCS: { key: DocKey; title: Parameters<ReturnType<typeof useI18n>["t"]>[0]; blurb: Parameters<ReturnType<typeof useI18n>["t"]>[0] }[] = [
   { key: "ncrp", title: "doc.ncrp.t", blurb: "doc.ncrp.b" },
@@ -157,29 +162,38 @@ export function DocumentsPanel({ caseFile, update }: Props) {
             ))}
           </nav>
 
-          {visibleDocs.filter((d) => d.key === active).map((d) => (
-            <Document
-              key={d.key}
-              docKey={d.key}
-              caseRef={caseFile.ref}
-              title={t(d.title)}
-              blurb={t(d.blurb)}
-              body={caseFile.docs[d.key] ?? ""}
-              translated={caseFile.docs.translatedLanguage === lang.code
-                ? caseFile.docs.translated?.[d.key]
-                : undefined}
-              targetLang={lang.code}
-              onTranslated={(text) =>
-                update((c) => ({
-                  docs: {
-                    ...c.docs,
-                    translated: { ...(c.docs.translatedLanguage === lang.code ? c.docs.translated : {}), [d.key]: text },
-                    translatedLanguage: lang.code,
-                  },
-                }))
-              }
-            />
-          ))}
+          {/* The letter and the gaps it still has, side by side. Filling one
+              rewrites the other as the person types, which is the only way a
+              draft full of brackets becomes something they can hand over. */}
+          {visibleDocs.filter((d) => d.key === active).map((d) => {
+            const draft = caseFile.docs[d.key] ?? "";
+            return (
+              <div key={d.key} className="mt-6 grid lg:grid-cols-[minmax(0,1fr)_20rem] gap-5 lg:items-start">
+                <Document
+                  docKey={d.key}
+                  title={t(d.title)}
+                  blurb={t(d.blurb)}
+                  body={fillDocument(draft, caseFile)}
+                  translated={caseFile.docs.translatedLanguage === lang.code
+                    ? caseFile.docs.translated?.[d.key]
+                    : undefined}
+                  targetLang={lang.code}
+                  onTranslated={(text) =>
+                    update((c) => ({
+                      docs: {
+                        ...c.docs,
+                        translated: { ...(c.docs.translatedLanguage === lang.code ? c.docs.translated : {}), [d.key]: text },
+                        translatedLanguage: lang.code,
+                      },
+                    }))
+                  }
+                />
+                <div className="lg:sticky lg:top-28 no-print order-first lg:order-none">
+                  <DocumentFields caseFile={caseFile} body={draft} update={update} />
+                </div>
+              </div>
+            );
+          })}
 
           <p className="mt-5 text-sm text-ink-3">
             {t("g.aiNote")}
@@ -192,10 +206,9 @@ export function DocumentsPanel({ caseFile, update }: Props) {
 }
 
 function Document({
-  docKey, caseRef, title, blurb, body, translated, targetLang, onTranslated,
+  docKey, title, blurb, body, translated, targetLang, onTranslated,
 }: {
   docKey: DocKey;
-  caseRef: string;
   title: string;
   blurb: string;
   body: string;
@@ -235,8 +248,7 @@ function Document({
    * signature block read as an application. Copy and share still carry the plain
    * text, which is what a portal box and WhatsApp actually want.
    */
-  const download = () =>
-    downloadLetter(body, { title, caseRef, filename: `kavach-${docKey}-${caseRef}.pdf` });
+  const download = () => downloadLetter(body, { title, filename: `${docKey}-${fileDate()}.pdf` });
 
   /** On a phone the useful destination is usually WhatsApp, not the filesystem. */
   const share = async () => {
@@ -289,7 +301,7 @@ function Document({
   };
 
   return (
-    <article className="mt-6 sheet overflow-hidden rise">
+    <article className="sheet overflow-hidden rise">
       <div className="px-5 py-4 border-b border-rule bg-sunk">
         <h3 className="text-lg">{title}</h3>
         <p className="mt-1.5 text-sm leading-snug text-ink-2 max-w-2xl">{blurb}</p>

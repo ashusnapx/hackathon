@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { useT } from "@/lib/i18n/context";
 import { useActiveCaseId } from "@/lib/case/store";
 import { cn } from "@/lib/utils";
+import { DEMO_CASE_PATH } from "@/lib/demo/id";
 
 /**
  * Six inline links plus a wordmark, a language picker and a CTA did not fit
@@ -33,6 +34,7 @@ const ALL = [
   { href: "/check", key: "nav.check" },
   { href: "/compare", key: "nav.compare" },
   { href: "/cases", key: "nav.cases" },
+  { href: DEMO_CASE_PATH, key: "nav.sample" },
   { href: "#clocks", key: "nav.clocks" },
   { href: "#honesty", key: "nav.honesty" },
   { href: "#faq", key: "nav.faq" },

@@ -327,7 +327,6 @@ const LEAD = 5.0;
 interface Meta {
   /** Shown small at the head of the first page. */
   title: string;
-  caseRef: string;
 }
 
 class Letter {
@@ -354,11 +353,19 @@ class Letter {
     return this.page;
   }
 
+  /**
+   * The head of the page carries what the document is, and nothing else.
+   *
+   * A Kavach case reference used to sit in the top right, where a file number
+   * goes on an official form — which is exactly the reading it invited. This
+   * is the applicant's own letter to their bank or their station, so it leaves
+   * here looking like one, and our reference stays on our screen where it is
+   * of use to them and to nobody at the counter.
+   */
   private masthead() {
     const d = this.doc;
     d.setFont("helvetica", "normal").setFontSize(7.5).setTextColor(130);
     d.text(this.meta.title.toUpperCase(), PAGE.m, this.y);
-    d.text(this.meta.caseRef, PAGE.w - PAGE.m, this.y, { align: "right" });
     this.y += 2.5;
     d.setDrawColor(190).setLineWidth(0.2).line(PAGE.m, this.y, PAGE.w - PAGE.m, this.y);
     this.y += 8;
@@ -388,7 +395,7 @@ class Letter {
 
     d.setFontSize(7).setTextColor(140);
     d.text(
-      "Prepared with Kavach, an independent tool. Not a government document; the reference above is not an official complaint number.",
+      "Prepared with Kavach, an independent tool. This is your own letter, not a government document.",
       PAGE.m,
       PAGE.h - 11,
     );
@@ -599,7 +606,7 @@ function build(text: string, meta: Meta): jsPDF {
 }
 
 export function downloadLetter(text: string, opts: Meta & { filename: string }) {
-  build(text, { title: opts.title, caseRef: opts.caseRef }).save(opts.filename);
+  build(text, { title: opts.title }).save(opts.filename);
 }
 
 /** Same typesetting, returned rather than saved — for tests and for previews. */

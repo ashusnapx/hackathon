@@ -249,7 +249,7 @@ function buildCasePack(c: CaseFile): jsPDF {
   let page = handed.page;
   for (const [title, body] of docs) {
     if (!body) continue;
-    page = appendLetter(handed.doc, page, body, { title, caseRef: c.ref });
+    page = appendLetter(handed.doc, page, body, { title });
   }
 
   return handed.doc;

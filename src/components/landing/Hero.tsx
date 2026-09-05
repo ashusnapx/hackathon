@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import { DEMO_CASE_PATH } from "@/lib/demo/id";
 import { Split, countWords } from "@/components/ui/Split";
 import { useT } from "@/lib/i18n/context";
 
@@ -72,7 +73,17 @@ export function Hero() {
           </Button>
         </div>
 
-        <p className="mt-5 text-sm text-ink-3 rise" style={{ animationDelay: "340ms" }}>
+        {/* Quiet, and under the buttons rather than beside them: somebody in
+            trouble should be starting, not browsing. It is here for everyone
+            else — the person deciding whether this is worth trusting, who
+            would rather read a finished case than a landing page. */}
+        <p className="mt-5 text-sm rise" style={{ animationDelay: "340ms" }}>
+          <a href={DEMO_CASE_PATH} className="underline-grow font-medium hover:text-ink">
+            {t("hero.sample")}
+          </a>
+        </p>
+
+        <p className="mt-3 text-sm text-ink-3 rise" style={{ animationDelay: "340ms" }}>
           {t("hero.notOfficial")}
         </p>
 
