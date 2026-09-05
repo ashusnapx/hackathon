@@ -18,7 +18,7 @@ describe("report form handoff", () => {
         categoryId: "financial-fraud",
         subcategoryId: "upi",
         narrative: "I approved a transfer after a caller deceived me.",
-        platform: " WhatsApp ",
+        platform: " SMS ",
         amount: 12_500,
         pastedText: "UTR 123456789012 and the original chat text",
         suspectIds: [
@@ -48,7 +48,7 @@ describe("report form handoff", () => {
       upiIds: ["fraudster@upi"],
       phones: ["+919876543210"],
       emails: ["sender@example.com"],
-      apps: ["WhatsApp"],
+      apps: ["SMS"],
     });
     expect(result?.suspect?.upiIds).toEqual(["fraudster@upi"]);
     expect(result?.evidenceText).toBe("UTR 123456789012 and the original chat text");

@@ -209,7 +209,7 @@ describe("pressing Start", () => {
       files: [{ name: "screenshot.png", size: 1, type: "image/png" }],
     };
 
-    const fresh = freshStartDraft("whatsapp", { safety: "safe", childContext: "adult-or-no-child" });
+    const fresh = freshStartDraft("voice", { safety: "safe", childContext: "adult-or-no-child" });
 
     // Nothing from the abandoned interview may reappear: the next person to
     // pick up this phone must not be handed the last one's fraud.
@@ -219,7 +219,7 @@ describe("pressing Start", () => {
     }
     expect(fresh.narrative).toBe("");
     expect(fresh.files).toEqual([]);
-    expect(fresh.channel).toBe("whatsapp");
+    expect(fresh.channel).toBe("voice");
   });
 
   it("keeps the two answers the front door just asked for", () => {

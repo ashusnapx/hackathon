@@ -78,29 +78,7 @@ import {
   type DetailPhase,
   type DetailQuestion,
 } from "@/lib/intake/details";
-import {
-  WhatsAppBubble,
-  WhatsAppComposer,
-  WhatsAppHeader,
-  WhatsAppSystemNote,
-  WhatsAppSendButton,
-  WhatsAppRecordingBar,
-  WhatsAppInput,
-  WhatsAppButtons,
-  WhatsAppButton,
-  WhatsAppDateChip,
-  WhatsAppTyping,
-  WhatsAppListSheet,
-  PhoneFrame,
-  WHATSAPP_WALLPAPER,
-  whatsappWallpaperStyle,
-} from "@/components/intake/WhatsAppChrome";
 import { cn, inr } from "@/lib/utils";
-
-const OBSOLETE_WHATSAPP_SIMULATION_KEYS = [
-  "kavach.whatsapp-simulation.v1",
-  "kavach.whatsapp-simulation.v2",
-] as const;
 
 type T = ReturnType<typeof useI18n>["t"];
 type Message = {
@@ -240,17 +218,10 @@ export function GuidedIntake() {
   const evidenceChoice = draft.pendingEvidence ?? [];
   const step = nextIntakeStep(draft);
   const voiceGateComplete = hasCompletedSafetyGate(draft);
-  const whatsapp = draft.channel === "whatsapp";
   // The two steps where the composer is a live field rather than a hint: the
   // story, and each follow-up question after it.
-  // Two different things: whether the bar at the foot of the screen is a live
-  // field, and whether the step's own control *is* that field. Routing is the
-  // case that separates them — the district is typed into the composer while
-  // "use this location" stays a reply button up in the conversation.
-  const typing = step === "story" || step === "details" || step === "name"
-    || (draft.channel === "whatsapp" && step === "routing" && Boolean(draft.state));
-  const composerOwnsControls = draft.channel === "whatsapp"
-    && (step === "story" || step === "details" || step === "name");
+  const typing = step === "story" || step === "details" || step === "name";
+  const composerOwnsControls = false;
   // The voice channel is a microphone, not a chat with a microphone above it.
   const voiceOnly = draft.channel === "voice";
   const [chatClock, setChatClock] = useState("");
@@ -266,15 +237,11 @@ export function GuidedIntake() {
       draft,
       t,
       new Date(Math.max(safetyClock, Number.isFinite(safetyAnswerTime) ? safetyAnswerTime : 0)),
-      draft.channel === "whatsapp",
     ),
     [draft, safetyAnswerTime, safetyClock, t],
   );
   useEffect(() => {
     const restored = loadBrowserIntakeDraft();
-    for (const key of OBSOLETE_WHATSAPP_SIMULATION_KEYS) {
-      try { localStorage.removeItem(key); } catch { /* Browser storage may be unavailable. */ }
-    }
     queueMicrotask(() => {
       if (restored.draft) setDraft(restored.draft);
       setPersistence(restored.available ? "saved" : "error");
@@ -707,7 +674,7 @@ export function GuidedIntake() {
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages.length, step, whatsapp]);
+  }, [messages.length, step]);
 
   if (!hydrated) return <main id="main" className="min-h-dvh" aria-busy />;
 
@@ -769,21 +736,7 @@ export function GuidedIntake() {
         <section className="mt-8 sheet px-3 py-3 sm:px-4" aria-label={t("intake.switch")}>
           <div className="flex flex-col lg:flex-row lg:items-center gap-3">
             <p className="label shrink-0 lg:me-3">{t("intake.switch")}</p>
-            <div className="grid sm:grid-cols-3 gap-2 flex-1">
-              <ChannelButton
-                active={draft.channel === "web"}
-                title={t("intake.channel.web")}
-                note={t("intake.channel.webNote")}
-                icon={<ChatIcon />}
-                onClick={() => patch({ channel: "web" })}
-              />
-              <ChannelButton
-                active={draft.channel === "whatsapp"}
-                title={t("intake.channel.whatsapp")}
-                note={t("intake.channel.whatsappNote")}
-                icon={<span className="text-[#25D366]"><WhatsAppIcon /></span>}
-                onClick={() => patch({ channel: "whatsapp" })}
-              />
+            <div className="grid sm:grid-cols-2 gap-2 flex-1">
               <ChannelButton
                 active={draft.channel === "voice"}
                 title={t("intake.channel.voice")}
@@ -838,15 +791,12 @@ export function GuidedIntake() {
               t={t}
             />
           ) : (
-          <Shell whatsapp={whatsapp} statusTime={chatClock} label={t("intake.agentName")}>
-            {whatsapp ? (
-              <WhatsAppHeader name={t("intake.agentName")} status={t("intake.waStatus")} />
-            ) : (
-            <div className="px-4 sm:px-5 py-3.5 border-b border-rule bg-sunk flex items-center gap-3"> 
+          <Shell statusTime={chatClock} label={t("intake.agentName")}>
+            <div className="px-4 sm:px-5 py-3.5 border-b border-rule bg-sunk flex items-center gap-3">
               <span className="w-9 h-9 rounded-full grid place-items-center font-semibold bg-deep text-[#ffffeb]" aria-hidden>K</span>
               <div className="min-w-0">
                 <p className="text-[0.9375rem] font-semibold leading-tight">{t("intake.agentName")}</p>
-                <p className="text-xs mt-0.5 text-ink-3"> 
+                <p className="text-xs mt-0.5 text-ink-3">
                   {t("intake.agentRole")}
                 </p>
               </div>
@@ -858,142 +808,27 @@ export function GuidedIntake() {
                 {persistenceLabel}
               </span>
             </div>
-            )}
 
             <div
               ref={scrollRef}
-              style={whatsapp ? whatsappWallpaperStyle : undefined}
-              className={cn(
-                whatsapp ? "px-2.5 sm:px-3 py-3 space-y-1.5" : "px-3 sm:px-5 py-5 space-y-3",
-                whatsapp && `${WHATSAPP_WALLPAPER} no-scrollbar sm:flex-1 sm:min-h-0 sm:overflow-y-auto`,
-              )}
+              className="px-3 sm:px-5 py-5 space-y-3"
             >
-              {whatsapp && (
-                <>
-                  <WhatsAppSystemNote>{t("intake.waNotReal")}</WhatsAppSystemNote>
-                  <WhatsAppDateChip>{t("intake.waToday")}</WhatsAppDateChip>
-                </>
-              )}
-              <div role="log" aria-live="polite" aria-relevant="additions" className={whatsapp ? "space-y-1.5" : "space-y-3"}>
+              <div role="log" aria-live="polite" aria-relevant="additions" className="space-y-3">
                 {messages.map((message, index) => (
-                  whatsapp ? (
-                    <WhatsAppBubble
-                      key={`${message.role}-${index}`}
-                      outgoing={message.role === "user"}
-                      urgent={message.urgent}
-                      time={chatClock}
-                    >
-                      {message.text}
-                    </WhatsAppBubble>
-                  ) : (
-                    <MessageBubble key={`${message.role}-${index}`} message={message} />
-                  )
+                  <MessageBubble key={`${message.role}-${index}`} message={message} />
                 ))}
-                {whatsapp && busy && <WhatsAppTyping />}
               </div>
 
-              {/* A bot's reply buttons arrive attached to its message, so on
-                  WhatsApp every answer that is a tap belongs here rather than on
-                  a strip above the keyboard. Only the two steps that take typing
-                  hand their control to the composer instead. */}
               {!composerOwnsControls && (
                 <div
                   ref={currentRef}
                   tabIndex={-1}
-                  className={cn("pt-2 focus:outline-none", whatsapp && "[&_.intake-action-card]:bg-white")}
+                  className="pt-2 focus:outline-none"
                 >
                   {controls}
                 </div>
               )}
-              {whatsapp && (step === "details" || step === "name") && detail && (
-                <div ref={currentRef} tabIndex={-1} className="pt-1 focus:outline-none">
-                  <DetailSkips
-                    onSkip={passDetail}
-                    onSkipAll={passAllDetails}
-                    remaining={detailProgress(draft).remaining}
-                    wa
-                    t={t}
-                  />
-                </div>
-              )}
             </div>
-
-            {whatsapp && statePicker && (
-              <WhatsAppListSheet
-                title={t("intake.state")}
-                items={OFFICERS.map((item) => item.state)}
-                onPick={(state) => { patch({ state }); setStatePicker(false); }}
-                onClose={() => setStatePicker(false)}
-              />
-            )}
-
-            {/* The bar at the foot of the screen, doing what that bar does:
-                taking what is typed or spoken, and nothing else. Every answer
-                that is a tap is a reply button up in the conversation. */}
-            {whatsapp && (
-              <WhatsAppComposer
-                attachmentNote={t("intake.waAttachLater")}
-                hideCamera={composerHasText || recording}
-                hint={typing && !recording ? t("detail.typeOrSay") : undefined}
-                recording={recording ? (
-                  <WhatsAppRecordingBar
-                    seconds={recordedFor}
-                    onCancel={() => micRef.current?.cancel()}
-                    cancelLabel={t("intake.waCancelRecording")}
-                  />
-                ) : undefined}
-                input={
-                  composerOwnsControls ? controls
-                    : typing ? (
-                      <WhatsAppInput
-                        value={draft.district ?? ""}
-                        onChange={(district) => patch({ district })}
-                        onSend={sendComposer}
-                        placeholder={t("intake.district")}
-                        ariaLabel={t("intake.district")}
-                      />
-                    ) : (
-                      <p className="text-[0.9375rem] leading-[1.4] text-[#8696a0] truncate">
-                        {t("intake.waTapAbove")}
-                      </p>
-                    )
-                }
-                // One circle, as on the real thing: a microphone until there is
-                // something to send, a send arrow after that, and — while a
-                // voice note is being recorded — the button that ends it. The
-                // line above the bar names both, which is what a one-button
-                // composer costs somebody who has never used one.
-                trailing={typing ? (
-                  composerHasText && !recording ? (
-                    <WhatsAppSendButton
-                      onClick={sendComposer}
-                      disabled={!composerCanSend}
-                      label={t("intake.waSend")}
-                    />
-                  ) : dictatable ? (
-                    <VoiceInput
-                      variant="compact"
-                      disabled={busy}
-                      controller={micRef}
-                      onModeChange={onMicMode}
-                      onResult={(chunk) => {
-                        if (step === "story") {
-                          patch({
-                            narrative: [draft.narrative.trim(), chunk].filter(Boolean).join(" "),
-                            analysis: undefined,
-                            analysisConfirmed: false,
-                          });
-                        } else {
-                          setDetailValue([detailValue.trim(), chunk].filter(Boolean).join(" "));
-                        }
-                      }}
-                    />
-                  ) : (
-                    <WhatsAppSendButton onClick={sendComposer} disabled label={t("intake.waSend")} />
-                  )
-                ) : undefined}
-              />
-            )}
           </Shell>
           )}
 
@@ -1065,20 +900,7 @@ function StepControls({
   passAllDetails: () => void;
   openStatePicker: () => void;
 }) {
-  // WhatsApp draws every one of these as the bot's own reply buttons; the
-  // browser chat draws chips and cards. The wording and the effect are shared.
-  const wa = draft.channel === "whatsapp";
-
   if (step === "boundaries") {
-    if (wa) {
-      return (
-        <Replies wa>
-          <Reply wa primary onClick={() => answer({ acceptedBoundaries: true }, t("intake.boundaryCta"))}>
-            {t("intake.boundaryCta")}
-          </Reply>
-        </Replies>
-      );
-    }
     return (
       <ActionCard>
         <p className="text-[0.9375rem] leading-[1.6] text-ink-2">{t("intake.boundaryBody")}</p>
@@ -1094,23 +916,15 @@ function StepControls({
   if (step === "safety") {
     const at = () => new Date().toISOString();
     return (
-      <Replies wa={wa}>
-        <Reply wa={wa} onClick={() => answer({ safety: "safe" satisfies SafetyAnswer, safetyCheckedAt: at(), emergencyAcknowledged: false }, t("intake.safetySafe"))}>{t("intake.safetySafe")}</Reply>
-        <Reply wa={wa} urgent onClick={() => answer({ safety: "danger" satisfies SafetyAnswer, safetyCheckedAt: at(), emergencyAcknowledged: false }, t("intake.safetyDanger"))}>{t("intake.safetyDanger")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ safety: "prefer-not" satisfies SafetyAnswer, safetyCheckedAt: at(), emergencyAcknowledged: false }, t("intake.preferNot"))}>{t("intake.preferNot")}</Reply>
+      <Replies>
+        <Reply onClick={() => answer({ safety: "safe" satisfies SafetyAnswer, safetyCheckedAt: at(), emergencyAcknowledged: false }, t("intake.safetySafe"))}>{t("intake.safetySafe")}</Reply>
+        <Reply urgent onClick={() => answer({ safety: "danger" satisfies SafetyAnswer, safetyCheckedAt: at(), emergencyAcknowledged: false }, t("intake.safetyDanger"))}>{t("intake.safetyDanger")}</Reply>
+        <Reply onClick={() => answer({ safety: "prefer-not" satisfies SafetyAnswer, safetyCheckedAt: at(), emergencyAcknowledged: false }, t("intake.preferNot"))}>{t("intake.preferNot")}</Reply>
       </Replies>
     );
   }
 
   if (step === "emergency") {
-    if (wa) {
-      return (
-        <Replies wa>
-          <Reply wa href="tel:112">{t("intake.emergencyCall")}</Reply>
-          <Reply wa onClick={() => answer({ emergencyAcknowledged: true }, t("intake.emergencyContinue"))}>{t("intake.emergencyContinue")}</Reply>
-        </Replies>
-      );
-    }
     return (
       <ActionCard urgent>
         <h2 className="!font-sans !text-lg !font-semibold !tracking-normal !leading-snug text-urgent-ink">{t("intake.emergencyH")}</h2>
@@ -1125,24 +939,16 @@ function StepControls({
 
   if (step === "age") {
     return (
-      <Replies wa={wa}>
-        <Reply wa={wa} onClick={() => answer({ childContext: "adult-or-no-child" satisfies ChildContext }, t("intake.ageAdult"))}>{t("intake.ageAdult")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ childContext: "self-minor" satisfies ChildContext }, t("intake.ageSelfMinor"))}>{t("intake.ageSelfMinor")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ childContext: "child-other" satisfies ChildContext }, t("intake.ageChildOther"))}>{t("intake.ageChildOther")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ childContext: "unknown" satisfies ChildContext }, t("intake.preferNot"))}>{t("intake.preferNot")}</Reply>
+      <Replies>
+        <Reply onClick={() => answer({ childContext: "adult-or-no-child" satisfies ChildContext }, t("intake.ageAdult"))}>{t("intake.ageAdult")}</Reply>
+        <Reply onClick={() => answer({ childContext: "self-minor" satisfies ChildContext }, t("intake.ageSelfMinor"))}>{t("intake.ageSelfMinor")}</Reply>
+        <Reply onClick={() => answer({ childContext: "child-other" satisfies ChildContext }, t("intake.ageChildOther"))}>{t("intake.ageChildOther")}</Reply>
+        <Reply onClick={() => answer({ childContext: "unknown" satisfies ChildContext }, t("intake.preferNot"))}>{t("intake.preferNot")}</Reply>
       </Replies>
     );
   }
 
   if (step === "child-safety") {
-    if (wa) {
-      return (
-        <Replies wa>
-          <Reply wa href="tel:1098">{t("intake.childCall")}</Reply>
-          <Reply wa onClick={() => answer({ childSafetyAcknowledged: true }, t("intake.childContinue"))}>{t("intake.childContinue")}</Reply>
-        </Replies>
-      );
-    }
     return (
       <ActionCard urgent>
         <h2 className="!font-sans !text-lg !font-semibold !tracking-normal !leading-snug text-urgent-ink">{t("intake.childH")}</h2>
@@ -1157,40 +963,26 @@ function StepControls({
 
   if (step === "money") {
     return (
-      <Replies wa={wa}>
-        <Reply wa={wa} onClick={() => answer({ moneyMoved: "yes" satisfies MoneyAnswer }, t("intake.moneyYes"))}>{t("intake.moneyYes")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ moneyMoved: "no" satisfies MoneyAnswer }, t("intake.moneyNo"))}>{t("intake.moneyNo")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ moneyMoved: "unsure" satisfies MoneyAnswer }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
+      <Replies>
+        <Reply onClick={() => answer({ moneyMoved: "yes" satisfies MoneyAnswer }, t("intake.moneyYes"))}>{t("intake.moneyYes")}</Reply>
+        <Reply onClick={() => answer({ moneyMoved: "no" satisfies MoneyAnswer }, t("intake.moneyNo"))}>{t("intake.moneyNo")}</Reply>
+        <Reply onClick={() => answer({ moneyMoved: "unsure" satisfies MoneyAnswer }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
       </Replies>
     );
   }
 
   if (step === "timing") {
     return (
-      <Replies wa={wa}>
-        <Reply wa={wa} urgent onClick={() => answer({ incidentTiming: "last-hour" satisfies IncidentTiming }, t("intake.timingHour"))}>{t("intake.timingHour")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ incidentTiming: "today" satisfies IncidentTiming }, t("intake.timingToday"))}>{t("intake.timingToday")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ incidentTiming: "older" satisfies IncidentTiming }, t("intake.timingOlder"))}>{t("intake.timingOlder")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ incidentTiming: "unsure" satisfies IncidentTiming }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
+      <Replies>
+        <Reply urgent onClick={() => answer({ incidentTiming: "last-hour" satisfies IncidentTiming }, t("intake.timingHour"))}>{t("intake.timingHour")}</Reply>
+        <Reply onClick={() => answer({ incidentTiming: "today" satisfies IncidentTiming }, t("intake.timingToday"))}>{t("intake.timingToday")}</Reply>
+        <Reply onClick={() => answer({ incidentTiming: "older" satisfies IncidentTiming }, t("intake.timingOlder"))}>{t("intake.timingOlder")}</Reply>
+        <Reply onClick={() => answer({ incidentTiming: "unsure" satisfies IncidentTiming }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
       </Replies>
     );
   }
 
   if (step === "story") {
-    if (draft.channel === "whatsapp") {
-      return (
-        <>
-          <WhatsAppInput
-            value={draft.narrative}
-            onChange={(narrative) => patch({ narrative, analysis: undefined, analysisConfirmed: false })}
-            onSend={analyse}
-            placeholder={t("intake.waTypeHint")}
-            ariaLabel={t("intake.storyQ")}
-          />
-          {error && <p role="alert" className="mt-1 text-xs text-urgent-ink">{error}</p>}
-        </>
-      );
-    }
     return (
       <ActionCard>
         <div className="flex justify-center py-2">
@@ -1220,15 +1012,6 @@ function StepControls({
   if (step === "verify" && draft.analysis) {
     const triage = draft.analysis.triage;
     const category = findCategory(triage.categoryId);
-    if (wa) {
-      return (
-        <Replies wa>
-          <Reply wa primary onClick={() => answer({ analysisConfirmed: true }, t("intake.verifyConfirm"))}>
-            {t("intake.verifyConfirm")}
-          </Reply>
-        </Replies>
-      );
-    }
     // The form itself lives in the case brief beside the chat, where it stays
     // on screen and keeps updating as the interview goes on. Reading it back
     // inside a bubble and then asking to confirm in the same bubble made the
@@ -1257,42 +1040,42 @@ function StepControls({
 
   if (step === "rbi-initiation") {
     return (
-      <Replies wa={wa}>
-        <Reply wa={wa} onClick={() => answer({ transactionInitiation: "victim" satisfies RbiInitiation }, t("intake.rbiInitiatedMe"))}>{t("intake.rbiInitiatedMe")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ transactionInitiation: "not-victim" satisfies RbiInitiation }, t("intake.rbiInitiatedNotMe"))}>{t("intake.rbiInitiatedNotMe")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ transactionInitiation: "unknown" satisfies RbiInitiation }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
+      <Replies>
+        <Reply onClick={() => answer({ transactionInitiation: "victim" satisfies RbiInitiation }, t("intake.rbiInitiatedMe"))}>{t("intake.rbiInitiatedMe")}</Reply>
+        <Reply onClick={() => answer({ transactionInitiation: "not-victim" satisfies RbiInitiation }, t("intake.rbiInitiatedNotMe"))}>{t("intake.rbiInitiatedNotMe")}</Reply>
+        <Reply onClick={() => answer({ transactionInitiation: "unknown" satisfies RbiInitiation }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
       </Replies>
     );
   }
 
   if (step === "rbi-credentials") {
     return (
-      <Replies wa={wa}>
-        <Reply wa={wa} onClick={() => answer({ credentialsShared: "yes" satisfies RbiYesNoUnknown }, t("intake.rbiCredentialYes"))}>{t("intake.rbiCredentialYes")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ credentialsShared: "no" satisfies RbiYesNoUnknown }, t("intake.rbiCredentialNo"))}>{t("intake.rbiCredentialNo")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ credentialsShared: "unknown" satisfies RbiYesNoUnknown }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
+      <Replies>
+        <Reply onClick={() => answer({ credentialsShared: "yes" satisfies RbiYesNoUnknown }, t("intake.rbiCredentialYes"))}>{t("intake.rbiCredentialYes")}</Reply>
+        <Reply onClick={() => answer({ credentialsShared: "no" satisfies RbiYesNoUnknown }, t("intake.rbiCredentialNo"))}>{t("intake.rbiCredentialNo")}</Reply>
+        <Reply onClick={() => answer({ credentialsShared: "unknown" satisfies RbiYesNoUnknown }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
       </Replies>
     );
   }
 
   if (step === "rbi-bank-fault") {
     return (
-      <Replies wa={wa}>
-        <Reply wa={wa} onClick={() => answer({ suspectedBankFault: "yes" satisfies RbiYesNoUnknown }, t("intake.rbiBankFaultYes"))}>{t("intake.rbiBankFaultYes")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ suspectedBankFault: "no" satisfies RbiYesNoUnknown }, t("intake.rbiBankFaultNo"))}>{t("intake.rbiBankFaultNo")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ suspectedBankFault: "unknown" satisfies RbiYesNoUnknown }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
+      <Replies>
+        <Reply onClick={() => answer({ suspectedBankFault: "yes" satisfies RbiYesNoUnknown }, t("intake.rbiBankFaultYes"))}>{t("intake.rbiBankFaultYes")}</Reply>
+        <Reply onClick={() => answer({ suspectedBankFault: "no" satisfies RbiYesNoUnknown }, t("intake.rbiBankFaultNo"))}>{t("intake.rbiBankFaultNo")}</Reply>
+        <Reply onClick={() => answer({ suspectedBankFault: "unknown" satisfies RbiYesNoUnknown }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
       </Replies>
     );
   }
 
   if (step === "rbi-report-timing") {
     return (
-      <Replies wa={wa}>
-        <Reply wa={wa} onClick={() => answer({ bankReportTiming: "within_3_working_days" satisfies RbiReportTiming }, t("intake.rbiReportThree"))}>{t("intake.rbiReportThree")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ bankReportTiming: "four_to_seven_working_days" satisfies RbiReportTiming }, t("intake.rbiReportSeven"))}>{t("intake.rbiReportSeven")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ bankReportTiming: "after_7_working_days" satisfies RbiReportTiming }, t("intake.rbiReportAfter"))}>{t("intake.rbiReportAfter")}</Reply>
-        <Reply wa={wa} urgent onClick={() => answer({ bankReportTiming: "not_reported" satisfies RbiReportTiming }, t("intake.rbiReportNo"))}>{t("intake.rbiReportNo")}</Reply>
-        <Reply wa={wa} onClick={() => answer({ bankReportTiming: "unknown" satisfies RbiReportTiming }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
+      <Replies>
+        <Reply onClick={() => answer({ bankReportTiming: "within_3_working_days" satisfies RbiReportTiming }, t("intake.rbiReportThree"))}>{t("intake.rbiReportThree")}</Reply>
+        <Reply onClick={() => answer({ bankReportTiming: "four_to_seven_working_days" satisfies RbiReportTiming }, t("intake.rbiReportSeven"))}>{t("intake.rbiReportSeven")}</Reply>
+        <Reply onClick={() => answer({ bankReportTiming: "after_7_working_days" satisfies RbiReportTiming }, t("intake.rbiReportAfter"))}>{t("intake.rbiReportAfter")}</Reply>
+        <Reply urgent onClick={() => answer({ bankReportTiming: "not_reported" satisfies RbiReportTiming }, t("intake.rbiReportNo"))}>{t("intake.rbiReportNo")}</Reply>
+        <Reply onClick={() => answer({ bankReportTiming: "unknown" satisfies RbiReportTiming }, t("intake.notSure"))}>{t("intake.notSure")}</Reply>
       </Replies>
     );
   }
@@ -1300,18 +1083,6 @@ function StepControls({
   if (step === "rbi-review") {
     const input = rbiInputFromDraft(draft);
     if (!input) return null;
-    if (wa) {
-      // The screening itself is read in the conversation, as a message from the
-      // assistant; only the acknowledgement is a button.
-      return (
-        <Replies wa>
-          <Reply wa href={assessRbiEligibility(input).source.url}>{t("intake.rbiSource")}</Reply>
-          <Reply wa primary onClick={() => answer({ rbiAssessmentReviewed: true }, t("intake.rbiContinue"))}>
-            {t("intake.rbiContinue")}
-          </Reply>
-        </Replies>
-      );
-    }
     return (
       <RbiReviewCard assessment={assessRbiEligibility(input)} t={t}>
         <Button onClick={() => answer({ rbiAssessmentReviewed: true }, t("intake.rbiContinue"))} size="md" className="mt-5" full>
@@ -1334,31 +1105,6 @@ function StepControls({
     const saveLabel = evidenceChoice.length && !evidenceChoice.includes("none")
       ? `${evidenceChoice.length} ${t("intake.summaryEvidence").toLowerCase()}`
       : t("intake.evNone");
-    if (wa) {
-      // A multiple-choice question on WhatsApp is a stack of reply buttons that
-      // stay lit once tapped, with the confirmation at the bottom — the same
-      // shape a poll takes there.
-      return (
-        <Replies wa>
-          {EVIDENCE_OPTIONS.map((item) => (
-            <Reply key={item.id} wa selected={evidenceChoice.includes(item.id)} onClick={() => toggle(item.id)}>
-              {t(item.key)}
-            </Reply>
-          ))}
-          <Reply wa selected={evidenceChoice.includes("none")} onClick={() => toggle("none")}>{t("intake.evNone")}</Reply>
-          <Reply
-            wa
-            primary
-            onClick={() => answer(
-              { evidence: evidenceChoice.length ? evidenceChoice : ["none"], pendingEvidence: undefined },
-              saveLabel,
-            )}
-          >
-            {t("intake.evidenceCta")}
-          </Reply>
-        </Replies>
-      );
-    }
     return (
       <ActionCard>
         <div className="grid sm:grid-cols-2 gap-2">
@@ -1383,30 +1129,6 @@ function StepControls({
   }
 
   if (step === "routing") {
-    if (wa) {
-      // Thirty-six states are not reply buttons. WhatsApp's own answer to a
-      // long list is a sheet over the conversation, so that is what this opens;
-      // the district is then simply typed, in the box that is already there.
-      return (
-        <Replies wa>
-          <Reply wa onClick={openStatePicker}>
-            {draft.state ? `${draft.state} ✓` : t("intake.state")}
-          </Reply>
-          {draft.state && (
-            <Reply
-              wa
-              primary
-              onClick={() => answer({ routingAnswered: true }, [draft.district, draft.state].filter(Boolean).join(", "))}
-            >
-              {t("intake.routingCta")}
-            </Reply>
-          )}
-          <Reply wa onClick={() => answer({ routingAnswered: true }, t("intake.routingSkip"))}>
-            {t("intake.routingSkip")}
-          </Reply>
-        </Replies>
-      );
-    }
     return (
       <ActionCard>
         <div className="grid sm:grid-cols-2 gap-4">
@@ -1443,21 +1165,6 @@ function StepControls({
     const ready = isDetailAnswer(detail, detailValue);
     const dictatable = detail.kind !== "datetime";
 
-    if (draft.channel === "whatsapp") {
-      // On the phone the field belongs on the composer strip, where that app
-      // puts everything you can do. The question itself is already a bubble.
-      return (
-        <DetailField
-          question={detail}
-          value={detailValue}
-          onChange={setDetailValue}
-          onSubmit={saveDetail}
-          chrome="whatsapp"
-          t={t}
-        />
-      );
-    }
-
     return (
       <ActionCard>
         <div className="flex items-baseline justify-between gap-3">
@@ -1483,7 +1190,6 @@ function StepControls({
               value={detailValue}
               onChange={setDetailValue}
               onSubmit={saveDetail}
-              chrome="page"
               t={t}
             />
           </div>
@@ -1507,16 +1213,6 @@ function StepControls({
   }
 
   if (step === "ready") {
-    if (wa) {
-      return (
-        <>
-          <Replies wa>
-            <Reply wa primary onClick={openCase}>{t("intake.readyCta")}</Reply>
-          </Replies>
-          {error && <p role="alert" className="mt-2 text-xs text-urgent-ink">{error}</p>}
-        </>
-      );
-    }
     return (
       <ActionCard>
         <p className="text-[0.9375rem] leading-[1.6] text-ink-2">{t("intake.readyBody")}</p>
@@ -1566,17 +1262,14 @@ function askDetails(
 /**
  * The conversation, rebuilt from the answers rather than accumulated.
  *
- * `wa` is not cosmetic. On the web a step can put its explanation on a card
- * under the chat; WhatsApp has no cards, only messages, so anything a person
- * needs in order to answer has to be said in the conversation itself. Passing
- * the channel here is what stops the WhatsApp view from quietly dropping the
- * boundary text, the RBI screening, or what the assistant understood.
+ * A step can put its explanation on a card under the chat, so anything a person
+ * needs in order to answer has to be said in the conversation itself.
  */
-function buildMessages(draft: IntakeDraft, t: T, now = new Date(), wa = false): Message[] {
+function buildMessages(draft: IntakeDraft, t: T, now = new Date()): Message[] {
   const say = (...parts: (string | undefined)[]) => parts.filter(Boolean).join("\n\n");
   const messages: Message[] = [{
     role: "agent",
-    text: wa ? say(t("intake.boundaryQ"), t("intake.boundaryBody")) : t("intake.boundaryQ"),
+    text: t("intake.boundaryQ"),
     promptId: "boundaries",
   }];
   if (!draft.acceptedBoundaries) return messages;
@@ -1622,20 +1315,11 @@ function buildMessages(draft: IntakeDraft, t: T, now = new Date(), wa = false): 
   messages.push({ role: "agent", text: t("intake.storyQ"), promptId: "story" });
   if (draft.narrative.trim().length < 25 || !draft.analysis) return messages;
   messages.push({ role: "user", text: draft.narrative.trim() });
-  messages.push({
-    role: "agent",
-    text: wa
-      ? say(
-        t("intake.verifyQ"),
-        [
-          findCategory(draft.analysis.triage.categoryId)?.label,
-          draft.analysis.triage.amount ? inr(draft.analysis.triage.amount) : undefined,
-        ].filter(Boolean).join(" · "),
-        t("intake.verifyWhere"),
-      )
-      : t("intake.verifyQ"),
-    promptId: "verify",
-  });
+    messages.push({
+      role: "agent",
+      text: t("intake.verifyQ"),
+      promptId: "verify",
+    });
   if (!draft.analysisConfirmed) return messages;
   messages.push({ role: "user", text: t("intake.verifyConfirm") });
 
@@ -1658,7 +1342,7 @@ function buildMessages(draft: IntakeDraft, t: T, now = new Date(), wa = false): 
       if (!draft.bankReportTiming) return messages;
       messages.push({ role: "user", text: rbiReportTimingLabel(draft.bankReportTiming, t) });
     }
-    const rbiInput = wa ? rbiInputFromDraft(draft) : undefined;
+    const rbiInput = rbiInputFromDraft(draft);
     const screening = rbiInput ? assessRbiEligibility(rbiInput) : undefined;
     messages.push({
       role: "agent",
@@ -1685,7 +1369,7 @@ function buildMessages(draft: IntakeDraft, t: T, now = new Date(), wa = false): 
 
   messages.push({
     role: "agent",
-    text: wa ? say(t("intake.readyQ"), t("intake.readyBody")) : t("intake.readyQ"),
+    text: t("intake.readyQ"),
     promptId: "ready",
   });
   return messages;
@@ -2138,7 +1822,7 @@ function VaaniPanel({
   };
 
   return (
-    <ChannelExplainer title={t("intake.vaaniTitle")} body={t("intake.vaaniBody")} tone="voice">
+    <ChannelExplainer title={t("intake.vaaniTitle")} body={t("intake.vaaniBody")}>
       <VaaniCredit label={t("intake.vaaniCredit")} linkLabel={t("intake.vaaniCreditLink")} />
       {browserVoice?.available === false && state === "idle" && (
         <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-3">
@@ -2256,12 +1940,12 @@ function VaaniCredit({ label, linkLabel }: { label: string; linkLabel: string })
   );
 }
 
-function ChannelExplainer({ title, body, tone, children }: { title: string; body: string; tone: "whatsapp" | "voice"; children?: React.ReactNode }) {
+function ChannelExplainer({ title, body, children }: { title: string; body: string; children?: React.ReactNode }) {
   return (
-    <section className={cn("mt-5 rounded-card border px-5 py-4", tone === "whatsapp" ? "bg-[#e3f4e9] border-[#afd0b9]" : "bg-info-soft border-info/25")}>
+    <section className="mt-5 rounded-card border px-5 py-4 bg-info-soft border-info/25">
       <div className="flex items-start gap-3">
-        <span className={cn("w-8 h-8 rounded-full grid place-items-center shrink-0", tone === "whatsapp" ? "bg-[#0a6c55] text-white" : "bg-info text-paper")} aria-hidden>
-          {tone === "whatsapp" ? <WhatsAppIcon /> : <PhoneIcon />}
+        <span className="w-8 h-8 rounded-full grid place-items-center shrink-0 bg-info text-paper" aria-hidden>
+          <PhoneIcon />
         </span>
         <div>
           <p className="font-semibold text-[0.9375rem]">{title}</p>
@@ -2290,27 +1974,20 @@ function ChannelButton({ active, title, note, icon, onClick }: { active: boolean
   );
 }
 
-/** A card on the web, a handset for the WhatsApp preview. */
-function Shell({ whatsapp, statusTime, label, children }: {
-  whatsapp: boolean;
+/** A card on the web. */
+function Shell({ statusTime, label, children }: {
   statusTime: string;
   label: string;
   children: React.ReactNode;
 }) {
-  const card = (
+  return (
     <section
-      className={cn(
-        "relative overflow-hidden",
-        whatsapp
-          ? "sm:h-full sm:min-h-0 sm:flex sm:flex-col sm:rounded-none"
-          : "rounded-card border border-rule-strong bg-raised shadow-[0_18px_55px_-38px_rgba(26,26,26,0.5)]",
-      )}
+      className="relative overflow-hidden rounded-card border border-rule-strong bg-raised shadow-[0_18px_55px_-38px_rgba(26,26,26,0.5)]"
       aria-label={label}
     >
       {children}
     </section>
   );
-  return whatsapp ? <PhoneFrame statusTime={statusTime}>{card}</PhoneFrame> : card;
 }
 
 function MessageBubble({ message }: { message: Message }) {
@@ -2332,29 +2009,22 @@ function MessageBubble({ message }: { message: Message }) {
 /**
  * One follow-up question's field.
  *
- * The same control appears inside the WhatsApp composer and on the web card, so
- * it lives in one place: what changes between them is the chrome around it, not
- * what a phone number or a date is. Every kind except a date accepts dictation,
- * because the microphone is the point for anyone who does not type comfortably
- * — and an amount said as "forty seven thousand" is understood.
+ * Every kind except a date accepts dictation, because the microphone is the
+ * point for anyone who does not type comfortably — and an amount said as
+ * "forty seven thousand" is understood.
  */
-function DetailField({ question, value, onChange, onSubmit, chrome, disabled, t }: {
+function DetailField({ question, value, onChange, onSubmit, disabled, t }: {
   question: DetailQuestion;
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
-  chrome: "whatsapp" | "page";
   disabled?: boolean;
   t: T;
 }) {
-  const whatsapp = chrome === "whatsapp";
   const placeholder = t(question.placeholder);
   const label = t(question.question);
 
   if (question.kind === "textarea") {
-    if (whatsapp) {
-      return <WhatsAppInput value={value} onChange={onChange} onSend={onSubmit} placeholder={placeholder} ariaLabel={label} />;
-    }
     return (
       <textarea
         value={value}
@@ -2389,27 +2059,22 @@ function DetailField({ question, value, onChange, onSubmit, chrome, disabled, t 
       disabled={disabled}
       placeholder={placeholder}
       aria-label={label}
-      className={cn(
-        whatsapp
-          ? "block w-full bg-transparent focus:outline-none text-[0.9375rem] leading-[1.45] text-[#111b21] placeholder:text-[#8696a0]"
-          : "w-full h-12 px-3.5 bg-raised border border-rule-strong rounded-ctl text-base focus:outline-none focus:border-ink",
-      )}
+      className="w-full h-12 px-3.5 bg-raised border border-rule-strong rounded-ctl text-base focus:outline-none focus:border-ink"
     />
   );
 }
 
 /** Passing on a question, one at a time or all at once. */
-function DetailSkips({ onSkip, onSkipAll, remaining, wa, t }: {
+function DetailSkips({ onSkip, onSkipAll, remaining, t }: {
   onSkip: () => void;
   onSkipAll: () => void;
   remaining: number;
-  wa?: boolean;
   t: T;
 }) {
   return (
-    <Replies wa={Boolean(wa)}>
-      <Reply wa={Boolean(wa)} onClick={onSkip}>{t("detail.skip")}</Reply>
-      {remaining > 1 && <Reply wa={Boolean(wa)} onClick={onSkipAll}>{t("detail.skipAll")}</Reply>}
+    <Replies>
+      <Reply onClick={onSkip}>{t("detail.skip")}</Reply>
+      {remaining > 1 && <Reply onClick={onSkipAll}>{t("detail.skipAll")}</Reply>}
     </Replies>
   );
 }
@@ -2419,18 +2084,13 @@ function ActionCard({ children, urgent }: { children: React.ReactNode; urgent?: 
 }
 
 /**
- * A row of answers, drawn as the channel draws them.
- *
- * On the web they are chips at the end of the conversation. On WhatsApp they
- * are the interactive reply buttons a bot actually sends, attached under the
- * message. Every step below is written once and gets both.
+ * A row of answers, drawn as chips at the end of the conversation.
  */
-function Replies({ wa, children }: { wa: boolean; children: React.ReactNode }) {
-  return wa ? <WhatsAppButtons>{children}</WhatsAppButtons> : <QuickReplies>{children}</QuickReplies>;
+function Replies({ children }: { children: React.ReactNode }) {
+  return <QuickReplies>{children}</QuickReplies>;
 }
 
-function Reply({ wa, onClick, href, urgent, selected, primary, children }: {
-  wa: boolean;
+function Reply({ onClick, href, urgent, selected, primary, children }: {
   onClick?: () => void;
   href?: string;
   urgent?: boolean;
@@ -2438,13 +2098,6 @@ function Reply({ wa, onClick, href, urgent, selected, primary, children }: {
   primary?: boolean;
   children: React.ReactNode;
 }) {
-  if (wa) {
-    return (
-      <WhatsAppButton onClick={onClick} href={href} selected={selected} primary={primary}>
-        {children}
-      </WhatsAppButton>
-    );
-  }
   if (href) return <Button href={href} external variant={urgent ? "urgent" : "secondary"} size="md">{children}</Button>;
   return <Quick onClick={onClick!} urgent={urgent}>{children}</Quick>;
 }
@@ -2561,23 +2214,6 @@ function restoredVaaniUiState(session: StoredVaaniSession | null):
 
 
 
-
-function ChatIcon() {
-  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" /></svg>;
-}
-
-/**
- * The official WhatsApp glyph, so the channel is labelled with the mark people
- * actually recognise. Filled with currentColor: brand green on the channel
- * button, white inside the green lockup on the explainer.
- */
-function WhatsAppIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
-    </svg>
-  );
-}
 
 function PhoneIcon() {
   return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2.1Z" /></svg>;

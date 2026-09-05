@@ -1,0 +1,16 @@
+[
+  {
+    "caseId": "40ec61cb-89e5-409b-afa8-2e8c43e88f0d",
+    "caseRef": "KVC-T64S-L35H",
+    "email": "tripathikaustubh6916@gmail.com",
+    "trackIds": [],
+    "incidentAt": "2026-08-31T11:29:14.066Z",
+    "id": "14cd53db-a295-47fc-bdb4-960fce3eadcc",
+    "reminded": {
+      "helpline": "2026-09-04T11:45:00.982Z",
+      "ncrp": "2026-09-04T11:45:00.983Z",
+      "bank-notice": "2026-09-04T11:45:00.984Z"
+    },
+    "createdAt": "2026-09-04T11:33:11.038Z"
+  }
+]

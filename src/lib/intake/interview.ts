@@ -8,10 +8,10 @@ import type {
 
 /**
  * The interview is deliberately a state machine rather than a stack of form
- * pages. WhatsApp, a browser chat and a Vaani call can all pause and resume the
- * same state without translating UI screens into three different products.
+ * pages. A browser chat and a Vaani call can both pause and resume the
+ * same state without translating UI screens into different products.
  */
-export type IntakeChannel = "web" | "whatsapp" | "voice";
+export type IntakeChannel = "web" | "voice";
 export type SafetyAnswer = "safe" | "danger" | "prefer-not";
 export type ChildContext = "adult-or-no-child" | "self-minor" | "child-other" | "unknown";
 export type MoneyAnswer = "yes" | "no" | "unsure";

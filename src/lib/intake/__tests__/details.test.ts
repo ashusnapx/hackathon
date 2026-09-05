@@ -18,7 +18,7 @@ import { emptyIntake, type IntakeDraft } from "../interview";
 import { EMPTY_ENTITIES } from "@/lib/case/types";
 
 const confirmed = (over: Partial<IntakeDraft> = {}): IntakeDraft => ({
-  ...emptyIntake("whatsapp"),
+  ...emptyIntake("voice"),
   acceptedBoundaries: true,
   safety: "safe",
   safetyCheckedAt: new Date().toISOString(),

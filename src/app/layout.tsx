@@ -125,13 +125,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       suppressHydrationWarning
     >
       <body className="min-h-dvh antialiased">
-        <a
+          <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:bg-ink focus:text-paper focus:px-4 focus:py-2 focus:rounded"
-        >
+          >
           Skip to content
-        </a>
-        <I18nProvider initial={lang.code}>{children}</I18nProvider>
+          </a>
+          <I18nProvider initial={lang.code}>{children}</I18nProvider>
       </body>
     </html>
   );
