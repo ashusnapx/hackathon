@@ -493,7 +493,6 @@ export function GuidedIntake() {
               }}
               onTranscript={appendNarrative}
               t={t}
-              unlocked={voiceGateComplete}
             />
           ) : (
           <Shell whatsapp={whatsapp} statusTime={chatClock} label={t("intake.agentName")}>
@@ -1140,7 +1139,6 @@ function VaaniPanel({
   onTranscript,
   onAccepted,
   t,
-  unlocked,
 }: {
   language: string;
   safetyAnswer?: string;
@@ -1150,7 +1148,6 @@ function VaaniPanel({
    *  that can fetch what the provider already extracted. */
   onAccepted: (transcriptToken: string | null) => void;
   t: T;
-  unlocked: boolean;
 }) {
   const [restoredSession] = useState<StoredVaaniSession | null>(() => readStoredVaaniSession());
   const [state, setState] = useState<
@@ -1189,7 +1186,7 @@ function VaaniPanel({
 
 
   const importCall = async () => {
-    if (!unlocked || !transcriptToken) return;
+    if (!transcriptToken) return;
     const controller = new AbortController();
     const timeout = globalThis.setTimeout(() => controller.abort(), 15_000);
     try {
@@ -1244,14 +1241,12 @@ function VaaniPanel({
   };
 
   const loadSample = () => {
-    if (!unlocked) return;
     setStagedTranscript("Yesterday afternoon I joined an investment group on WhatsApp. They asked me to pay Rs 25,000 through UPI to investnow@ybl and then demanded another payment before withdrawal. The number used was 9876543210 and my UPI reference was 412345678901. I have the chat and transaction screenshot.");
     setReviewSource("sample");
     setState("reviewing");
   };
 
   const acceptTranscript = () => {
-    if (!unlocked) return;
     const reviewed = stagedTranscript.replace(/\s+/g, " ").trim();
     if (!reviewed) return;
     onTranscript(reviewed);
@@ -1270,12 +1265,7 @@ function VaaniPanel({
   return (
     <ChannelExplainer title={t("intake.vaaniTitle")} body={t("intake.vaaniBody")} tone="voice">
       <VaaniCredit label={t("intake.vaaniCredit")} linkLabel={t("intake.vaaniCreditLink")} />
-      {!unlocked && (
-        <p className="mt-3 rounded-ctl border border-info/25 bg-raised px-3 py-3 text-sm leading-[1.55] text-ink-2">
-          {t("intake.vaaniLocked")}
-        </p>
-      )}
-      {unlocked && browserVoice?.available === false && state === "idle" && (
+      {browserVoice?.available === false && state === "idle" && (
         <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-3">
           <p className="text-sm text-ink-2 flex-1">{t("intake.vaaniDemo")}</p>
           <Button onClick={loadSample} size="sm" variant="secondary">{t("intake.vaaniSample")}</Button>
@@ -1283,7 +1273,7 @@ function VaaniPanel({
       )}
       {/* Stays mounted once the call ends, so ending it does not tear down the
           room mid-conversation and the review prompt can appear beneath it. */}
-      {unlocked && browserVoice?.available && (state === "idle" || state === "requested") && (
+      {browserVoice?.available && (state === "idle" || state === "requested") && (
         <LiveVoiceCall
           language={language}
           safetyAnswer={safetyAnswer}
@@ -1292,13 +1282,13 @@ function VaaniPanel({
           onCallEnded={() => setState("requested")}
         />
       )}
-      {unlocked && state === "requested" && (
+      {state === "requested" && (
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <p className="text-sm text-done flex-1">{t("intake.vaaniActive")}</p>
           <Button onClick={importCall} size="sm" variant="secondary">{t("intake.vaaniImport")}</Button>
         </div>
       )}
-      {unlocked && state === "not-ready" && (
+      {state === "not-ready" && (
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <p className="text-sm text-ink-2 flex-1">
             {t("intake.vaaniNotReady")}{retryAfter ? ` ${retryAfter}s.` : ""}
@@ -1306,7 +1296,7 @@ function VaaniPanel({
           <Button onClick={importCall} size="sm" variant="secondary">{t("intake.vaaniCheckAgain")}</Button>
         </div>
       )}
-      {unlocked && state === "reviewing" && (
+      {state === "reviewing" && (
         <div className="mt-4 max-w-2xl">
           {reviewSource === "sample" && <p className="mb-2 text-sm text-info">{t("intake.vaaniSampleLoaded")}</p>}
           {fullTranscript && (
