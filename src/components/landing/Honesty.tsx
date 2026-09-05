@@ -3,7 +3,7 @@
 import { Headline } from "@/components/ui/Split";
 import { useT } from "@/lib/i18n/context";
 
-const REAL = ["honesty.r1", "honesty.r2", "honesty.r3", "honesty.r4", "honesty.r5", "honesty.r6"] as const;
+const REAL = ["honesty.r1", "honesty.r2", "honesty.r3", "honesty.r4", "honesty.r5", "honesty.r6", "honesty.r7"] as const;
 const MOCK = ["honesty.m1", "honesty.m2", "honesty.m3", "honesty.m4", "honesty.m5"] as const;
 
 /**

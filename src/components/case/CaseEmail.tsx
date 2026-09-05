@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { CaseFile } from "@/lib/case/types";
 import { isFinancial } from "@/lib/case/tracks";
 import { findCategory } from "@/lib/case/categories";
+import { readCaseKey } from "@/lib/case/key";
 import { useT } from "@/lib/i18n/context";
 
 const SENT_KEY = "kavach.case-email.v1";
@@ -48,6 +49,9 @@ export function CaseEmail({ caseFile }: { caseFile: CaseFile }) {
         to: email,
         ref: caseFile.ref,
         caseId: caseFile.id,
+        // Sent so the link works on the phone they read the email on, not only
+        // in the browser that happened to build the case.
+        ...(readCaseKey(caseFile.id) ? { caseKey: readCaseKey(caseFile.id) } : {}),
         category: findCategory(caseFile.triage?.categoryId)?.label,
         amountInr: caseFile.amount,
         financial: isFinancial(caseFile),

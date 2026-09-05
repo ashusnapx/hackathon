@@ -12,9 +12,22 @@ import { SITE_URL } from "@/lib/seo";
 export interface CaseEmailInput {
   ref: string;
   caseId: string;
+  /** Without it the link opens nothing on the phone they read this on. */
+  caseKey?: string;
   category?: string;
   amountInr?: number;
   financial?: boolean;
+}
+
+/**
+ * The link that actually opens their case.
+ *
+ * The key goes in the fragment, which never leaves the browser: it is not in
+ * the request line, so it reaches neither our logs nor those of whatever
+ * scanner an email provider runs over the message.
+ */
+export function caseLink(input: CaseEmailInput): string {
+  return `${SITE_URL}/case/${input.caseId}${input.caseKey ? `#k=${input.caseKey}` : ""}`;
 }
 
 const INK = "#1a1a1a";
@@ -37,7 +50,9 @@ export function caseCreatedText(input: CaseEmailInput): string {
     "What to do next:",
     ...nextActions(input).map((action, index) => `${index + 1}. ${action.title} — ${action.body}`),
     "",
-    `Open your case: ${SITE_URL}/case/${input.caseId}`,
+    `Open your case: ${caseLink(input)}`,
+    "",
+    "That link is the only way back into your case, and anyone who has it can read the case. Keep this email to yourself.",
     "",
     "Never share an OTP, PIN, CVV, password or full card number with anyone, including us.",
   ];
@@ -68,7 +83,7 @@ function nextActions(input: CaseEmailInput): { title: string; body: string }[] {
 }
 
 export function caseCreatedHtml(input: CaseEmailInput): string {
-  const caseUrl = `${SITE_URL}/case/${input.caseId}`;
+  const caseUrl = caseLink(input);
   const actions = nextActions(input)
     .map((action, index) => `
       <tr>

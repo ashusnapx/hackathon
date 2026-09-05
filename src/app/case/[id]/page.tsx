@@ -19,8 +19,10 @@ import { Aftercare } from "@/components/case/Aftercare";
 import { CaseHeader } from "@/components/case/CaseHeader";
 import { CallRecord } from "@/components/case/CallRecord";
 import { CaseEmail } from "@/components/case/CaseEmail";
+import { CaseAccess } from "@/components/case/CaseAccess";
 import { useCase } from "@/lib/case/store";
-import { DEMO_CASE_ID, ensureDemoCase } from "@/lib/demo/case";
+import { useCaseRestore } from "@/lib/case/restore";
+import { useCaseSyncState } from "@/lib/case/sync";
 import { isFinancial } from "@/lib/case/tracks";
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
@@ -37,13 +39,26 @@ const TABS: { id: Tab; key: Parameters<ReturnType<typeof useT>>[0] }[] = [
   { id: "ask", key: "case.tabAsk" },
 ];
 
+/**
+ * A case link has to work on a device that has never seen the case.
+ *
+ * The sample is built from the repository and a real one is pulled from storage
+ * with the key in the link, and both have to finish before the screen below
+ * reads local storage — so the restore lives in its own component, and the case
+ * screen mounts only once there is something for it to find.
+ */
 export default function CasePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  // The sample case is a link anyone can be sent, so it has to exist for a
-  // visitor who has never been here. Seeding it in a state initialiser puts it
-  // in storage during this first render — before useCase reads, just below.
-  useState(() => { if (id === DEMO_CASE_ID) ensureDemoCase(); });
   const t = useT();
+  const restore = useCaseRestore(id);
+
+  if (restore === "checking") return <Centered>{t("g.loading")}…</Centered>;
+  return <CaseScreen id={id} />;
+}
+
+function CaseScreen({ id }: { id: string }) {
+  const t = useT();
+  const sync = useCaseSyncState();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("overview");
   const {
@@ -74,6 +89,15 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   }
 
   const incidentAt = caseFile.incidentAt || caseFile.triage?.incidentAt;
+  // One line for both halves of a save: the copy on this device, and the copy
+  // that lets the person open this case somewhere else.
+  const syncLabel = saving || sync === "saving"
+    ? `${t("sync.saving")}…`
+    : sync === "offline"
+      ? t("sync.offline")
+      : sync === "saved"
+        ? t("sync.saved")
+        : "";
 
   return (
     <>
@@ -82,12 +106,13 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
           <Wordmark />
           <span
             className={cn(
-              "ms-auto text-xs text-ink-3 transition-opacity num",
-              saving ? "opacity-100" : "opacity-0",
+              "ms-auto text-xs transition-opacity",
+              syncLabel ? "opacity-100" : "opacity-0",
+              sync === "offline" ? "text-wait-ink" : "text-ink-3",
             )}
             aria-live="polite"
           >
-            {t("build.saving")}…
+            {syncLabel}
           </span>
           <LanguageSwitcher compact />
         </div>
@@ -176,6 +201,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
               <Escalation caseFile={caseFile} />
               <Aftercare />
               <CaseBuilder caseFile={caseFile} update={update} />
+              <CaseAccess caseFile={caseFile} />
               <CaseEmail caseFile={caseFile} />
             </>
           )}

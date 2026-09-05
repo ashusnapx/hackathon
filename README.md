@@ -124,6 +124,16 @@ cp .env.example .env.local     # add OPENAI_API_KEY for the live AI path
 npm run dev
 ```
 
+Case storage needs two more variables. Without them the app still runs — cases
+stay in the browser exactly as they used to, and the case header says so.
+
+```
+SUPABASE_URL=https://<project>.supabase.co
+SUPABASE_SECRET_KEY=sb_secret_...      # server-only; it bypasses RLS
+```
+
+Apply `supabase/migrations/*.sql` in order to a fresh project.
+
 Vaani remains simulation-only by default. Provider credentials are not enough
 to enable paid calls: the server also requires explicit live/test gates and an
 exact pre-verified number allowlist. See `.env.example` and the release gates in
@@ -191,7 +201,9 @@ blank or retaining a translated claim after its legal basis changes.
 
 ## What is real, and what is mocked
 
-**Implemented locally:** browser voice/text intake; a reviewable category and
+**Implemented:** cases stored in Postgres and reopened on any device from their
+own link — no accounts, because somebody mid-fraud should not have to invent a
+password first; browser voice/text intake; a reviewable category and
 identifier pass; ordered action tracks with source metadata; answer-backed RBI
 screening; the RB-IOS 2026 opening/final-window calculator; applicable-document
 drafts with a payment-contradiction fallback; a PDF manifest; local case
@@ -208,9 +220,9 @@ ambiguous callback is not started again under a fresh request ID.
 **Mocked or disabled, on purpose:** nothing is submitted to cybercrime.gov.in,
 police, a bank, RBI, Meta or WhatsApp; no government status is fetched; Vaani
 paid calls are off unless a developer deliberately enables the restricted test
-path; references are generated locally and are not government numbers. Case
-metadata lives in `localStorage`, evidence blobs in IndexedDB, and there is no
-production case database or human-support console. Local simulator state is not
+path; references are generated locally and are not government numbers. Evidence
+blobs stay in IndexedDB on the device and are never uploaded, and there is no
+human-support console. Local simulator state is not
 proof of Meta opt-in, delivery or opt-out processing, and the Vaani browser
 receipt is scoped to one browser session while server idempotency is
 process-local—not a durable production call ledger.
@@ -236,7 +248,8 @@ is in [`docs/VAANI_AGENT_PROMPT.md`](docs/VAANI_AGENT_PROMPT.md).
 
 ## Stack
 
-Next.js 16 (App Router), React 19, TypeScript, Tailwind v4, jsPDF. No component
+Next.js 16 (App Router), React 19, TypeScript, Tailwind v4, jsPDF, Supabase
+Postgres. No component
 library, no animation library, no smooth-scroll library — the design system is
 ~280 lines of CSS in `src/app/globals.css`, and the "works on a slow phone"
 claim on the landing page has to survive contact with the bundle.
@@ -253,7 +266,9 @@ src/
     LanguageSwitcher.tsx
   lib/
     ai/        provider, prompts, deterministic extraction, rules engine
-    case/      types, ten tracks, legal-source metadata, local stores, PDF pack
+    case/      types, ten tracks, legal-source metadata, local stores, PDF pack,
+               the per-case key and the sync that follows every local save
+    db/        service-role Postgres access, behind a key check per request
     intake/    shared web / WhatsApp / voice interview state machine
     integrations/ Vaani adapter and WhatsApp simulator
     legal/     RBI eligibility and 2026 Ombudsman calculations

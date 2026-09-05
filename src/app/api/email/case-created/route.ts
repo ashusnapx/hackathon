@@ -1,3 +1,4 @@
+import { CASE_KEY_PATTERN } from "@/lib/case/key";
 import { emailConfigured, sendCaseCreatedEmail } from "@/lib/email/send";
 import { readSmallJson, requestHasSameOrigin } from "@/lib/integrations/vaani";
 import { json } from "@/lib/integrations/vaani-http";
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
   }
 
   const body = parsed.value as Record<string, unknown>;
-  const permitted = new Set(["to", "ref", "caseId", "category", "amountInr", "financial"]);
+  const permitted = new Set(["to", "ref", "caseId", "caseKey", "category", "amountInr", "financial"]);
   if (Object.keys(body).some((key) => !permitted.has(key))) {
     return json({ error: "unexpected-field" }, 400);
   }
@@ -40,6 +41,12 @@ export async function POST(req: Request) {
   if (typeof body.caseId !== "string" || !UUID_PATTERN.test(body.caseId)) {
     return json({ error: "invalid-case-id" }, 400);
   }
+  // Optional, and never invented here: an email without it still tells the
+  // person their reference, it just cannot open the case on a second device.
+  if (body.caseKey !== undefined
+    && (typeof body.caseKey !== "string" || !CASE_KEY_PATTERN.test(body.caseKey))) {
+    return json({ error: "invalid-case-key" }, 400);
+  }
 
   if (!emailConfigured()) {
     // Not an error the person should see: their case is saved either way.
@@ -49,6 +56,7 @@ export async function POST(req: Request) {
   const result = await sendCaseCreatedEmail(body.to, {
     ref: body.ref,
     caseId: body.caseId,
+    caseKey: typeof body.caseKey === "string" ? body.caseKey : undefined,
     category: typeof body.category === "string" ? body.category.slice(0, 80) : undefined,
     amountInr: typeof body.amountInr === "number" && Number.isFinite(body.amountInr)
       ? Math.max(0, Math.round(body.amountInr))

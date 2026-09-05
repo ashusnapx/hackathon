@@ -4,6 +4,7 @@ import { getCase, newCase, saveCase } from "@/lib/case/store";
 import { EMPTY_ENTITIES, type CaseFile } from "@/lib/case/types";
 import { callAnalysis } from "@/lib/intake/call-to-case";
 import { mapVaaniCall } from "@/lib/intake/from-vaani";
+import { DEMO_CASE_ID } from "./id";
 
 /**
  * The case that the call on the home page produced.
@@ -19,8 +20,7 @@ import { mapVaaniCall } from "@/lib/intake/from-vaani";
  * tab, document and deadline behaves exactly as it would for their own case —
  * and they can edit it, because it is theirs now.
  */
-export const DEMO_CASE_ID = "demo-vaani-call";
-export const DEMO_CASE_PATH = `/case/${DEMO_CASE_ID}`;
+export { DEMO_CASE_ID, DEMO_CASE_PATH } from "./id";
 
 /** Fixed, so the sample reads the same on every device and every reload. */
 const AT = `${call.fetchedAt}T00:00:00.000Z`;

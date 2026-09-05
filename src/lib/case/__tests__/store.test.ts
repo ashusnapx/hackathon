@@ -59,7 +59,10 @@ describe("case persistence result", () => {
     const caseFile = newCase({ id: "case-safe-order" });
 
     expect(saveCase(caseFile)).toBe(true);
-    expect(storage.writes).toEqual([CASES_KEY, ACTIVE_KEY]);
+    // The record lands before the resume pointer, so a failed write can never
+    // leave the pointer aimed at a case that was not stored. The sync marker
+    // that follows is bookkeeping for the push, and cannot precede either.
+    expect(storage.writes.slice(0, 2)).toEqual([CASES_KEY, ACTIVE_KEY]);
     expect(activeCaseId()).toBe(caseFile.id);
     expect(getCase(caseFile.id)?.ref).toBe(caseFile.ref);
   });

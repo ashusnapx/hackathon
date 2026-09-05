@@ -14,6 +14,8 @@ import { isValidPastOrPresentIso } from "./bank-notice";
  * — no cross-device access, no SMS reminders — is exactly what the "if this were
  * real" note addresses.
  */
+import { deleteStoredCase, queueCaseSync, resumeCaseSync } from "./sync";
+
 const KEY = "kavach.cases.v1";
 const ACTIVE = "kavach.active.v1";
 const DELETED = "kavach.deleted-cases.v1";
@@ -143,6 +145,7 @@ export function saveCase(c: CaseFile): boolean {
   // Publish only after both values are current. They form one external store
   // from the UI's point of view, so subscribers never observe a mismatch.
   emit();
+  queueCaseSync(c);
   return true;
 }
 
@@ -156,6 +159,7 @@ export function saveCaseRecord(c: CaseFile): boolean {
   all[index] = c;
   if (!writeAll(all)) return false;
   emit();
+  queueCaseSync(c);
   return true;
 }
 
@@ -216,6 +220,11 @@ export async function deleteCase(id: string): Promise<DeleteCaseResult> {
   }
   emit();
 
+  // The stored copy has to go too, or "delete this case" only deletes the one
+  // the person can see. A network failure here is reported as incomplete
+  // cleanup rather than swallowed.
+  await deleteStoredCase(id);
+
   try {
     // Always sweep by case ID, even when the manifest lists no attachment. A
     // previous IndexedDB write followed by a failed manifest save can leave an
@@ -263,7 +272,21 @@ function getServerSnapshot(): CaseFile[] {
 }
 
 /** The list of cases, kept in sync across tabs. */
+/**
+ * Retry, once per page, whatever an earlier visit could not push.
+ *
+ * The lookup is passed in rather than imported by the sync module, so the two
+ * files never form a cycle.
+ */
+let resumed = false;
+function resumeSyncOnce(): void {
+  if (resumed || typeof window === "undefined") return;
+  resumed = true;
+  resumeCaseSync(getCase);
+}
+
 export function useCases(): CaseFile[] {
+  useEffect(resumeSyncOnce, []);
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
@@ -295,6 +318,7 @@ export function useCase(id: string | undefined) {
 
   useEffect(() => {
     let cancelled = false;
+    resumeSyncOnce();
 
     // localStorage is an external system. Read it after hydration and deliver
     // its snapshot through a callback, rather than cascading a state update
