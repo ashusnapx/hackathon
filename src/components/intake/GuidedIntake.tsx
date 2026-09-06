@@ -223,7 +223,11 @@ async function triageNarrative(
   }
 }
 
-export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = {}) {
+export function GuidedIntake({ lockChannel, onReset }: {
+  lockChannel?: IntakeChannel;
+  /** Told when the person starts over, so the page can go back to the box. */
+  onReset?: () => void;
+} = {}) {
   const { t, lang } = useI18n();
   const router = useRouter();
   const [draft, setDraft] = useState<IntakeDraft>(() => emptyIntake());
@@ -714,7 +718,10 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
     clearStoredVaaniSession();
     setDraft(emptyIntake(draft.channel));
     setShowReset(false);
-  }, [draft.channel]);
+    // Starting again means going back to "what happened?", not sitting on an
+    // emptied interview showing question one of nineteen.
+    onReset?.();
+  }, [draft.channel, onReset]);
 
   // A phone screen keeps the newest message in view; a web page would just grow.
   useEffect(() => {

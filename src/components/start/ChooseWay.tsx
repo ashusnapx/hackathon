@@ -36,7 +36,10 @@ export function ChooseWay() {
           <div className="mt-6 grid gap-3">
             <Way
               n={1}
-              href="/say"
+              // Pressing this means "I want to tell you something", so it asks
+              // for a clean report rather than dropping somebody into the
+              // middle of one they abandoned last week.
+              href="/say?new=1"
               title={t("choose.sayH")}
               note={t("choose.sayNote")}
               icon={<MicGlyph />}

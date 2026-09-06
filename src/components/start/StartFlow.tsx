@@ -9,7 +9,7 @@ import { GuidedIntake } from "@/components/intake/GuidedIntake";
 import { DETAIL_QUESTIONS } from "@/lib/intake/details";
 import { emptyIntake } from "@/lib/intake/interview";
 import { draftFromStory } from "@/lib/intake/infer";
-import { loadBrowserIntakeDraft, saveBrowserIntakeDraft } from "@/lib/intake/persistence";
+import { INTAKE_STORAGE_KEY, loadBrowserIntakeDraft, saveBrowserIntakeDraft } from "@/lib/intake/persistence";
 import { clearStoredVaaniSession } from "@/lib/integrations/vaani-client";
 import { useI18n } from "@/lib/i18n/context";
 import type { IntakeAnalysis } from "@/lib/intake/interview";
@@ -47,11 +47,28 @@ export function StartFlow() {
   const [started, setStarted] = useState(false);
 
   /**
-   * Somebody coming back to a half-finished report picks up at the question,
-   * not at the box they already spoke into. Deferred rather than read during
-   * render, because the server has no localStorage and the two would disagree.
+   * Resuming, and refusing to resume.
+   *
+   * Somebody who reloads mid-report picks up at the question they were on, not
+   * at the box they already spoke into. But somebody who has just pressed "Say
+   * it yourself" is telling us they want to start something — and they were
+   * landing straight on question one of a report they had abandoned days
+   * earlier, which is the app looking broken and confused. So the chooser asks
+   * for a clean one by name, and this honours that before anything is restored.
+   *
+   * Deferred rather than read during render, because the server has no
+   * localStorage and the two would disagree.
    */
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "1") {
+      try { localStorage.removeItem(INTAKE_STORAGE_KEY); } catch { /* private mode */ }
+      clearStoredVaaniSession();
+      // Take the flag out of the URL so a later refresh resumes rather than
+      // wiping what they have answered since.
+      window.history.replaceState(null, "", window.location.pathname);
+      return;
+    }
     const restored = loadBrowserIntakeDraft().draft;
     if (restored?.analysis) queueMicrotask(() => setStarted(true));
   }, []);
@@ -94,7 +111,10 @@ export function StartFlow() {
         <SiteHeader width="2xl" />
         <main id="main" className="px-5 sm:px-8 py-6 sm:py-10 flex items-start justify-center">
           <div className="w-full max-w-xl">
-            <GuidedIntake lockChannel="web" />
+            <GuidedIntake
+              lockChannel="web"
+              onReset={() => { setStory(""); setStarted(false); }}
+            />
           </div>
         </main>
       </>
