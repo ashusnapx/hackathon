@@ -7,6 +7,7 @@ import {
   isFresh,
   type HealthReport,
   type ServiceHealth,
+  type ServiceReason,
 } from "./report";
 
 export * from "./report";
@@ -23,6 +24,25 @@ export * from "./report";
  * and that is all a visitor gets: a status board that leaks a hostname, a
  * provider's error text or which credential expired is reconnaissance.
  */
+
+/**
+ * Which of a service's variables did not arrive, and how they failed.
+ *
+ * The distinction is the whole point. A variable the runtime has never heard of
+ * was never delivered — set on the wrong project, or on a shared scope that was
+ * never linked, or added after the build that is running. A variable that
+ * arrives empty was delivered and saved blank. Those are opposite fixes, and
+ * "off" on its own sends people to look in the wrong place for an hour.
+ */
+function absentees(names: string[]): { name: string; reason: ServiceReason }[] {
+  return names
+    .map((name) => ({ name, value: process.env[name] }))
+    .filter((entry) => !entry.value?.trim())
+    .map(({ name, value }) => ({
+      name,
+      reason: value === undefined ? "absent" as const : "blank" as const,
+    }));
+}
 
 /** Long enough for a slow provider, short enough that the footer still paints. */
 const PROBE_TIMEOUT_MS = 4_000;
@@ -43,7 +63,9 @@ function signal(): AbortSignal {
 }
 
 async function checkDatabase(): Promise<ServiceHealth> {
-  if (!databaseConfigured()) return { id: "database", state: "off", ms: null };
+  if (!databaseConfigured()) {
+    return { id: "database", state: "off", ms: null, missing: absentees(["SUPABASE_URL", "SUPABASE_SECRET_KEY"]) };
+  }
   const { ok, ms } = await timed(async () => {
     // Counts rows without reading one: proves the connection, the credential
     // and the table, and returns nothing that belongs to anybody.
@@ -74,7 +96,7 @@ async function checkAi(): Promise<ServiceHealth> {
 
 async function checkVoice(): Promise<ServiceHealth> {
   const key = process.env.VAANI_API_KEY?.trim();
-  if (!key) return { id: "voice", state: "off", ms: null };
+  if (!key) return { id: "voice", state: "off", ms: null, missing: absentees(["VAANI_API_KEY", "VAANI_AGENT_ID"]) };
   const { ok, ms } = await timed(async () => {
     // The provider publishes no health endpoint and no GET for an agent, so the
     // probe reads the details of the call already committed to this repository:
@@ -90,7 +112,7 @@ async function checkVoice(): Promise<ServiceHealth> {
 
 async function checkEmail(): Promise<ServiceHealth> {
   if (!process.env.GMAIL_USER?.trim() || !process.env.GMAIL_APP_PASSWORD?.trim()) {
-    return { id: "email", state: "off", ms: null };
+    return { id: "email", state: "off", ms: null, missing: absentees(["GMAIL_USER", "GMAIL_APP_PASSWORD"]) };
   }
   const { ok, ms } = await timed(verifyEmailTransport);
   return { id: "email", state: ok ? "up" : "down", ms };
@@ -107,7 +129,14 @@ async function checkEmail(): Promise<ServiceHealth> {
  */
 async function checkAuth(): Promise<ServiceHealth> {
   const config = authConfig();
-  if (!config) return { id: "auth", state: "off", ms: null };
+  if (!config) {
+    return {
+      id: "auth",
+      state: "off",
+      ms: null,
+      missing: absentees(["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"]),
+    };
+  }
   const { ok, ms } = await timed(async () => {
     const response = await fetch(`${config.url}/auth/v1/settings`, {
       headers: { apikey: config.key },

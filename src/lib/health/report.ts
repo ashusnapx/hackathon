@@ -9,11 +9,29 @@
 export type ServiceId = "database" | "ai" | "voice" | "email" | "auth";
 export type ServiceState = "up" | "down" | "off";
 
+/**
+ * Why a service is off, when it is.
+ *
+ * "off" alone cannot tell a deployer whether they forgot a variable or whether
+ * the host is not delivering the one they set — and those need opposite fixes.
+ * This says which, without ever saying what the value is:
+ *
+ *   absent — the runtime has no such variable at all
+ *   blank  — the variable arrived carrying nothing
+ *
+ * Safe to serve publicly. It reveals only what the board already reveals by
+ * saying the service is off; the names come from the repository, which is the
+ * deployer's own, and no value or fragment of one is ever included.
+ */
+export type ServiceReason = "absent" | "blank";
+
 export interface ServiceHealth {
   id: ServiceId;
   state: ServiceState;
   /** Round trip in milliseconds, for the ones that made a call. */
   ms: number | null;
+  /** Present only when `state` is "off": which variables, and how they failed. */
+  missing?: { name: string; reason: ServiceReason }[];
 }
 
 export interface HealthReport {
