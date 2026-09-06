@@ -76,6 +76,15 @@ export interface DetailQuestion {
   label: DictKey;
   /** Why it is being asked, in one line. Shown under the field. */
   why: DictKey;
+  /**
+   * Where to go and look for it.
+   *
+   * The difference between a form somebody abandons and one they finish is
+   * usually not willingness — it is not knowing that the UTR is the long number
+   * in the bank's SMS, or that the branch is on the first page of the passbook.
+   * Asking for a thing without saying where it lives is asking them to give up.
+   */
+  where?: DictKey;
   placeholder: DictKey;
   kind: DetailKind;
   /** Worth asking at all, for this kind of case. */
@@ -238,6 +247,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.nameLabel",
     question: "detail.nameQ",
     why: "detail.nameWhy",
+    where: "detail.nameWhere",
     placeholder: "detail.namePlaceholder",
     kind: "text",
     applies: () => true,
@@ -251,6 +261,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.phoneLabel",
     question: "detail.phoneQ",
     why: "detail.phoneWhy",
+    where: "detail.phoneWhere",
     placeholder: "detail.phonePlaceholder",
     kind: "tel",
     applies: () => true,
@@ -264,6 +275,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.emailLabel",
     question: "detail.emailQ",
     why: "detail.emailWhy",
+    where: "detail.emailWhere",
     placeholder: "detail.emailPlaceholder",
     kind: "email",
     applies: () => true,
@@ -277,6 +289,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.addressLabel",
     question: "detail.addressQ",
     why: "detail.addressWhy",
+    where: "detail.addressWhere",
     placeholder: "detail.addressPlaceholder",
     kind: "textarea",
     applies: () => true,
@@ -290,6 +303,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.bankNameLabel",
     question: "detail.bankNameQ",
     why: "detail.bankNameWhy",
+    where: "detail.bankNameWhere",
     placeholder: "detail.bankNamePlaceholder",
     kind: "text",
     applies: (draft) => moneyGone(draft) || hasTrack(draft, "bank-notice"),
@@ -303,6 +317,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.accountLast4Label",
     question: "detail.accountQ",
     why: "detail.accountWhy",
+    where: "detail.accountLast4Where",
     placeholder: "detail.accountPlaceholder",
     kind: "tel",
     applies: (draft) => moneyGone(draft) || hasTrack(draft, "bank-notice"),
@@ -318,6 +333,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.branchAddressLabel",
     question: "detail.branchQ",
     why: "detail.branchWhy",
+    where: "detail.branchAddressWhere",
     placeholder: "detail.branchPlaceholder",
     kind: "textarea",
     applies: (draft) => moneyGone(draft) || hasTrack(draft, "bank-notice"),
@@ -331,6 +347,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.amountLabel",
     question: "detail.amountQ",
     why: "detail.amountWhy",
+    where: "detail.amountWhere",
     placeholder: "detail.amountPlaceholder",
     kind: "amount",
     applies: moneyGone,
@@ -349,6 +366,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.incidentAtLabel",
     question: "detail.incidentAtQ",
     why: "detail.incidentAtWhy",
+    where: "detail.incidentAtWhere",
     placeholder: "detail.incidentAtPlaceholder",
     kind: "datetime",
     // Asked of every case, not only the ones with money in them: a complaint
@@ -370,6 +388,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.bankAlertAtLabel",
     question: "detail.bankAlertQ",
     why: "detail.bankAlertWhy",
+    where: "detail.bankAlertAtWhere",
     placeholder: "detail.bankAlertPlaceholder",
     kind: "datetime",
     applies: moneyGone,
@@ -387,6 +406,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.bankNotifiedAtLabel",
     question: "detail.bankNotifiedQ",
     why: "detail.bankNotifiedWhy",
+    where: "detail.bankNotifiedAtWhere",
     placeholder: "detail.bankNotifiedPlaceholder",
     kind: "datetime",
     // Asked of anybody whose money moved, and worded so that "I have not told
@@ -405,6 +425,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.utrLabel",
     question: "detail.utrQ",
     why: "detail.utrWhy",
+    where: "detail.utrWhere",
     placeholder: "detail.utrPlaceholder",
     kind: "text",
     applies: moneyGone,
@@ -418,6 +439,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.suspectUpiLabel",
     question: "detail.suspectUpiQ",
     why: "detail.suspectUpiWhy",
+    where: "detail.suspectUpiWhere",
     placeholder: "detail.suspectUpiPlaceholder",
     kind: "text",
     applies: (draft) => moneyGone(draft) && financial(draft),
@@ -431,6 +453,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.suspectAccountLabel",
     question: "detail.suspectAccountQ",
     why: "detail.suspectAccountWhy",
+    where: "detail.suspectAccountWhere",
     placeholder: "detail.suspectAccountPlaceholder",
     kind: "text",
     applies: (draft) => moneyGone(draft) && financial(draft),
@@ -444,6 +467,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.suspectPhoneLabel",
     question: "detail.suspectPhoneQ",
     why: "detail.suspectPhoneWhy",
+    where: "detail.suspectPhoneWhere",
     placeholder: "detail.suspectPhonePlaceholder",
     kind: "tel",
     applies: () => true,
@@ -457,6 +481,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.suspectUrlLabel",
     question: "detail.suspectUrlQ",
     why: "detail.suspectUrlWhy",
+    where: "detail.suspectUrlWhere",
     placeholder: "detail.suspectUrlPlaceholder",
     kind: "text",
     applies: () => true,
@@ -470,6 +495,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.suspectHandleLabel",
     question: "detail.suspectHandleQ",
     why: "detail.suspectHandleWhy",
+    where: "detail.suspectHandleWhere",
     placeholder: "detail.suspectHandlePlaceholder",
     kind: "text",
     // Where the crime happened on a profile rather than in a payment app. It
@@ -486,6 +512,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.ncrpAckLabel",
     question: "detail.ncrpAckQ",
     why: "detail.ncrpAckWhy",
+    where: "detail.ncrpAckWhere",
     placeholder: "detail.ncrpAckPlaceholder",
     kind: "text",
     applies: (draft) => hasTrack(draft, "ncrp"),
@@ -499,6 +526,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.bankAckLabel",
     question: "detail.bankAckQ",
     why: "detail.bankAckWhy",
+    where: "detail.bankAckWhere",
     placeholder: "detail.bankAckPlaceholder",
     kind: "text",
     applies: moneyGone,
@@ -512,6 +540,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     label: "detail.policeStationLabel",
     question: "detail.policeStationQ",
     why: "detail.policeStationWhy",
+    where: "detail.policeStationWhere",
     placeholder: "detail.policeStationPlaceholder",
     kind: "text",
     applies: (draft) => hasTrack(draft, "fir"),

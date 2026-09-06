@@ -252,6 +252,9 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
     || (draft.channel === "whatsapp" && step === "routing" && Boolean(draft.state));
   const composerOwnsControls = draft.channel === "whatsapp"
     && (step === "story" || step === "details" || step === "name");
+  // The unified page asks one thing at a time: everything already settled goes
+  // behind a fold rather than stacking above the question being asked.
+  const flashcards = lockChannel === "web";
   // The voice channel is a microphone, not a chat with a microphone above it.
   const voiceOnly = draft.channel === "voice";
   const [chatClock, setChatClock] = useState("");
@@ -891,7 +894,20 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
                   <WhatsAppDateChip>{t("intake.waToday")}</WhatsAppDateChip>
                 </>
               )}
-              <div role="log" aria-live="polite" aria-relevant="additions" className={whatsapp ? "space-y-1.5" : "space-y-3"}>
+              <div
+                role="log"
+                aria-live="polite"
+                aria-relevant="additions"
+                className={cn(
+                  whatsapp ? "space-y-1.5" : "space-y-3",
+                  // On the one-question-at-a-time page the card carries the
+                  // question, and a transcript of everything already answered
+                  // above it turns one question into a wall to scroll past. It
+                  // stays in the DOM, because that log is how a screen reader
+                  // follows the conversation.
+                  flashcards && "sr-only",
+                )}
+              >
                 {messages.map((message, index) => (
                   whatsapp ? (
                     <WhatsAppBubble
@@ -1021,7 +1037,31 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
               ? ""
               : "lg:sticky lg:top-28 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:pb-4",
           )}>
-            {!voiceOnly && (
+            {/* Beside the conversation on the wide layout; behind a fold on the
+                one-question-at-a-time page, where nineteen fields under the
+                question being asked is the pile this was meant to replace. It
+                is still one tap away, because watching it fill is the reason
+                anybody answers the nineteenth. */}
+            {!voiceOnly && (flashcards ? (
+              <details className="sheet px-4 py-3">
+                <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm font-medium">
+                  <span>{t("detail.formH")}</span>
+                  <span className="num text-sm text-ink-3">
+                    {detailProgress(draft).settled}/{detailProgress(draft).total}
+                  </span>
+                </summary>
+                <div className="mt-3">
+                  <CaseForm
+                    draft={draft}
+                    patch={patch}
+                    updateTriage={updateTriage}
+                    updateEntity={updateEntity}
+                    asking={detail?.id}
+                    t={t}
+                  />
+                </div>
+              </details>
+            ) : (
               <CaseForm
                 draft={draft}
                 patch={patch}
@@ -1030,7 +1070,7 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
                 asking={detail?.id}
                 t={t}
               />
-            )}
+            ))}
             <div className="px-1 text-sm text-ink-3 space-y-2">
               {voiceGateComplete && (
                 <button
@@ -1497,10 +1537,20 @@ function StepControls({
             <p className="text-xs text-ink-3"><span className="num">{progress.known}</span> {t("detail.knownAlready")}</p>
           )}
         </div>
-        <h2 className="mt-2 !font-sans !text-lg !font-semibold !tracking-normal !leading-snug">
+        <h2 className="mt-2 !font-sans !text-xl !font-semibold !tracking-normal !leading-snug">
           {t(detail.question)}
         </h2>
         <p className="mt-1.5 text-sm leading-[1.55] text-ink-3">{t(detail.why)}</p>
+        {/* Where the thing actually lives. Somebody who does not know that the
+            UTR is the long number in the bank's SMS does not abandon the form
+            because they are unwilling — they abandon it because they have been
+            asked for something they cannot find. */}
+        {detail.where && (
+          <p className="mt-3 flex gap-2 rounded-ctl border border-info/25 bg-info-soft px-3 py-2 text-sm leading-[1.5] text-ink-2">
+            <span className="shrink-0 text-info" aria-hidden><FindIcon /></span>
+            <span>{t(detail.where)}</span>
+          </p>
+        )}
         <div className="mt-4 flex items-start gap-2">
           <div className="flex-1 min-w-0">
             <DetailField
@@ -2497,6 +2547,15 @@ function DetailSkips({ onSkip, onSkipAll, remaining, wa, t }: {
       <Reply wa={Boolean(wa)} onClick={onSkip}>{t("detail.skip")}</Reply>
       {remaining > 1 && <Reply wa={Boolean(wa)} onClick={onSkipAll}>{t("detail.skipAll")}</Reply>}
     </Replies>
+  );
+}
+
+function FindIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="mt-0.5">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </svg>
   );
 }
 

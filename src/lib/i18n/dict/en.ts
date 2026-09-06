@@ -1124,6 +1124,27 @@ export const en = {
 
   // The same questions again, named the way a form names them. One catalogue
   // drives the chat and this panel, so neither can go missing from the other.
+  // Where each of these actually lives, so nobody gives up looking.
+  "detail.nameWhere": "As it is written on your bank passbook or cheque book.",
+  "detail.phoneWhere": "The number your bank sends OTPs to.",
+  "detail.emailWhere": "The one you can open today — the portal replies there.",
+  "detail.addressWhere": "As on your Aadhaar, ration card or a utility bill.",
+  "detail.bankNameWhere": "On your card, your passbook, or the app the money left from.",
+  "detail.accountLast4Where": "The last four digits on your card, passbook, or any bank SMS.",
+  "detail.branchAddressWhere": "First page of your passbook, or your bank's app under Branch or IFSC.",
+  "detail.amountWhere": "In the debit SMS, or your bank app's transaction history.",
+  "detail.incidentAtWhere": "The time stamped on the bank's SMS, or in the app's transaction details.",
+  "detail.bankAlertAtWhere": "The time the bank's message arrived on your phone.",
+  "detail.bankNotifiedAtWhere": "The time of your call or email to the bank — check your call log or sent mail.",
+  "detail.utrWhere": "In the bank SMS, or tap the payment in your UPI app. It may be labelled UTR, RRN, Txn ID or Ref No.",
+  "detail.suspectUpiWhere": "In your UPI app's history, under the payment you made.",
+  "detail.suspectAccountWhere": "In the transaction details, if your app showed a beneficiary account.",
+  "detail.suspectPhoneWhere": "In your call log, or at the top of the WhatsApp chat.",
+  "detail.suspectUrlWhere": "In the SMS or chat where they sent it — press and hold to copy.",
+  "detail.suspectHandleWhere": "On their profile page, usually just under the display name.",
+  "detail.ncrpAckWhere": "In the email or SMS cybercrime.gov.in sent you after filing.",
+  "detail.bankAckWhere": "In the bank's SMS or email after you complained.",
+  "detail.policeStationWhere": "Search for 'cyber police station' with your district name.",
   "detail.nameLabel": "Full name",
   "detail.phoneLabel": "Mobile number",
   "detail.emailLabel": "Email",
