@@ -9,8 +9,12 @@ export const RBI_OMBUDSMAN_2026 = {
   provisions: ["10(1)(e)", "10(1)(f)", "10(1)(g)"],
   ordinaryResponseDays: 30,
   filingWindowDays: 90,
-  url: "https://rbidocs.rbi.org.in/rdocs/content/pdfs/SCHEME16012026_A.pdf",
-  faqUrl: "https://old.rbi.org.in/commonman/english/scripts/faqs.aspx?id=3407",
+  // Both of these were dead. The scheme PDF answered with an HTML error page
+  // rather than a document, and the FAQ sat on old.rbi.org.in, which no longer
+  // resolves at all — so a citizen following the source link on a legal
+  // deadline reached nothing. Checked: both of these answer 200.
+  url: "https://rbi.org.in/bankingombudsman/",
+  faqUrl: "https://www.rbi.org.in/commonman/english/scripts/FAQs.aspx?Id=3407",
 } as const;
 
 export interface RbiOmbudsmanWindowInput {

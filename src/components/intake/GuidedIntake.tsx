@@ -1449,7 +1449,7 @@ function StepControls({
       // assistant; only the acknowledgement is a button.
       return (
         <Replies wa>
-          <Reply wa href={assessRbiEligibility(input).source.url}>{t("intake.rbiSource")}</Reply>
+          <Reply wa href={assessRbiEligibility(input).source.readableUrl}>{t("intake.rbiSource")}</Reply>
           <Reply wa primary onClick={() => answer({ rbiAssessmentReviewed: true }, t("intake.rbiContinue"))}>
             {t("intake.rbiContinue")}
           </Reply>
@@ -2271,7 +2271,7 @@ function RbiReviewCard({ assessment, t, children }: { assessment: RbiEligibility
       </ul>
       <p className="mt-4 text-xs leading-[1.55] text-ink-3">{t("intake.rbiDisclaimer")}</p>
       <a
-        href={assessment.source.url}
+        href={assessment.source.readableUrl}
         target="_blank"
         rel="noreferrer"
         className="mt-3 inline-block text-sm font-medium underline underline-offset-4"

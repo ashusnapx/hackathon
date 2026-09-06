@@ -7,8 +7,13 @@
  * The result says which route in the circular the answers fit; it is not a
  * finding of fact and does not replace the bank's liability determination.
  *
- * Official source:
- * https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=11040&Mode=0
+ * Two links, on purpose. The circular is the citation — it is what a bank's
+ * grievance desk answers to, and it is still in force. But sending somebody who
+ * has just lost their savings to a 2017 circular index page is sending them
+ * somewhere written for compliance officers, and RBI's own site frames it under
+ * a menu heading of "Circulars Withdrawn", which reads as though the protection
+ * itself has been taken away. `readableUrl` is RBI's page on the same rules
+ * written for the public, and it is what the citizen is shown.
  */
 
 export const RBI_2017_CIRCULAR = {
@@ -16,7 +21,19 @@ export const RBI_2017_CIRCULAR = {
   number: "DBR.No.Leg.BC.78/09.07.005/2017-18",
   issuedOn: "2017-07-06",
   title: "Customer Protection – Limiting Liability of Customers in Unauthorised Electronic Banking Transactions",
+  /** The circular itself, for a bank or an officer who wants the citation. */
   url: "https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=11040&Mode=0",
+  /** RBI's own explanation of the same rules, written for a customer. */
+  readableUrl: "https://www.rbi.org.in/commonperson/English/scripts/Limitedliability.aspx",
+  /**
+   * RBI put amendments to this framework out for comment in March 2026 —
+   * widening it to more kinds of fraudulent transaction, shortening the bank's
+   * processing time, and adding compensation for small-value fraud. They were
+   * still drafts at the time of writing. The screening therefore states the
+   * rules in force and says that they are under revision, rather than quietly
+   * asserting either version.
+   */
+  underRevision: true,
 } as const;
 
 export type RbiInitiation = "victim" | "unknown" | "not-victim";

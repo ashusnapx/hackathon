@@ -44,7 +44,7 @@ export function RbiProtectionCard({ caseFile }: { caseFile: CaseFile }) {
       </div>
       <div className="border-t border-rule bg-sunk px-5 py-3 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-3">
         <span>RBI/2017-18/15 · paragraphs {Array.from(new Set(assessment.provenance.flatMap((item) => item.sourceParagraphs))).join(", ")}</span>
-        <a href={assessment.source.url} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-4 text-ink">
+        <a href={assessment.source.readableUrl} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-4 text-ink">
           {t("rbi.circular")}
         </a>
       </div>

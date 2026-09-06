@@ -1070,7 +1070,7 @@ export const en = {
   "intake.rbiReviewQ": "These answers change which RBI protection route may apply. Here is a cautious, source-linked screening—not a promise of refund.",
   "intake.rbiCardEyebrow": "RBI protection screen",
   "intake.rbiScreenOnly": "Guidance, not a decision",
-  "intake.rbiDisclaimer": "This screen applies RBI/2017-18/15 only to unauthorised electronic banking transactions. The bank must determine the facts; other remedies may still exist.",
+  "intake.rbiDisclaimer": "This screen applies RBI/2017-18/15 only to unauthorised electronic banking transactions. The bank must determine the facts; other remedies may still exist. RBI put amendments to this framework out for comment in 2026, so check the current wording before relying on a timeline.",
   "intake.rbiSource": "Read the official RBI circular",
   "intake.rbiContinue": "I have read this — continue",
   "intake.rbiProtectionZero": "Answers fit a conditional zero-liability route",
