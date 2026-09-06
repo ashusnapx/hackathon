@@ -1,4 +1,5 @@
 import { findCategory } from "@/lib/case/categories";
+import { properName } from "./name";
 import type { DictKey } from "@/lib/i18n/dict/en";
 import type { IncidentTiming, IntakeDraft } from "./interview";
 
@@ -264,7 +265,9 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     kind: "text",
     applies: () => true,
     read: (draft) => draft.callerName?.trim() ?? "",
-    write: (value) => ({ callerName: value.trim() || undefined }),
+    // Written the way they would write it, because this ends up at the head of
+    // a letter to their bank and on an FIR application.
+    write: (value) => ({ callerName: properName(value) || undefined }),
   },
   {
     id: "phone",

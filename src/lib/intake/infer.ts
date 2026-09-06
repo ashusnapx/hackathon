@@ -1,4 +1,5 @@
 import type { IntakeAnalysis, ChildContext, IncidentTiming, IntakeDraft, MoneyAnswer, SafetyAnswer } from "./interview";
+import { properName } from "./name";
 
 /**
  * Work out from the story what we would otherwise have asked.
@@ -110,7 +111,7 @@ export function draftFromStory(
     childSafetyAcknowledged: childContext === "adult-or-no-child" ? false : undefined,
     moneyMoved: moneyFromAnalysis(analysis),
     incidentTiming: timingFromIncident(analysis.triage.incidentAt, now.getTime()),
-    callerName: said.callerName?.trim() || undefined,
+    callerName: said.callerName ? properName(said.callerName) || undefined : undefined,
     bankName: said.bankName?.trim() || undefined,
   };
 }

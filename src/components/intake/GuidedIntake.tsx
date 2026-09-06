@@ -56,6 +56,7 @@ import {
 import Image from "next/image";
 import { LiveVoiceCall } from "@/components/intake/LiveVoiceCall";
 import { mapVaaniCall } from "@/lib/intake/from-vaani";
+import { firstName } from "@/lib/intake/name";
 import {
   callAnalysis,
   callPollDelayMs,
@@ -993,6 +994,11 @@ export function GuidedIntake({ lockChannel, onReset }: {
                 >
                   {flashcards && stepPrompt(step) && (
                     <div className="mb-4">
+                      {step === "ready" && draft.callerName && (
+                        <p className="mb-1 text-[0.9375rem] font-medium text-done">
+                          {firstName(draft.callerName)},
+                        </p>
+                      )}
                       <h2 className="!font-sans !text-[1.375rem] !font-semibold !tracking-[-0.01em] !leading-[1.3]">
                         {t(stepPrompt(step)!.q)}
                       </h2>
@@ -1574,6 +1580,10 @@ function StepControls({
 
     const asked = progress.total - progress.known;
     const done = Math.max(0, progress.position - 1);
+    // The name was the last thing put to them, so this is the first card they
+    // see after giving it.
+    const askedIds = draft.detailsAsked ?? [];
+    const justNamed = Boolean(draft.callerName) && askedIds[askedIds.length - 1] === "name";
 
     return (
       <ActionCard>
@@ -1606,7 +1616,15 @@ function StepControls({
           </>
         )}
 
-        <h2 className="mt-4 !font-sans !text-[1.375rem] !font-semibold !tracking-[-0.01em] !leading-[1.3]">
+        {justNamed && (
+          <p className="mt-4 text-[0.9375rem] font-medium text-done">
+            {t("intake.thankYou")}, {firstName(draft.callerName ?? "")}.
+          </p>
+        )}
+        <h2 className={cn(
+          "!font-sans !text-[1.375rem] !font-semibold !tracking-[-0.01em] !leading-[1.3]",
+          justNamed ? "mt-1" : "mt-4",
+        )}>
           {t(detail.question)}
         </h2>
         <p className="mt-2 text-[0.9375rem] leading-[1.55] text-ink-2">{t(detail.why)}</p>
@@ -1777,7 +1795,7 @@ function buildMessages(draft: IntakeDraft, t: T, now = new Date(), wa = false): 
   if (!nameAnswered(draft)) return messages;
   const called = draft.callerName?.trim();
   messages.push({ role: "user", text: called || t("detail.skipped") });
-  if (called) messages.push({ role: "agent", text: `${t("intake.thankYou")}, ${called}.` });
+  if (called) messages.push({ role: "agent", text: `${t("intake.thankYou")}, ${firstName(called)}.` });
 
   // The rest of the contact details, one at a time, filling the form as they go.
   if (askDetails(draft, t, messages, "intro", t("detail.introYou"))) return messages;
