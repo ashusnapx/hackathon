@@ -36,7 +36,7 @@ describe("switching live mode on", () => {
     VAANI_ALLOWED_TEST_NUMBERS: "+919876543210",
   };
   const blocked = (env: Record<string, string | undefined>) =>
-    getVaaniLiveConfiguration({ ...base, ...env } as NodeJS.ProcessEnv)
+    getVaaniLiveConfiguration({ ...base, ...env })
       .problems.includes("live-mode-disabled");
 
   it("accepts the instruction however it was typed into a dashboard", () => {
