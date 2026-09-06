@@ -702,19 +702,95 @@ export function detailAnswerText(question: DetailQuestion, value: string): strin
  * parsed, which for somebody who dictated an amount would look exactly like the
  * app ignoring them.
  */
-export function isDetailAnswer(question: DetailQuestion, value: string): boolean {
+const digitsIn = (value: string) => value.replace(/\D/g, "");
+
+/**
+ * Whether an answer is worth storing, and if not, what to say about it.
+ *
+ * A disabled button with no explanation is the cruellest thing a form does:
+ * somebody types their number, the button stays grey, and there is nothing on
+ * screen telling them why. Every rejection here carries a sentence.
+ *
+ * The rules are as loose as they can be while still catching real mistakes.
+ * A victim's mobile has to be a real Indian mobile, because the bank and the
+ * police will ring it — but the fraudster's number is deliberately lenient,
+ * since it may be a landline, a short code or an international line, and
+ * refusing it would lose evidence over a formatting opinion.
+ */
+export type DetailCheck = { ok: true } | { ok: false; reason: DictKey };
+
+export function checkDetailAnswer(question: DetailQuestion, value: string): DetailCheck {
   const clean = value.trim();
-  if (!clean) return false;
-  switch (question.kind) {
-    case "amount":
-      return parseIndianAmount(clean) > 0;
-    case "tel":
-      return clean.replace(/\D/g, "").length >= 4;
-    case "email":
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean);
-    case "datetime":
-      return !Number.isNaN(new Date(clean).getTime());
+  if (!clean) return { ok: false, reason: "detail.errEmpty" };
+  const digits = digitsIn(clean);
+
+  switch (question.id) {
+    case "phone": {
+      // Ten digits, starting 6-9. People write their own number down every way
+      // there is — 0 for the trunk prefix, +91 for the country, sometimes both
+      // — so the prefixes come off rather than being held against them.
+      let local = digits;
+      while (local.length > 10 && (local.startsWith("0") || local.startsWith("91"))) {
+        local = local.startsWith("0") ? local.slice(1) : local.slice(2);
+      }
+      return /^[6-9]\d{9}$/.test(local) ? { ok: true } : { ok: false, reason: "detail.errPhone" };
+    }
+    case "suspectPhone":
+      return digits.length >= 6 && digits.length <= 15
+        ? { ok: true }
+        : { ok: false, reason: "detail.errSuspectPhone" };
+    case "accountLast4":
+      return digits.length >= 4 ? { ok: true } : { ok: false, reason: "detail.errLast4" };
+    case "suspectAccount":
+      return digits.length >= 6 && digits.length <= 18
+        ? { ok: true }
+        : { ok: false, reason: "detail.errAccount" };
+    case "suspectUpi":
+      // handle@psp. Not a strict grammar — PSP suffixes change constantly.
+      return /^[\w.\-]{2,}@[a-z]{2,}$/i.test(clean)
+        ? { ok: true }
+        : { ok: false, reason: "detail.errUpi" };
+    case "utr":
+    case "ncrpAck":
+    case "bankAck":
+      return /^[A-Za-z0-9\-/]{6,30}$/.test(clean.replace(/\s/g, ""))
+        ? { ok: true }
+        : { ok: false, reason: "detail.errReference" };
+    case "name":
+    case "bankName":
+      // Any script, so this asks for a letter rather than for A-Z.
+      return clean.length >= 2 && /\p{L}/u.test(clean)
+        ? { ok: true }
+        : { ok: false, reason: "detail.errName" };
+    case "address":
+      return clean.length >= 10 ? { ok: true } : { ok: false, reason: "detail.errAddress" };
     default:
-      return clean.length >= 2;
+      break;
   }
+
+  switch (question.kind) {
+    case "amount": {
+      const amount = parseIndianAmount(clean);
+      if (amount <= 0) return { ok: false, reason: "detail.errAmount" };
+      // Ten crore in a UPI fraud is a typo, not a fraud.
+      return amount <= 100_000_000 ? { ok: true } : { ok: false, reason: "detail.errAmountBig" };
+    }
+    case "email":
+      return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(clean)
+        ? { ok: true }
+        : { ok: false, reason: "detail.errEmail" };
+    case "datetime": {
+      const at = new Date(clean).getTime();
+      if (!Number.isFinite(at)) return { ok: false, reason: "detail.errDate" };
+      // A minute of slack for a clock that is a little ahead.
+      return at <= Date.now() + 60_000 ? { ok: true } : { ok: false, reason: "detail.errFuture" };
+    }
+    default:
+      return clean.length >= 2 ? { ok: true } : { ok: false, reason: "detail.errShort" };
+  }
+}
+
+/** Whether the answer can be stored at all. */
+export function isDetailAnswer(question: DetailQuestion, value: string): boolean {
+  return checkDetailAnswer(question, value).ok;
 }

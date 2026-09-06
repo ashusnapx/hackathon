@@ -69,6 +69,7 @@ import {
   detailAnswerText,
   detailProgress,
   detailsForCase,
+  checkDetailAnswer,
   isDetailAnswer,
   localDateTimeValue,
   nameAnswered,
@@ -1604,6 +1605,8 @@ function StepControls({
 
     const asked = progress.total - progress.known;
     const done = Math.max(0, progress.position - 1);
+    const verdict = checkDetailAnswer(detail, detailValue);
+    const problem = !verdict.ok && detailValue.trim().length >= 3 ? verdict.reason : null;
     // The name was the last thing put to them, so this is the first card they
     // see after giving it.
     const askedIds = draft.detailsAsked ?? [];
@@ -1675,6 +1678,7 @@ function StepControls({
               onChange={setDetailValue}
               onSubmit={saveDetail}
               chrome="page"
+              invalid={Boolean(problem)}
               t={t}
             />
           </div>
@@ -1685,6 +1689,12 @@ function StepControls({
             />
           )}
         </div>
+
+        {/* Held back until they have typed something worth judging: telling
+            somebody their phone number is wrong after one digit is nagging. */}
+        {problem && (
+          <p role="alert" className="mt-2 text-sm leading-snug text-urgent-ink">{t(problem)}</p>
+        )}
 
         <Button onClick={saveDetail} disabled={!ready} size="lg" className="mt-4" full>
           {editing ? t("detail.saveChange") : t("detail.next")}
@@ -2736,13 +2746,15 @@ function MessageBubble({ message }: { message: Message }) {
  * because the microphone is the point for anyone who does not type comfortably
  * — and an amount said as "forty seven thousand" is understood.
  */
-function DetailField({ question, value, onChange, onSubmit, chrome, disabled, t }: {
+function DetailField({ question, value, onChange, onSubmit, chrome, disabled, invalid, t }: {
   question: DetailQuestion;
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
   chrome: "whatsapp" | "page";
   disabled?: boolean;
+  /** Marked for a screen reader as well as coloured for everybody else. */
+  invalid?: boolean;
   t: T;
 }) {
   const whatsapp = chrome === "whatsapp";
@@ -2776,7 +2788,16 @@ function DetailField({ question, value, onChange, onSubmit, chrome, disabled, t 
   return (
     <input
       type={type}
-      inputMode={question.kind === "amount" ? "text" : undefined}
+      // A ten-digit number is miserable to enter on a full keyboard, and an
+      // amount is not a phone number: both get the keypad that suits them.
+      inputMode={
+        question.kind === "tel" ? "numeric"
+          : question.kind === "amount" ? "decimal"
+            : question.kind === "email" ? "email"
+              : undefined
+      }
+      autoComplete={question.id === "phone" ? "tel" : question.kind === "email" ? "email" : undefined}
+      aria-invalid={invalid || undefined}
       value={question.kind === "datetime" ? localDateTimeValue(value) || value : value}
       onChange={(event) => onChange(event.target.value)}
       onKeyDown={(event) => {
@@ -2790,7 +2811,10 @@ function DetailField({ question, value, onChange, onSubmit, chrome, disabled, t 
       className={cn(
         whatsapp
           ? "block w-full bg-transparent focus:outline-none text-[0.9375rem] leading-[1.45] text-[#111b21] placeholder:text-[#8696a0]"
-          : "w-full h-12 px-3.5 bg-raised border border-rule-strong rounded-ctl text-base focus:outline-none focus:border-ink",
+          : cn(
+            "w-full h-12 px-3.5 bg-raised border rounded-ctl text-base focus:outline-none focus:border-ink",
+            invalid ? "border-urgent" : "border-rule-strong",
+          ),
       )}
     />
   );
