@@ -188,7 +188,10 @@ export function nextIntakeStep(draft: IntakeDraft): IntakeStep {
     && !draft.childSafetyAcknowledged
   ) return "child-safety";
   if (!draft.moneyMoved) return "money";
-  if (draft.moneyMoved === "yes" && !draft.incidentTiming) return "timing";
+  // "Roughly when?" is gone. It asked somebody to place their own fraud in one
+  // of four buckets, which is our filing problem and not a thing they think in
+  // — and then the follow-ups asked for the actual date and time anyway, with
+  // the bank SMS to look it up in. The bucket is worked out from that answer.
   // Who we are talking to, before what happened to them: a name, then the
   // number, the email and the address every one of these documents needs. The
   // form beside the chat starts filling from the first answer instead of
@@ -223,7 +226,6 @@ export function intakeProgress(draft: IntakeDraft): { answered: number; total: n
       ? true
       : Boolean(draft.childSafetyAcknowledged),
     Boolean(draft.moneyMoved),
-    draft.moneyMoved !== "yes" || Boolean(draft.incidentTiming),
     nameAnswered(draft),
     draft.narrative.trim().length >= 25,
     Boolean(draft.analysis && draft.analysisConfirmed),

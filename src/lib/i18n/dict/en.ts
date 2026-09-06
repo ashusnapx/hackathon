@@ -1118,6 +1118,7 @@ export const en = {
   "detail.groupMoney": "The money",
   "detail.groupSuspect": "Who did it",
   "detail.groupFiled": "Already filed",
+  "detail.formEmptyYet": "Everything you tell us appears here as you answer.",
   "detail.formH": "Your case file",
   "detail.formSub": "This fills in as we talk. Change anything here and the chat moves on.",
   "detail.asking": "Being asked now",

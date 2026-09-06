@@ -1109,25 +1109,7 @@ export function GuidedIntake({ lockChannel, onReset }: {
                 is still one tap away, because watching it fill is the reason
                 anybody answers the nineteenth. */}
             {!voiceOnly && (flashcards ? (
-              <details className="sheet px-4 py-3">
-                <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm font-medium">
-                  <span>{t("detail.formH")}</span>
-                  <span className="num text-sm text-ink-3">
-                    {detailProgress(draft).settled}/{detailProgress(draft).total}
-                  </span>
-                </summary>
-                <div className="mt-3">
-                  <CaseForm
-                    bare
-                    draft={draft}
-                    patch={patch}
-                    updateTriage={updateTriage}
-                    updateEntity={updateEntity}
-                    asking={detail?.id}
-                    t={t}
-                  />
-                </div>
-              </details>
+              <AnsweredSoFar draft={draft} t={t} />
             ) : (
               <CaseForm
                 draft={draft}
@@ -1150,12 +1132,12 @@ export function GuidedIntake({ lockChannel, onReset }: {
                     }
                     router.push("/report");
                   }}
-                  className="underline underline-offset-4 hover:text-ink"
+                  className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-ink"
                 >
                   {t("intake.formInstead")} →
                 </button>
               )}
-              <button onClick={() => setShowReset(true)} className="block underline underline-offset-4 hover:text-ink">{t("intake.reset")}</button>
+              <button onClick={() => setShowReset(true)} className="flex min-h-11 items-center underline underline-offset-4 hover:text-ink">{t("intake.reset")}</button>
             </div>
             {showReset && (
               <div className="sheet px-4 py-4 text-sm">
@@ -1941,6 +1923,74 @@ function FormCell({ value, onCommit, label, kind, placeholder }: {
  * It is deliberately not a summary. A summary would be a second, slightly wrong
  * copy of the case; this is the case.
  */
+/**
+ * What we have so far.
+ *
+ * The questions page used to end in a disclosure holding nineteen input boxes,
+ * most of them empty — the pile the interview exists to replace, folded up and
+ * put at the bottom of the page that replaces it.
+ *
+ * This shows only what has actually been given, as plain text, growing by a
+ * line each time somebody answers. It is the reason anybody answers the
+ * nineteenth question: you can see the thing being built. Correcting a fact is
+ * a job for the case file at the end, where there is room for it, rather than a
+ * second editable copy of the interview competing with the question on screen.
+ */
+function AnsweredSoFar({ draft, t }: { draft: IntakeDraft; t: T }) {
+  const questions = detailsForCase(draft);
+  const answered = questions
+    .map((question) => ({ question, value: question.read(draft) }))
+    .filter((row) => row.value);
+  const category = findCategory(draft.analysis?.triage.categoryId);
+  const pct = questions.length ? Math.round((answered.length / questions.length) * 100) : 0;
+
+  return (
+    <section className="sheet px-4 py-4 sm:px-5" aria-label={t("detail.formH")}>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="label">{t("detail.formH")}</p>
+        <span className="num text-sm text-ink-3">{answered.length}/{questions.length}</span>
+      </div>
+      <div
+        className="mt-2.5 h-1.5 rounded-full bg-sunk overflow-hidden"
+        role="progressbar"
+        aria-label={t("detail.formH")}
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div className="h-full rounded-full bg-done transition-[width] duration-300" style={{ width: `${pct}%` }} />
+      </div>
+
+      <dl className="mt-3 divide-y divide-rule">
+        {category && (
+          <Fact label={t("intake.verifyCategory")} value={category.label} />
+        )}
+        {answered.map(({ question, value }) => (
+          <Fact
+            key={question.id}
+            label={t(question.label)}
+            value={question.format ? question.format(value) : value}
+          />
+        ))}
+      </dl>
+
+      {!answered.length && !category && (
+        <p className="mt-3 text-sm leading-[1.5] text-ink-3">{t("detail.formEmptyYet")}</p>
+      )}
+    </section>
+  );
+}
+
+/** One fact, stacked on a narrow screen so nothing is squeezed into a ribbon. */
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="py-2.5 flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+      <dt className="text-sm text-ink-3 shrink-0">{label}</dt>
+      <dd className="text-[0.9375rem] min-w-0 break-words sm:text-end">{value}</dd>
+    </div>
+  );
+}
+
 function CaseForm({ draft, patch, updateTriage, updateEntity, asking, bare, t }: {
   /** Inside a disclosure that already names it and counts it. */
   bare?: boolean;

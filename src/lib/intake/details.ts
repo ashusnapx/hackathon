@@ -1,6 +1,6 @@
 import { findCategory } from "@/lib/case/categories";
 import type { DictKey } from "@/lib/i18n/dict/en";
-import type { IntakeDraft } from "./interview";
+import type { IncidentTiming, IntakeDraft } from "./interview";
 
 /**
  * The questions that stand between a case file and a document somebody can hand
@@ -97,6 +97,18 @@ export interface DetailQuestion {
 }
 
 const moneyGone = (draft: IntakeDraft) => draft.moneyMoved === "yes";
+
+/** Which of the app's four windows a real timestamp falls into. */
+function bucketFor(iso: string, now: number): IncidentTiming | undefined {
+  const at = new Date(iso).getTime();
+  if (!Number.isFinite(at)) return undefined;
+  const ago = now - at;
+  if (ago < 0) return undefined;
+  if (ago <= 60 * 60_000) return "last-hour";
+  const today = new Date(now);
+  const then = new Date(at);
+  return today.toDateString() === then.toDateString() ? "today" : "older";
+}
 
 const hasTrack = (draft: IntakeDraft, track: string) =>
   (draft.analysis?.triage.applicableTracks ?? []).includes(track as never);
@@ -377,7 +389,13 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
       const analysis = draft.analysis;
       const incidentAt = isoOrEmpty(value);
       if (!analysis || !incidentAt) return {};
-      return { analysis: { ...analysis, triage: { ...analysis.triage, incidentAt } } };
+      return {
+        analysis: { ...analysis, triage: { ...analysis.triage, incidentAt } },
+        // The bucket the rest of the app reasons in — the recovery window, the
+        // urgency of the 1930 call — falls out of the real timestamp. Nobody
+        // has to be asked to pick it.
+        incidentTiming: bucketFor(incidentAt, Date.now()),
+      };
     },
     format: dateTimeWords,
   },

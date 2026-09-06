@@ -53,9 +53,12 @@ describe("adaptive intake interview", () => {
     expect(nextIntakeStep(draft)).toBe("emergency");
   });
 
-  it("only asks the time shortcut when money moved", () => {
+  it("does not make anybody file their own fraud into a time bucket", () => {
+    // "Roughly when?" is our filing problem, not a thing a person thinks in.
+    // Both answers go straight on to the introductions; the exact timestamp is
+    // asked for later, where the bank's SMS can be quoted back at it.
     const base = { ...emptyIntake(), acceptedBoundaries: true, safety: "safe" as const, safetyCheckedAt: new Date().toISOString(), childContext: "adult-or-no-child" as const };
-    expect(nextIntakeStep({ ...base, moneyMoved: "yes" })).toBe("timing");
+    expect(nextIntakeStep({ ...base, moneyMoved: "yes" })).toBe("name");
     expect(nextIntakeStep({ ...base, moneyMoved: "no" })).toBe("name");
     // And the account of what happened comes after the introductions: a name,
     // then the contact details every document needs.
@@ -110,11 +113,11 @@ describe("adaptive intake interview", () => {
       childContext: "adult-or-no-child",
       moneyMoved: "no",
     });
-    expect(p.answered).toBe(11); // includes age and a non-applicable child-safety gate
-    // Seventeen now: the introduction, and the follow-up round that fills the
-    // documents, are both questions somebody is actually asked.
-    expect(p.total).toBe(17);
-    expect(p.percent).toBe(65);
+    expect(p.answered).toBe(10); // includes age and a non-applicable child-safety gate
+    // Sixteen: the time bucket is no longer one of them — it is worked out from
+    // the timestamp the follow-ups ask for.
+    expect(p.total).toBe(16);
+    expect(p.percent).toBe(63);
   });
 
   it("asks legally material payment questions only for financial loss", () => {
