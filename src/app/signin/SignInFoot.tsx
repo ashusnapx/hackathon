@@ -11,5 +11,5 @@ import { useT } from "@/lib/i18n/context";
  * of the people it is for.
  */
 export function SignInFoot() {
-  return <p className="mt-8 text-sm leading-[1.6] text-ink-3">{useT()("auth.emergency")}</p>;
+  return <p className="mt-5 text-sm leading-[1.6] text-ink-3">{useT()("auth.emergency")}</p>;
 }

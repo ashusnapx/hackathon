@@ -29,14 +29,17 @@ export default async function SignInPage({
   const [user, params] = await Promise.all([currentUser(), searchParams]);
   if (user) redirect(safeRedirect(params.next));
 
+  // One viewport, no page scroll. If a translation or a very short laptop does
+  // overflow anyway, the form column scrolls inside itself rather than moving
+  // the illustration — clipping the email field would be worse than either.
   return (
-    <div className="lg:grid lg:min-h-dvh lg:grid-cols-2">
+    <div className="lg:grid lg:h-dvh lg:overflow-hidden lg:grid-cols-2">
       <SignInArt />
-      <div className="flex min-h-dvh flex-col">
+      <div className="flex min-h-dvh flex-col lg:h-dvh lg:min-h-0 lg:overflow-y-auto">
         <SiteHeader width="md" />
         <main
           id="main"
-          className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-5 sm:px-8 py-10 sm:py-14"
+          className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-5 sm:px-8 py-6 sm:py-8"
         >
           <Suspense fallback={null}>
             <SignInForm configured={authConfigured()} />

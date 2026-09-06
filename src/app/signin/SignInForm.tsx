@@ -189,14 +189,18 @@ export function SignInForm({ configured }: { configured: boolean }) {
         ))}
       </div>
 
-      <h1 className="mt-8 text-[2rem] sm:text-[2.5rem] leading-[1.1]">
+      {/* Sized to a laptop rather than to a poster. The whole column has to
+          clear a 1280×720 viewport without scrolling, and the display face is
+          the cheapest place to buy that back — it is still the largest thing
+          on the page. */}
+      <h1 className="mt-6 text-[1.75rem] sm:text-[2rem] leading-[1.1]">
         {t(mode === "in" ? "auth.title" : "auth.titleUp")}
       </h1>
-      <p className="mt-3 text-[1.0625rem] leading-[1.6] text-ink-2">
+      <p className="mt-2 text-base leading-[1.55] text-ink-2">
         {t(mode === "in" ? "auth.sub" : "auth.subUp")}
       </p>
 
-      <form onSubmit={submit} className="mt-7 space-y-4" noValidate>
+      <form onSubmit={submit} className="mt-5 space-y-3.5" noValidate>
         <Field
           label={t("auth.email")}
           type="email"
@@ -219,14 +223,17 @@ export function SignInForm({ configured }: { configured: boolean }) {
           error={short ? t("auth.passwordShort") : undefined}
         />
         {error && <p role="alert" className="text-sm leading-snug text-urgent-ink">{error}</p>}
-        <Button type="submit" disabled={!ready} size="lg" full>
+        {/* Full height on a phone, where it is the only thing a thumb is
+            aiming at; one notch down on a laptop, where the column has a
+            viewport to fit inside. Still 48px, well over the touch floor. */}
+        <Button type="submit" disabled={!ready} size="lg" full className="lg:h-12">
           {busy ? `${t("auth.working")}…` : t(mode === "in" ? "auth.signIn" : "auth.createAccount")}
         </Button>
       </form>
 
       {/* Said out loud on the sign-in tab, because it is a thing this page does
           that no other sign-in page does. */}
-      <p className="mt-4 text-sm leading-[1.6] text-ink-3">
+      <p className="mt-3 text-sm leading-[1.6] text-ink-3">
         {t(mode === "in" ? "auth.autoNote" : "auth.upNote")}
       </p>
     </>
