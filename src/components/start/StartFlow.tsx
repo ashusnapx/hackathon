@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/Button";
 import { SiteHeader } from "@/components/SiteHeader";
 import { VoiceComposer } from "@/components/start/VoiceComposer";
-import { GuidedIntake } from "@/components/intake/GuidedIntake";
 import { DETAIL_QUESTIONS } from "@/lib/intake/details";
 import { emptyIntake } from "@/lib/intake/interview";
 import { draftFromStory } from "@/lib/intake/infer";
@@ -38,13 +38,7 @@ export function StartFlow() {
   const [story, setStory] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /**
-   * Once the story is understood the interview carries on here, on this page,
-   * in the same column and under the same header. It used to navigate to a
-   * different route with a different layout — a wide two-column workbench —
-   * which read as being handed to a second product halfway through a sentence.
-   */
-  const [started, setStarted] = useState(false);
+  const router = useRouter();
 
   /**
    * Resuming, and refusing to resume.
@@ -69,9 +63,9 @@ export function StartFlow() {
       window.history.replaceState(null, "", window.location.pathname);
       return;
     }
-    const restored = loadBrowserIntakeDraft().draft;
-    if (restored?.analysis) queueMicrotask(() => setStarted(true));
-  }, []);
+    // A report already under way belongs at the questions, not back at the box.
+    if (loadBrowserIntakeDraft().draft?.analysis) router.replace("/say/questions");
+  }, [router]);
 
   const send = async () => {
     if (story.trim().length < 25 || busy) return;
@@ -93,7 +87,7 @@ export function StartFlow() {
         ...draftFromStory(story, analysis, new Date(), { callerName, bankName }),
       });
       clearStoredVaaniSession();
-      setStarted(true);
+      router.push("/say/questions");
     } catch {
       setError(t("start.error"));
       setBusy(false);
@@ -104,22 +98,6 @@ export function StartFlow() {
     .map((id) => DETAIL_QUESTIONS.find((question) => question.id === id))
     .filter((question) => question !== undefined)
     .map((question) => t(question.label));
-
-  if (started) {
-    return (
-      <>
-        <SiteHeader width="2xl" />
-        <main id="main" className="px-5 sm:px-8 py-6 sm:py-10 flex items-start justify-center">
-          <div className="w-full max-w-xl">
-            <GuidedIntake
-              lockChannel="web"
-              onReset={() => { setStory(""); setStarted(false); }}
-            />
-          </div>
-        </main>
-      </>
-    );
-  }
 
   return (
     <>

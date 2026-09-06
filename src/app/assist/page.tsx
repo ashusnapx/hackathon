@@ -3,9 +3,9 @@ import { StartFlow } from "@/components/start/StartFlow";
 /**
  * The address people already have.
  *
- * There is one intake surface now, and this is a second door onto it rather
- * than a second version of it. Somebody arriving here with a report already
- * under way picks up at the question they were on.
+ * One intake surface, two doors onto it. StartFlow sends somebody with a report
+ * already under way on to the questions, so this is never a third version of
+ * the same screen.
  */
 export default function AssistPage() {
   return <StartFlow />;

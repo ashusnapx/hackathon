@@ -11,6 +11,7 @@ import { createDefaultEvidence } from "@/lib/case/evidence";
 import { OFFICERS } from "@/lib/case/officers";
 import { newCase, saveCase } from "@/lib/case/store";
 import type { Entities, Triage } from "@/lib/case/types";
+import type { DictKey } from "@/lib/i18n/dict/en";
 import { useI18n } from "@/lib/i18n/context";
 import {
   emptyIntake,
@@ -220,6 +221,38 @@ async function triageNarrative(
     return await response.json() as IntakeAnalysis;
   } catch {
     return null;
+  }
+}
+
+/**
+ * The question a step is asking, for the page that shows one at a time.
+ *
+ * These used to live only in the message log. Taking the log away left several
+ * steps as four bare buttons — "Within the last hour", "Earlier today" — with
+ * nothing on screen saying what they were an answer to.
+ *
+ * The steps that build their own card are absent on purpose: the story has the
+ * composer, and a follow-up has its heading, its reason and where to find it.
+ */
+function stepPrompt(step: ReturnType<typeof nextIntakeStep>): { q: DictKey; sub?: DictKey } | null {
+  switch (step) {
+    case "boundaries": return { q: "intake.boundaryQ", sub: "intake.boundaryBody" };
+    case "safety": return { q: "intake.safetyQ" };
+    case "emergency": return { q: "intake.emergencyH", sub: "intake.emergencyBody" };
+    case "age": return { q: "intake.ageQ" };
+    case "child-safety": return { q: "intake.childH", sub: "intake.childBody" };
+    case "money": return { q: "intake.moneyQ" };
+    case "timing": return { q: "intake.timingQ" };
+    case "verify": return { q: "intake.verifyQ" };
+    case "rbi-initiation": return { q: "intake.rbiInitiationQ" };
+    case "rbi-credentials": return { q: "intake.rbiCredentialQ" };
+    case "rbi-bank-fault": return { q: "intake.rbiBankFaultQ" };
+    case "rbi-report-timing": return { q: "intake.rbiReportQ" };
+    case "rbi-review": return { q: "intake.rbiReviewQ" };
+    case "evidence": return { q: "intake.evidenceQ", sub: "intake.evidenceSub" };
+    case "routing": return { q: "intake.routingQ", sub: "intake.routingSub" };
+    case "ready": return { q: "intake.readyQ", sub: "intake.readyBody" };
+    default: return null;
   }
 }
 
@@ -958,6 +991,16 @@ export function GuidedIntake({ lockChannel, onReset }: {
                     whatsapp && "[&_.intake-action-card]:bg-white",
                   )}
                 >
+                  {flashcards && stepPrompt(step) && (
+                    <div className="mb-4">
+                      <h2 className="!font-sans !text-[1.375rem] !font-semibold !tracking-[-0.01em] !leading-[1.3]">
+                        {t(stepPrompt(step)!.q)}
+                      </h2>
+                      {stepPrompt(step)!.sub && (
+                        <p className="mt-2 text-[0.9375rem] leading-[1.55] text-ink-2">{t(stepPrompt(step)!.sub!)}</p>
+                      )}
+                    </div>
+                  )}
                   {controls}
                 </div>
               )}
