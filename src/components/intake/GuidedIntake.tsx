@@ -810,7 +810,19 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
         </section>
         )}
 
-        {needsFastFinancialAction(draft) && (
+        {needsFastFinancialAction(draft) && (flashcards ? (
+          // Still the first thing on the page, and no longer a wall: a person
+          // mid-question needs the number, not four lines about the number.
+          <aside
+            className="mb-5 flex flex-wrap items-center gap-3 rounded-card border border-urgent/40 bg-urgent-soft px-4 py-3"
+            role="alert"
+          >
+            <p className="flex-1 min-w-0 text-[0.9375rem] font-semibold leading-snug text-urgent-ink">
+              {t("intake.urgentH")}
+            </p>
+            <Button href="tel:1930" external variant="urgent" size="sm">{t("begin.call1930short")}</Button>
+          </aside>
+        ) : (
           <aside className="mt-5 rounded-card border border-urgent/40 bg-urgent-soft px-5 py-5" role="alert">
             <p className="label !text-urgent-ink/75">{t("triage.firstAction")}</p>
             <h2 className="mt-2 !font-sans !text-xl !font-semibold !tracking-normal !leading-snug text-urgent-ink">
@@ -819,7 +831,7 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
             <p className="mt-2 text-[0.9375rem] leading-[1.6] text-urgent-ink/85 max-w-2xl">{t("intake.urgentBody")}</p>
             <Button href="tel:1930" external variant="urgent" size="md" className="mt-4">{t("sos.call")}</Button>
           </aside>
-        )}
+        ))}
 
         {/* Two columns of equal weight for the chat, because the case file
             beside it is the other half of the conversation. The voice channel
@@ -858,8 +870,11 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
               t={t}
             />
           ) : (
-          <Shell whatsapp={whatsapp} statusTime={chatClock} label={t("intake.agentName")}>
-            {whatsapp ? (
+          <Shell whatsapp={whatsapp} statusTime={chatClock} label={t("intake.agentName")} bare={flashcards}>
+            {/* A contact header belongs on a conversation. On the page that asks
+                one question at a time there is no visible conversation to head,
+                and the save state already lives in the site header. */}
+            {flashcards ? null : whatsapp ? (
               <WhatsAppHeader name={t("intake.agentName")} status={t("intake.waStatus")} />
             ) : (
             <div className="px-4 sm:px-5 py-3.5 border-b border-rule bg-sunk flex items-center gap-3"> 
@@ -884,7 +899,9 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
               ref={scrollRef}
               style={whatsapp ? whatsappWallpaperStyle : undefined}
               className={cn(
-                whatsapp ? "px-2.5 sm:px-3 py-3 space-y-1.5" : "px-3 sm:px-5 py-5 space-y-3",
+                whatsapp ? "px-2.5 sm:px-3 py-3 space-y-1.5"
+                  : flashcards ? "space-y-3"
+                    : "px-3 sm:px-5 py-5 space-y-3",
                 whatsapp && `${WHATSAPP_WALLPAPER} no-scrollbar flex-1 min-h-0 overflow-y-auto`,
               )}
             >
@@ -894,19 +911,12 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
                   <WhatsAppDateChip>{t("intake.waToday")}</WhatsAppDateChip>
                 </>
               )}
+              {!flashcards && (
               <div
                 role="log"
                 aria-live="polite"
                 aria-relevant="additions"
-                className={cn(
-                  whatsapp ? "space-y-1.5" : "space-y-3",
-                  // On the one-question-at-a-time page the card carries the
-                  // question, and a transcript of everything already answered
-                  // above it turns one question into a wall to scroll past. It
-                  // stays in the DOM, because that log is how a screen reader
-                  // follows the conversation.
-                  flashcards && "sr-only",
-                )}
+                className={whatsapp ? "space-y-1.5" : "space-y-3"}
               >
                 {messages.map((message, index) => (
                   whatsapp ? (
@@ -924,6 +934,7 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
                 ))}
                 {whatsapp && busy && <WhatsAppTyping />}
               </div>
+              )}
 
               {/* A bot's reply buttons arrive attached to its message, so on
                   WhatsApp every answer that is a tap belongs here rather than on
@@ -933,7 +944,12 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
                 <div
                   ref={currentRef}
                   tabIndex={-1}
-                  className={cn("pt-2 focus:outline-none", whatsapp && "[&_.intake-action-card]:bg-white")}
+                  aria-live={flashcards ? "polite" : undefined}
+                  className={cn(
+                    !flashcards && "pt-2",
+                    "focus:outline-none",
+                    whatsapp && "[&_.intake-action-card]:bg-white",
+                  )}
                 >
                   {controls}
                 </div>
@@ -1052,6 +1068,7 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
                 </summary>
                 <div className="mt-3">
                   <CaseForm
+                    bare
                     draft={draft}
                     patch={patch}
                     updateTriage={updateTriage}
@@ -1523,34 +1540,56 @@ function StepControls({
       );
     }
 
+    const asked = progress.total - progress.known;
+    const done = Math.max(0, progress.position - 1);
+
     return (
       <ActionCard>
-        <div className="flex items-baseline justify-between gap-3">
-          <p className="label">
-            {step === "name" ? t("detail.counter") : (
-              <>
-                {t("detail.counter")} <span className="num">{progress.position}</span> {t("detail.of")} <span className="num">{progress.total - progress.known}</span>
-              </>
-            )}
-          </p>
-          {progress.known > 0 && (
-            <p className="text-xs text-ink-3"><span className="num">{progress.known}</span> {t("detail.knownAlready")}</p>
-          )}
-        </div>
-        <h2 className="mt-2 !font-sans !text-xl !font-semibold !tracking-normal !leading-snug">
+        {/* A meter and a count, so a question does not feel like the first of
+            an unknown number of them. */}
+        {step !== "name" && asked > 0 && (
+          <>
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="label">
+                {t("detail.counter")} <span className="num">{progress.position}</span> {t("detail.of")} <span className="num">{asked}</span>
+              </p>
+              {progress.known > 0 && (
+                <p className="text-xs text-ink-3">
+                  <span className="num">{progress.known}</span> {t("detail.knownAlready")}
+                </p>
+              )}
+            </div>
+            <div
+              className="mt-2.5 h-1 rounded-full bg-sunk overflow-hidden"
+              role="progressbar"
+              aria-valuenow={done}
+              aria-valuemin={0}
+              aria-valuemax={asked}
+            >
+              <div
+                className="h-full rounded-full bg-done transition-[width] duration-300"
+                style={{ width: `${Math.round((done / asked) * 100)}%` }}
+              />
+            </div>
+          </>
+        )}
+
+        <h2 className="mt-4 !font-sans !text-[1.375rem] !font-semibold !tracking-[-0.01em] !leading-[1.3]">
           {t(detail.question)}
         </h2>
-        <p className="mt-1.5 text-sm leading-[1.55] text-ink-3">{t(detail.why)}</p>
+        <p className="mt-2 text-[0.9375rem] leading-[1.55] text-ink-2">{t(detail.why)}</p>
+
         {/* Where the thing actually lives. Somebody who does not know that the
             UTR is the long number in the bank's SMS does not abandon the form
             because they are unwilling — they abandon it because they have been
             asked for something they cannot find. */}
         {detail.where && (
-          <p className="mt-3 flex gap-2 rounded-ctl border border-info/25 bg-info-soft px-3 py-2 text-sm leading-[1.5] text-ink-2">
-            <span className="shrink-0 text-info" aria-hidden><FindIcon /></span>
+          <p className="mt-3.5 flex gap-2.5 rounded-ctl bg-sunk px-3 py-2.5 text-sm leading-[1.5] text-ink-2">
+            <span className="shrink-0 text-ink-3" aria-hidden><FindIcon /></span>
             <span>{t(detail.where)}</span>
           </p>
         )}
+
         <div className="mt-4 flex items-start gap-2">
           <div className="flex-1 min-w-0">
             <DetailField
@@ -1569,12 +1608,29 @@ function StepControls({
             />
           )}
         </div>
-        {dictatable && <p className="mt-2 text-xs text-ink-3">{t("detail.typeOrSay")}</p>}
-        <div className="mt-5 flex flex-col sm:flex-row gap-2">
-          <Button onClick={saveDetail} disabled={!ready} size="md" className="flex-1">{t("detail.next")}</Button>
-          <Button onClick={passDetail} variant="secondary" size="md">{t("detail.skip")}</Button>
+
+        <Button onClick={saveDetail} disabled={!ready} size="lg" className="mt-4" full>
+          {t("detail.next")}
+        </Button>
+
+        {/* Passing is a choice, not an equal option: it stays available and
+            stops competing with the answer for attention. */}
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-5">
+          <button
+            type="button"
+            onClick={passDetail}
+            className="inline-flex min-h-11 items-center text-sm text-ink-3 underline underline-offset-4 hover:text-ink"
+          >
+            {t("detail.skip")}
+          </button>
           {progress.remaining > 1 && (
-            <Button onClick={passAllDetails} variant="secondary" size="md">{t("detail.skipAll")}</Button>
+            <button
+              type="button"
+              onClick={passAllDetails}
+              className="inline-flex min-h-11 items-center text-sm text-ink-3 underline underline-offset-4 hover:text-ink"
+            >
+              {t("detail.skipAll")}
+            </button>
           )}
         </div>
       </ActionCard>
@@ -1835,7 +1891,9 @@ function FormCell({ value, onCommit, label, kind, placeholder }: {
  * It is deliberately not a summary. A summary would be a second, slightly wrong
  * copy of the case; this is the case.
  */
-function CaseForm({ draft, patch, updateTriage, updateEntity, asking, t }: {
+function CaseForm({ draft, patch, updateTriage, updateEntity, asking, bare, t }: {
+  /** Inside a disclosure that already names it and counts it. */
+  bare?: boolean;
   draft: IntakeDraft;
   patch: (p: Partial<IntakeDraft>) => void;
   updateTriage: (p: Partial<Triage>) => void;
@@ -1855,15 +1913,24 @@ function CaseForm({ draft, patch, updateTriage, updateEntity, asking, t }: {
     : [];
 
   return (
-    <section className="sheet px-4 py-4 sm:px-5 sm:py-5" aria-label={t("detail.formH")}>
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="label">{t("detail.formH")}</p>
-        <span className="num text-sm text-ink-3">{filled}/{questions.length}</span>
-      </div>
-      <div className="mt-3 h-1.5 rounded-full bg-sunk overflow-hidden" role="progressbar" aria-label={t("detail.formH")} aria-valuenow={questions.length ? Math.round((filled / questions.length) * 100) : 0} aria-valuemin={0} aria-valuemax={100}>
-        <div className="h-full rounded-full bg-done transition-[width] duration-300" style={{ width: `${questions.length ? (filled / questions.length) * 100 : 0}%` }} />
-      </div>
-      <p className="mt-2.5 text-xs leading-[1.5] text-ink-3">{t("detail.formSub")}</p>
+    <section
+      className={bare ? "" : "sheet px-4 py-4 sm:px-5 sm:py-5"}
+      aria-label={t("detail.formH")}
+    >
+      {/* The disclosure around it already carries the name and the count; a
+          second copy of both was the first thing inside it. */}
+      {!bare && (
+        <>
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="label">{t("detail.formH")}</p>
+            <span className="num text-sm text-ink-3">{filled}/{questions.length}</span>
+          </div>
+          <div className="mt-3 h-1.5 rounded-full bg-sunk overflow-hidden" role="progressbar" aria-label={t("detail.formH")} aria-valuenow={questions.length ? Math.round((filled / questions.length) * 100) : 0} aria-valuemin={0} aria-valuemax={100}>
+            <div className="h-full rounded-full bg-done transition-[width] duration-300" style={{ width: `${questions.length ? (filled / questions.length) * 100 : 0}%` }} />
+          </div>
+        </>
+      )}
+      <p className={cn("text-xs leading-[1.5] text-ink-3", bare ? "" : "mt-2.5")}>{t("detail.formSub")}</p>
 
       {analysis && (
         <div className="mt-5 space-y-3.5 border-t border-rule pt-4">
@@ -2427,12 +2494,21 @@ function ChannelButton({ active, title, note, icon, onClick }: { active: boolean
 }
 
 /** A card on the web, a handset for the WhatsApp preview. */
-function Shell({ whatsapp, statusTime, label, children }: {
+function Shell({ whatsapp, statusTime, label, bare, children }: {
   whatsapp: boolean;
   statusTime: string;
   label: string;
+  /**
+   * No conversation furniture.
+   *
+   * On the one-question-at-a-time page the card *is* the page, and wrapping it
+   * in a second bordered panel with a contact header on top gave every question
+   * three nested boxes and a name badge for a chat nobody could see.
+   */
+  bare?: boolean;
   children: React.ReactNode;
 }) {
+  if (bare) return <div className="min-w-0">{children}</div>;
   const card = (
     <section
       className={cn(

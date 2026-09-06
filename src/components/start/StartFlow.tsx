@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -9,7 +9,7 @@ import { GuidedIntake } from "@/components/intake/GuidedIntake";
 import { DETAIL_QUESTIONS } from "@/lib/intake/details";
 import { emptyIntake } from "@/lib/intake/interview";
 import { draftFromStory } from "@/lib/intake/infer";
-import { saveBrowserIntakeDraft } from "@/lib/intake/persistence";
+import { loadBrowserIntakeDraft, saveBrowserIntakeDraft } from "@/lib/intake/persistence";
 import { clearStoredVaaniSession } from "@/lib/integrations/vaani-client";
 import { useI18n } from "@/lib/i18n/context";
 import type { IntakeAnalysis } from "@/lib/intake/interview";
@@ -45,6 +45,16 @@ export function StartFlow() {
    * which read as being handed to a second product halfway through a sentence.
    */
   const [started, setStarted] = useState(false);
+
+  /**
+   * Somebody coming back to a half-finished report picks up at the question,
+   * not at the box they already spoke into. Deferred rather than read during
+   * render, because the server has no localStorage and the two would disagree.
+   */
+  useEffect(() => {
+    const restored = loadBrowserIntakeDraft().draft;
+    if (restored?.analysis) queueMicrotask(() => setStarted(true));
+  }, []);
 
   const send = async () => {
     if (story.trim().length < 25 || busy) return;
