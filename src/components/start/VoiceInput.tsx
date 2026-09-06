@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n/context";
-import { readRecognition } from "@/lib/intake/recognition";
+import { appendPhrase, readRecognition } from "@/lib/intake/recognition";
 import { cn } from "@/lib/utils";
 
 /**
@@ -148,6 +148,15 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
    */
   const peakRef = useRef(0);
   const framesRef = useRef(0);
+  /**
+   * What the browser's own recogniser heard this take.
+   *
+   * It is a preview and a safety net, never the record. The record comes from
+   * the server model, which is markedly better at Indian languages and accents
+   * than Chrome's engine and is the same everywhere — but if that call fails or
+   * the audio is refused, handing back these words beats handing back nothing.
+   */
+  const previewRef = useRef("");
 
   const cleanup = useCallback((invalidate = true) => {
     if (invalidate) activityRef.current += 1;
@@ -229,8 +238,8 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
     tick();
   }, []);
 
-  const startRecording = useCallback(async (activity: number) => {
-    if (recorderRef.current?.state === "recording") return;
+  const startRecording = useCallback(async (activity: number): Promise<boolean> => {
+    if (recorderRef.current?.state === "recording") return true;
     peakRef.current = 0;
     framesRef.current = 0;
     try {
@@ -239,7 +248,7 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
         streamRef.current ?? (await navigator.mediaDevices.getUserMedia({ audio: true }));
       if (activityRef.current !== activity) {
         stream.getTracks().forEach((track) => track.stop());
-        return;
+        return false;
       }
       streamRef.current = stream;
       if (!audioCtxRef.current) meter(stream);
@@ -285,13 +294,30 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
           if (activityRef.current !== activity) return;
           if (data.text) {
             resultRef.current(data.text);
+            setInterim("");
+            previewRef.current = "";
+            setMode("idle");
+          } else if (previewRef.current) {
+            // The model heard nothing it would commit to, but the browser did.
+            // Its words are worse; they are not worth throwing away.
+            resultRef.current(previewRef.current);
+            setInterim("");
+            previewRef.current = "";
             setMode("idle");
           } else {
             // The call worked; there were just no words in it.
             setMode("nothing");
           }
         } catch {
-          if (activityRef.current === activity) setMode("unsupported");
+          if (activityRef.current !== activity) return;
+          if (previewRef.current) {
+            resultRef.current(previewRef.current);
+            setInterim("");
+            previewRef.current = "";
+            setMode("idle");
+          } else {
+            setMode("unsupported");
+          }
         } finally {
           if (transcriptionRequestRef.current) transcriptionRequestRef.current = null;
         }
@@ -299,18 +325,24 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
 
       rec.start();
       setMode("listening");
+      return true;
     } catch {
-      setMode("unsupported");
+      // No recorder here — no microphone, a refused permission, or a WebView
+      // without MediaRecorder. The caller decides what to fall back to.
+      return false;
     }
   }, [cleanup, lang.code, meter]);
 
-  const start = useCallback(async () => {
-    if (disabled) return;
-    const activity = ++activityRef.current;
-    setInterim("");
-    setMode((m) => (m === "nothing" ? "idle" : m));
-
-    // On a touch device, skip recognition entirely — see prefersRecorder.
+  /**
+   * Live words while the person is still speaking.
+   *
+   * Chrome's recogniser is fast and free and wrong often enough that it should
+   * not be the record — it drops words, and it has no support at all for
+   * several of the languages this ships in. It is perfect for the one job left
+   * to it: showing something on screen so nobody wonders whether the microphone
+   * is on. On a touch device it is skipped entirely; see prefersRecorder.
+   */
+  const startPreview = useCallback((recording: boolean) => {
     const rec = prefersRecorder() ? null : getRecognition();
     if (rec) {
       rec.lang = lang.speech;
@@ -320,67 +352,75 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
 
       rec.onresult = (e) => {
         const { settled, live } = readRecognition(e);
-        setInterim(live);
-        // Emitting on every finished phrase means a dropped connection
-        // mid-sentence still leaves the citizen with what they already said.
-        if (settled) resultRef.current(settled);
+        if (settled) previewRef.current = appendPhrase(previewRef.current, settled);
+        // Everything heard this take: the phrases the engine has settled on,
+        // plus the one it is still revising. None of it is committed while a
+        // recording is running, because the recording is what gets transcribed.
+        // With no recorder there is nothing better coming, so these words are
+        // the record and are handed over as they settle.
+        if (!recording && settled) {
+          resultRef.current(settled);
+          previewRef.current = "";
+          setInterim(live);
+          return;
+        }
+        setInterim(appendPhrase(previewRef.current, live));
       };
-      rec.onerror = (e) => {
-        // `no-speech` fires when someone pauses to think and `aborted` fires
-        // when they press stop. Neither is a failure, and starting a recorder
-        // on them used to reopen the mic after the user had closed it.
-        const kind = e?.error;
-        if (kind === "no-speech" || kind === "aborted") return;
-        rec.onresult = null;
-        rec.onerror = null;
-        rec.onend = null;
-        try {
-          if (rec.abort) rec.abort();
-          else rec.stop();
-        } catch { /* recognition has already ended */ }
-        recognitionRef.current = null;
-        if (activityRef.current === activity) void startRecording(activity);
-      };
+      // The preview failing costs live text and nothing else, because the
+      // recorder is running alongside it and holds the actual take.
+      rec.onerror = () => {};
       rec.onend = () => {
-        if (activityRef.current !== activity) return;
-        setInterim("");
-        setMode((m) => (m === "listening" ? "idle" : m));
+        // Without a recorder this is the end of the take, so the control has to
+        // stop saying it is listening.
+        if (!recording) setMode((m) => (m === "listening" ? "idle" : m));
       };
 
       try {
         rec.start();
-        // Still open the mic stream, purely to drive the level meter.
-        navigator.mediaDevices
-          ?.getUserMedia({ audio: true })
-          .then((s) => {
-            if (activityRef.current !== activity) {
-              s.getTracks().forEach((track) => track.stop());
-              return;
-            }
-            streamRef.current = s;
-            meter(s);
-          })
-          .catch(() => {});
-        setMode("listening");
-        return;
+        if (!recording) setMode("listening");
+        return true;
       } catch {
         recognitionRef.current = null;
       }
     }
+    return false;
+  }, [lang.speech]);
 
-    await startRecording(activity);
-  }, [disabled, lang.speech, meter, startRecording]);
+  const start = useCallback(async () => {
+    if (disabled) return;
+    const activity = ++activityRef.current;
+    setInterim("");
+    previewRef.current = "";
+    setMode((m) => (m === "nothing" ? "idle" : m));
+    // The recorder always runs: it is what produces the transcript. Recognition
+    // is started beside it, where it exists, purely so there is something on
+    // screen while somebody is still talking.
+    const recording = await startRecording(activity);
+    const previewing = startPreview(recording);
+    // Neither the recorder nor the recogniser would start: there is no way to
+    // hear this person, and the control should say so rather than sit there
+    // looking armed.
+    if (!recording && !previewing) setMode("unsupported");
+  }, [disabled, startPreview, startRecording]);
 
   const stop = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-      cleanup();
-      setMode("idle");
-      setInterim("");
+    // The preview goes quiet first, then the take is closed. Ending the
+    // recorder is what produces the transcript, so it is never skipped.
+    const rec = recognitionRef.current;
+    recognitionRef.current = null;
+    if (rec) {
+      rec.onresult = null;
+      rec.onerror = null;
+      rec.onend = null;
+      try { rec.stop(); } catch { /* already ended */ }
+    }
+    if (recorderRef.current?.state === "recording") {
+      recorderRef.current.stop();
       return;
     }
-    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+    cleanup();
+    setMode("idle");
+    setInterim("");
   }, [cleanup]);
 
   const listening = mode === "listening";
@@ -397,7 +437,7 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
       : mode === "nothing"
         ? t("start.voiceNothing")
         : busy
-          ? t("start.analysing")
+          ? t("start.transcribing")
           : null;
 
     return (
@@ -480,7 +520,7 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
           : mode === "nothing"
             ? t("start.voiceNothing")
             : busy
-            ? t("start.analysing")
+            ? t("start.transcribing")
             : listening
               ? t("start.micStop")
               : `${t("start.mic")} · ${t("start.micHint")} ${lang.endonym}`}
@@ -492,7 +532,10 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
         </p>
       )}
 
-      {interim && (
+      {/* Only when nobody else is showing it. A composer that takes `onInterim`
+          is already painting these words in its own field, and rendering them
+          here as well put the same half-sentence on screen twice. */}
+      {interim && !onInterim && (
         <p className="max-w-lg text-center text-[0.9375rem] text-ink-2 italic leading-snug">{interim}</p>
       )}
     </div>

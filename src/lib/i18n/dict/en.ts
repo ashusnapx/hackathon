@@ -235,6 +235,7 @@ export const en = {
   "start.ex4": "Someone made a fake Instagram account using my photos",
   "start.ex5": "An investment group on WhatsApp took my money and vanished",
   "start.submit": "Continue",
+  "start.transcribing": "Writing down what you said",
   "start.analysing": "Reading what you wrote",
   "start.analysing2": "Matching it to the official categories",
   "start.analysing3": "Preparing the actions that fit your answers",
