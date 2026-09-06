@@ -28,6 +28,34 @@ const validBody = {
   recordingConsent: true,
 };
 
+describe("switching live mode on", () => {
+  const base = {
+    VAANI_API_KEY: "key",
+    VAANI_AGENT_ID: "agent-1",
+    VAANI_REVIEWED_AGENT_ID: "agent-1",
+    VAANI_ALLOWED_TEST_NUMBERS: "+919876543210",
+  };
+  const blocked = (env: Record<string, string | undefined>) =>
+    getVaaniLiveConfiguration({ ...base, ...env } as NodeJS.ProcessEnv)
+      .problems.includes("live-mode-disabled");
+
+  it("accepts the instruction however it was typed into a dashboard", () => {
+    // A value pasted as "TRUE", or with the space a copy-paste leaves behind,
+    // used to read as "the operator did not enable this" — and the only symptom
+    // was a missing microphone in production.
+    for (const value of ["true", "TRUE", "True", " true", "true "]) {
+      expect(blocked({ VAANI_LIVE_ENABLED: value }), value).toBe(false);
+    }
+  });
+
+  it("stays shut for anything that is not a yes", () => {
+    // Fail-closed is the point: a typo must never open a line to a victim.
+    for (const value of [undefined, "", "false", "1", "yes", "tru", "on"]) {
+      expect(blocked({ VAANI_LIVE_ENABLED: value }), String(value)).toBe(true);
+    }
+  });
+});
+
 describe("Vaani fail-closed live configuration", () => {
   it("requires explicit enablement, credentials, reviewed agent match, and an allowlist", () => {
     const config = getVaaniLiveConfiguration({

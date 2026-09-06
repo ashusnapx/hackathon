@@ -59,9 +59,24 @@ export interface VaaniLiveConfiguration {
  * operator must deliberately enable live mode, bind the reviewed agent ID,
  * and enumerate every test destination in exact E.164 form.
  */
+/**
+ * Whether an operator has deliberately switched live mode on.
+ *
+ * Fail-closed stays fail-closed: absent, empty, "false" or anything else is
+ * off, so a typo can never open a line to a fraud victim. But it used to demand
+ * the exact string "true", which meant a value pasted into a hosting dashboard
+ * as "TRUE" — or with the trailing space a copy-paste leaves behind — read as
+ * "the operator did not enable this", and the only symptom was a missing
+ * microphone. Trimming and lowercasing costs nothing: "TRUE" is not an
+ * ambiguous instruction, it is the same instruction shouted.
+ */
+function isEnabled(value: string | undefined): boolean {
+  return value?.trim().toLowerCase() === "true";
+}
+
 export function getVaaniLiveConfiguration(env: Environment = process.env): VaaniLiveConfiguration {
   const problems: VaaniConfigProblem[] = [];
-  if (env.VAANI_LIVE_ENABLED !== "true") problems.push("live-mode-disabled");
+  if (!isEnabled(env.VAANI_LIVE_ENABLED)) problems.push("live-mode-disabled");
   if (!env.VAANI_API_KEY?.trim()) problems.push("missing-api-key");
   if (!env.VAANI_AGENT_ID?.trim()) problems.push("missing-agent-id");
   if (

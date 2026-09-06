@@ -28,7 +28,7 @@ import { isPublicPath, SIGN_IN_PATH } from "@/lib/auth/routes";
  * reason for every page to fail. It is not silent — `/api/health` reports auth
  * as off and the sign-in page says so in as many words.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const config = authConfig();
   if (!config || isPublicPath(request.nextUrl.pathname)) return NextResponse.next();
 
