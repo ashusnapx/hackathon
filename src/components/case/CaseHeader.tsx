@@ -44,7 +44,7 @@ export function CaseHeader({ caseFile: c, onDelete }: { caseFile: CaseFile; onDe
           <p className="label">{t("case.ref")}</p>
           <button
             onClick={copyRef}
-            className="group mt-1 flex items-center gap-2.5 text-start"
+            className="group mt-1 flex min-h-11 items-center gap-2.5 text-start"
             aria-label={t("case.copyRef")}
           >
             <span className="num text-2xl sm:text-3xl tracking-tight">{c.ref}</span>
@@ -88,7 +88,7 @@ export function CaseHeader({ caseFile: c, onDelete }: { caseFile: CaseFile; onDe
           <button
             type="button"
             onClick={() => { setConfirmingDelete(true); setDeleteError(false); }}
-            className="text-sm text-ink-3 underline underline-offset-4 hover:text-urgent"
+            className="inline-flex min-h-11 items-center text-sm text-ink-3 underline underline-offset-4 hover:text-urgent"
           >
             {t("case.delete")}
           </button>

@@ -14,6 +14,7 @@ import { CaseBuilder } from "@/components/case/CaseBuilder";
 import { Completeness } from "@/components/case/Completeness";
 import { Escalation } from "@/components/case/Escalation";
 import { Aftercare } from "@/components/case/Aftercare";
+import { CasePlanPhase as Phase, NextSteps, Folded } from "@/components/case/CasePlan";
 import { CaseHeader } from "@/components/case/CaseHeader";
 import { CallRecord } from "@/components/case/CallRecord";
 import { CaseEmail } from "@/components/case/CaseEmail";
@@ -146,7 +147,7 @@ function CaseScreen({ id }: { id: string }) {
             <p className="mt-1 text-sm leading-[1.55] text-ink-2">{t("case.sampleBody")}</p>
             <button
               onClick={() => setTab("call")}
-              className="mt-2 text-sm font-semibold underline underline-offset-4"
+              className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4"
             >
               {t("case.sampleListen")}
             </button>
@@ -190,18 +191,48 @@ function CaseScreen({ id }: { id: string }) {
         </nav>
 
         <div className="mt-8 space-y-8">
+          {/*
+            A plan, in the order it happens — not ten cards competing to be read
+            first. The clock stays at the top because it is the only thing on
+            the page that is running out; everything that is reference material
+            rather than an instruction is folded until it is wanted.
+          */}
           {tab === "overview" && (
             <>
               {isFinancial(caseFile) && incidentAt && <RecoveryWindow incidentAt={incidentAt} />}
-              <RbiProtectionCard caseFile={caseFile} />
-              <NextAction caseFile={caseFile} onGoToTracks={() => setTab("tracks")} />
-              <EvidenceOverviewCard caseFile={caseFile} onGoEvidence={() => setTab("evidence")} />
-              <Completeness caseFile={caseFile} />
-              <Escalation caseFile={caseFile} />
-              <Aftercare />
-              <CaseBuilder caseFile={caseFile} update={update} />
-              <CaseAccess caseFile={caseFile} />
-              <CaseEmail caseFile={caseFile} />
+
+              <Phase n={1} title={t("plan.now")}>
+                <NextAction caseFile={caseFile} onGoToTracks={() => setTab("tracks")} />
+              </Phase>
+
+              <Phase n={2} title={t("plan.next")} note={t("plan.nextNote")}>
+                <NextSteps caseFile={caseFile} onOpen={() => setTab("tracks")} />
+              </Phase>
+
+              <Phase n={3} title={t("plan.strengthen")} note={t("plan.strengthenNote")}>
+                <EvidenceOverviewCard caseFile={caseFile} onGoEvidence={() => setTab("evidence")} />
+                <Completeness caseFile={caseFile} />
+                <Folded title={t("plan.rights")}>
+                  <RbiProtectionCard caseFile={caseFile} />
+                </Folded>
+              </Phase>
+
+              <Phase n={4} title={t("plan.later")} note={t("plan.laterNote")}>
+                <Folded title={t("plan.escalation")}>
+                  <Escalation caseFile={caseFile} />
+                </Folded>
+                <Folded title={t("plan.aftercare")}>
+                  <Aftercare />
+                </Folded>
+              </Phase>
+
+              <div className="mt-7">
+                <Folded title={t("plan.manage")}>
+                  <CaseBuilder caseFile={caseFile} update={update} />
+                  <CaseAccess caseFile={caseFile} />
+                  <CaseEmail caseFile={caseFile} />
+                </Folded>
+              </div>
             </>
           )}
 
@@ -266,7 +297,7 @@ function EvidenceOverviewCard({ caseFile, onGoEvidence }: { caseFile: import("@/
         </p>
       )}
       <p className="mt-3 text-xs leading-snug text-ink-3">{t("ev.overviewDisclaimer")}</p>
-      <button onClick={onGoEvidence} className="mt-4 text-sm font-medium underline underline-offset-4 hover:text-ink">
+      <button onClick={onGoEvidence} className="mt-2 inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4 hover:text-ink">
         {t("ev.openVault")}
       </button>
     </section>

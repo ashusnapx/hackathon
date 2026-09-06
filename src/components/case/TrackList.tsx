@@ -227,7 +227,7 @@ function TrackRow({
           {def.source && (
             <div className="border-s-2 border-rule-strong ps-3 text-xs leading-relaxed text-ink-3">
               <p className="label">{t("track.source")}</p>
-              <a href={def.source.url} target="_blank" rel="noreferrer" className="mt-1 inline-block font-medium text-ink-2 underline underline-offset-4">
+              <a href={def.source.url} target="_blank" rel="noreferrer" className="mt-1 inline-flex min-h-11 items-center font-medium text-ink-2 underline underline-offset-4">
                 {def.source.title} ↗
               </a>
               <p className="mt-1 font-mono">

@@ -169,7 +169,7 @@ export function Escalation({ caseFile }: { caseFile: CaseFile }) {
 
         <p className="text-xs leading-relaxed text-ink-3">
           {t("esc.source")}{" "}
-          <a href={OFFICERS_SOURCE} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+          <a href={OFFICERS_SOURCE} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center underline underline-offset-2">
             mrm-ncrp.mha.gov.in
           </a>
           {!filedAnything && <> · {t("esc.fileFirst")}</>}
