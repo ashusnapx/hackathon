@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { authClient } from "@/lib/auth/browser";
-import { safeRedirect } from "@/lib/auth/routes";
+import { AUTH_CALLBACK_PATH, safeRedirect } from "@/lib/auth/routes";
 import { useT } from "@/lib/i18n/context";
 
 type Mode = "in" | "up";
@@ -32,7 +32,12 @@ export function SignInForm({ configured }: { configured: boolean }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // A confirmation link that did not work says so here rather than dumping
+  // somebody on an ordinary sign-in page wondering what happened to the email
+  // they just opened. Typing clears it, like any other error.
+  const [error, setError] = useState<string | null>(() =>
+    params.get("error") === "link" ? t("auth.linkFailed") : null,
+  );
   const [confirm, setConfirm] = useState(false);
 
   const next = safeRedirect(params.get("next"));
@@ -50,7 +55,19 @@ export function SignInForm({ configured }: { configured: boolean }) {
       const credentials = { email: email.trim(), password };
       const { data, error: failed } = mode === "in"
         ? await supabase.auth.signInWithPassword(credentials)
-        : await supabase.auth.signUp(credentials);
+        : await supabase.auth.signUp({
+            ...credentials,
+            options: {
+              // Without this, Supabase falls back to the project's Site URL —
+              // `http://localhost:3000` in a new project — and mails a fraud
+              // victim a link to a server on our laptop. Reading the origin off
+              // the browser means the link always points at wherever they
+              // actually signed up, deployment or preview or local.
+              emailRedirectTo:
+                `${window.location.origin}${AUTH_CALLBACK_PATH}` +
+                `?next=${encodeURIComponent(next)}`,
+            },
+          });
 
       if (failed) {
         // One sentence for every rejection the provider can give, so that this

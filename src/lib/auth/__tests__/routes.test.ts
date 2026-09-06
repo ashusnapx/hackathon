@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isPublicPath, normalisePath, safeRedirect, SIGN_IN_PATH } from "../routes";
+import { AUTH_CALLBACK_PATH, isPublicPath, normalisePath, safeRedirect, SIGN_IN_PATH } from "../routes";
 
 describe("what a signed-out stranger may reach", () => {
   it("lets them read the landing page, sign in, and see the sample case", () => {
@@ -17,6 +17,16 @@ describe("what a signed-out stranger may reach", () => {
 
   it("lets the provider's own webhook through, which has no session to present", () => {
     expect(isPublicPath("/api/vaani/webhook")).toBe(true);
+  });
+
+  it("lets a confirmation link land, since a session is what it is coming to collect", () => {
+    // Gating this is self-defeating: the gate would bounce somebody holding a
+    // valid one-time code to sign-in, where the code is worth nothing.
+    expect(isPublicPath(AUTH_CALLBACK_PATH)).toBe(true);
+    expect(isPublicPath("/auth/callback")).toBe(true);
+    // But only that one path. The prefix is not a hole.
+    expect(isPublicPath("/auth")).toBe(false);
+    expect(isPublicPath("/auth/callback/../../start")).toBe(false);
   });
 
   it("shuts everything else", () => {

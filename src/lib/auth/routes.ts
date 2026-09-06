@@ -20,12 +20,18 @@ import { DEMO_CASE_PATH } from "@/lib/demo/id";
  *    is rendered for signed-out readers too.
  *  - The provider's own webhook, which is called by Vaani's servers and has no
  *    session to present. It carries its own signature check.
+ *  - The confirmation-link handler, which is where somebody arrives *before*
+ *    they have a session. Gating it would bounce them to sign-in holding an
+ *    unredeemed code, which is the one place the gate would defeat itself.
  */
 export const SIGN_IN_PATH = "/signin";
+
+export const AUTH_CALLBACK_PATH = "/auth/callback";
 
 const PUBLIC_PATHS = new Set<string>([
   "/",
   SIGN_IN_PATH,
+  AUTH_CALLBACK_PATH,
   DEMO_CASE_PATH,
   "/api/health",
   "/api/vaani/webhook",
