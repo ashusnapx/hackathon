@@ -1,4 +1,5 @@
 import { findCategory } from "@/lib/case/categories";
+import { inr } from "@/lib/utils";
 import { properName } from "./name";
 import type { DictKey } from "@/lib/i18n/dict/en";
 import type { IncidentTiming, IntakeDraft } from "./interview";
@@ -367,6 +368,7 @@ export const DETAIL_QUESTIONS: DetailQuestion[] = [
     kind: "amount",
     applies: moneyGone,
     read: (draft) => draft.analysis?.triage.amount ? String(draft.analysis.triage.amount) : "",
+    format: (value) => inr(Number(value)),
     write: (value, draft) => {
       const analysis = draft.analysis;
       const amount = parseIndianAmount(value);

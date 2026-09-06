@@ -77,6 +77,7 @@ import {
   skipDetail,
   skipRemainingDetails,
   DETAIL_GROUPS,
+  DETAIL_QUESTIONS,
   type DetailKind,
   type DetailPhase,
   type DetailQuestion,
@@ -622,9 +623,20 @@ export function GuidedIntake({ lockChannel, onReset }: {
    * mark the question answered on the first letter typed and skip to the next
    * one. It is cleared whenever the question changes.
    */
-  const detail = step === "details"
-    ? nextDetail(draft)
-    : step === "name" ? NAME_QUESTION : undefined;
+  /**
+   * Going back.
+   *
+   * Every answer was final: a mistyped bank name, or an amount the model read
+   * out of the story wrongly, had nowhere to be corrected — and the amount in
+   * particular was never even asked, because it arrived already filled in. Any
+   * line in the case file can now be tapped, which reopens that question here
+   * with what is already there.
+   */
+  const [editing, setEditing] = useState<string | null>(null);
+  const detail = (editing ? DETAIL_QUESTIONS.find((q) => q.id === editing) : undefined)
+    ?? (step === "details"
+      ? nextDetail(draft)
+      : step === "name" ? NAME_QUESTION : undefined);
   // Keyed by the question it belongs to, so moving on empties the field without
   // an effect that reaches back into state after every render.
   const [statePicker, setStatePicker] = useState(false);
@@ -650,19 +662,29 @@ export function GuidedIntake({ lockChannel, onReset }: {
   }, []);
   const [typed, setTyped] = useState<{ id: string; value: string }>({ id: "", value: "" });
   const detailValue = detail && typed.id === detail.id ? typed.value : "";
-  const setDetailValue = useCallback((value: string) => {
-    setTyped({ id: nextDetail(draftRef.current)?.id ?? "", value });
+  // Keyed to whichever question is on screen — the next one in the run, or the
+  // one that was reopened to be corrected.
+  const setDetailValue = (value: string) => setTyped({ id: detail?.id ?? "", value });
+
+  const startEditing = useCallback((id: string) => {
+    const question = DETAIL_QUESTIONS.find((q) => q.id === id);
+    if (!question) return;
+    setEditing(id);
+    setTyped({ id, value: question.read(draftRef.current) });
   }, []);
 
   const saveDetail = useCallback(() => {
     if (!detail || !isDetailAnswer(detail, detailValue)) return;
     patch(answerDetail(draft, detail, detailValue));
+    setEditing(null);
   }, [detail, detailValue, draft, patch]);
 
   const passDetail = useCallback(() => {
     if (!detail) return;
+    // While correcting something, this is "leave it as it was".
+    if (editing) { setEditing(null); return; }
     patch(skipDetail(draft, detail.id));
-  }, [detail, draft, patch]);
+  }, [detail, draft, editing, patch]);
 
   const passAllDetails = useCallback(() => {
     patch(skipRemainingDetails(draft));
@@ -789,6 +811,7 @@ export function GuidedIntake({ lockChannel, onReset }: {
       passDetail={passDetail}
       passAllDetails={passAllDetails}
       openStatePicker={() => setStatePicker(true)}
+      editing={editing}
     />
   );
 
@@ -1115,7 +1138,7 @@ export function GuidedIntake({ lockChannel, onReset }: {
                 is still one tap away, because watching it fill is the reason
                 anybody answers the nineteenth. */}
             {!voiceOnly && (flashcards ? (
-              <AnsweredSoFar draft={draft} t={t} />
+              <AnsweredSoFar draft={draft} onEdit={startEditing} t={t} />
             ) : (
               <CaseForm
                 draft={draft}
@@ -1174,7 +1197,7 @@ function Frame({ lockChannel, children }: { lockChannel?: IntakeChannel; childre
 
 function StepControls({
   step, draft, patch, answer, t, busy, error, analyse, evidenceChoice, openCase,
-  detail, detailValue, setDetailValue, saveDetail, passDetail, passAllDetails, openStatePicker,
+  detail, detailValue, setDetailValue, saveDetail, passDetail, passAllDetails, openStatePicker, editing,
 }: {
   step: ReturnType<typeof nextIntakeStep>;
   draft: IntakeDraft;
@@ -1193,6 +1216,7 @@ function StepControls({
   passDetail: () => void;
   passAllDetails: () => void;
   openStatePicker: () => void;
+  editing?: string | null;
 }) {
   // WhatsApp draws every one of these as the bot's own reply buttons; the
   // browser chat draws chips and cards. The wording and the effect are shared.
@@ -1558,7 +1582,7 @@ function StepControls({
     );
   }
 
-  if ((step === "details" || step === "name") && detail) {
+  if (detail && (step === "details" || step === "name" || editing)) {
     const progress = detailProgress(draft);
     const ready = isDetailAnswer(detail, detailValue);
     const dictatable = detail.kind !== "datetime";
@@ -1589,7 +1613,7 @@ function StepControls({
       <ActionCard>
         {/* A meter and a count, so a question does not feel like the first of
             an unknown number of them. */}
-        {step !== "name" && asked > 0 && (
+        {!editing && step !== "name" && asked > 0 && (
           <>
             <div className="flex items-baseline justify-between gap-3">
               <p className="label">
@@ -1616,7 +1640,10 @@ function StepControls({
           </>
         )}
 
-        {justNamed && (
+        {editing && (
+          <p className="label !text-info">{t("detail.correcting")}</p>
+        )}
+        {justNamed && !editing && (
           <p className="mt-4 text-[0.9375rem] font-medium text-done">
             {t("intake.thankYou")}, {firstName(draft.callerName ?? "")}.
           </p>
@@ -1660,7 +1687,7 @@ function StepControls({
         </div>
 
         <Button onClick={saveDetail} disabled={!ready} size="lg" className="mt-4" full>
-          {t("detail.next")}
+          {editing ? t("detail.saveChange") : t("detail.next")}
         </Button>
 
         {/* Passing is a choice, not an equal option: it stays available and
@@ -1671,9 +1698,9 @@ function StepControls({
             onClick={passDetail}
             className="inline-flex min-h-11 items-center text-sm text-ink-3 underline underline-offset-4 hover:text-ink"
           >
-            {t("detail.skip")}
+            {editing ? t("g.cancel") : t("detail.skip")}
           </button>
-          {progress.remaining > 1 && (
+          {!editing && progress.remaining > 1 && (
             <button
               type="button"
               onClick={passAllDetails}
@@ -1954,7 +1981,12 @@ function FormCell({ value, onCommit, label, kind, placeholder }: {
  * a job for the case file at the end, where there is room for it, rather than a
  * second editable copy of the interview competing with the question on screen.
  */
-function AnsweredSoFar({ draft, t }: { draft: IntakeDraft; t: T }) {
+function AnsweredSoFar({ draft, onEdit, t }: {
+  draft: IntakeDraft;
+  /** Reopens a question with what is already in it. */
+  onEdit: (id: string) => void;
+  t: T;
+}) {
   const questions = detailsForCase(draft);
   const answered = questions
     .map((question) => ({ question, value: question.read(draft) }))
@@ -1988,6 +2020,8 @@ function AnsweredSoFar({ draft, t }: { draft: IntakeDraft; t: T }) {
             key={question.id}
             label={t(question.label)}
             value={question.format ? question.format(value) : value}
+            onEdit={() => onEdit(question.id)}
+            editLabel={t("detail.change")}
           />
         ))}
       </dl>
@@ -1999,12 +2033,46 @@ function AnsweredSoFar({ draft, t }: { draft: IntakeDraft; t: T }) {
   );
 }
 
-/** One fact, stacked on a narrow screen so nothing is squeezed into a ribbon. */
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="py-2.5 flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+/**
+ * One fact, and the way back to the question that produced it.
+ *
+ * The whole row is the target rather than a small pencil at the end of it: on a
+ * phone the row is the only thing big enough to hit without aiming, and this is
+ * the only route back to an answer — including the amount, which the model
+ * filled in from the story and was therefore never asked at all.
+ */
+function Fact({ label, value, onEdit, editLabel }: {
+  label: string;
+  value: string;
+  onEdit?: () => void;
+  editLabel?: string;
+}) {
+  const body = (
+    <>
       <dt className="text-sm text-ink-3 shrink-0">{label}</dt>
       <dd className="text-[0.9375rem] min-w-0 break-words sm:text-end">{value}</dd>
+    </>
+  );
+  if (!onEdit) {
+    return (
+      <div className="py-2.5 flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+        {body}
+      </div>
+    );
+  }
+  return (
+    <div className="group">
+      <button
+        type="button"
+        onClick={onEdit}
+        aria-label={`${editLabel}: ${label}`}
+        className="w-full min-h-11 py-2.5 flex flex-col gap-0.5 text-start sm:flex-row sm:items-baseline sm:justify-between sm:gap-4"
+      >
+        {body}
+        <span className="shrink-0 text-xs text-ink-3 underline underline-offset-4 sm:ms-2">
+          {editLabel}
+        </span>
+      </button>
     </div>
   );
 }
