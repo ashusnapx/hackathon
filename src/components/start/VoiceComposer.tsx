@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { VoiceInput } from "@/components/start/VoiceInput";
 import { useT } from "@/lib/i18n/context";
+import { appendPhrase } from "@/lib/intake/recognition";
 import { cn } from "@/lib/utils";
 
 /**
@@ -44,7 +45,7 @@ export function VoiceComposer({
 
   const append = (chunk: string) => {
     setInterim("");
-    onChange([value.trim(), chunk.trim()].filter(Boolean).join(" "));
+    onChange(appendPhrase(value, chunk));
   };
 
   return (
@@ -73,27 +74,35 @@ export function VoiceComposer({
               </span>
             )}
           </label>
-          <textarea
-            id="story"
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-            rows={5}
-            disabled={busy}
-            placeholder={t("compose.placeholder")}
-            /* 16px minimum, or iOS Safari zooms the page when it is focused. */
+          {/* One field to look at. The words still being spoken sit directly
+              under the committed ones inside the same box, greyed, so it reads
+              as text arriving rather than as a second widget — but they stay
+              visually separate, so nobody watches their own sentence rewrite
+              itself and assumes the app lost it. */}
+          <div
             className={cn(
-              "mt-1.5 w-full min-h-[7.5rem] rounded-ctl border bg-raised px-3 py-2.5",
-              "text-base leading-[1.6] resize-y focus:outline-none focus:border-ink",
-              "placeholder:text-ink-3/70 disabled:opacity-60",
-              listening ? "border-urgent/50" : "border-rule-strong",
+              "mt-1.5 rounded-ctl border bg-raised transition-colors",
+              listening ? "border-urgent/60" : "border-rule-strong focus-within:border-ink",
             )}
-          />
-          {/* The engine's guess so far, kept visibly separate from what has
-              been committed, so nobody watches their own words rewrite
-              themselves and assumes the app lost them. */}
-          <p aria-live="polite" className="mt-1.5 min-h-[1.25rem] text-sm italic leading-snug text-ink-3">
-            {interim}
-          </p>
+          >
+            <textarea
+              id="story"
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              rows={5}
+              disabled={busy}
+              placeholder={t("compose.placeholder")}
+              /* 16px minimum, or iOS Safari zooms the page when it is focused. */
+              className={cn(
+                "block w-full min-h-[7.5rem] bg-transparent px-3 pt-2.5 pb-1",
+                "text-base leading-[1.6] resize-y focus:outline-none",
+                "placeholder:text-ink-3/70 disabled:opacity-60",
+              )}
+            />
+            <p aria-live="polite" className="px-3 pb-2.5 min-h-[1.5rem] text-base leading-[1.6] text-ink-3">
+              {interim}
+            </p>
+          </div>
         </div>
       </div>
 

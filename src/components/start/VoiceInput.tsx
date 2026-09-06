@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n/context";
+import { readRecognition } from "@/lib/intake/recognition";
 import { cn } from "@/lib/utils";
 
 /**
@@ -54,7 +55,7 @@ interface SpeechRecognitionLike extends EventTarget {
   start(): void;
   stop(): void;
   abort?(): void;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null;
+  onresult: ((e: { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null;
   onerror: ((e: { error?: string }) => void) | null;
   onend: (() => void) | null;
 }
@@ -191,6 +192,10 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
   useEffect(() => { interimRef.current = onInterim; }, [onInterim]);
   useEffect(() => { interimRef.current?.(interim); }, [interim]);
 
+  // Bound once when the session opens, called for the length of it.
+  const resultRef = useRef(onResult);
+  useEffect(() => { resultRef.current = onResult; }, [onResult]);
+
   useEffect(() => {
     if (!controller) return;
     const ref = controller;
@@ -279,7 +284,7 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
           const data = await res.json();
           if (activityRef.current !== activity) return;
           if (data.text) {
-            onResult(data.text);
+            resultRef.current(data.text);
             setMode("idle");
           } else {
             // The call worked; there were just no words in it.
@@ -297,7 +302,7 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
     } catch {
       setMode("unsupported");
     }
-  }, [cleanup, lang.code, meter, onResult]);
+  }, [cleanup, lang.code, meter]);
 
   const start = useCallback(async () => {
     if (disabled) return;
@@ -313,21 +318,12 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
       rec.interimResults = true;
       recognitionRef.current = rec;
 
-      let finalText = "";
       rec.onresult = (e) => {
-        let live = "";
-        for (let i = 0; i < e.results.length; i++) {
-          const alt = e.results[i][0];
-          if (e.results[i].isFinal) finalText += alt.transcript + " ";
-          else live += alt.transcript;
-        }
+        const { settled, live } = readRecognition(e);
         setInterim(live);
-        // Emitting on every final phrase means a dropped connection mid-sentence
-        // still leaves the citizen with what they already said.
-        if (finalText.trim()) {
-          onResult(finalText.trim());
-          finalText = "";
-        }
+        // Emitting on every finished phrase means a dropped connection
+        // mid-sentence still leaves the citizen with what they already said.
+        if (settled) resultRef.current(settled);
       };
       rec.onerror = (e) => {
         // `no-speech` fires when someone pauses to think and `aborted` fires
@@ -373,7 +369,7 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
     }
 
     await startRecording(activity);
-  }, [disabled, lang.speech, meter, onResult, startRecording]);
+  }, [disabled, lang.speech, meter, startRecording]);
 
   const stop = useCallback(() => {
     if (recognitionRef.current) {
