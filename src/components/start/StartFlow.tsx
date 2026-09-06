@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/Button";
 import { SiteHeader } from "@/components/SiteHeader";
 import { VoiceComposer } from "@/components/start/VoiceComposer";
+import { GuidedIntake } from "@/components/intake/GuidedIntake";
+import { DETAIL_QUESTIONS } from "@/lib/intake/details";
 import { emptyIntake } from "@/lib/intake/interview";
 import { draftFromStory } from "@/lib/intake/infer";
 import { saveBrowserIntakeDraft } from "@/lib/intake/persistence";
@@ -34,10 +35,16 @@ import type { IntakeAnalysis } from "@/lib/intake/interview";
  */
 export function StartFlow() {
   const { t, lang } = useI18n();
-  const router = useRouter();
   const [story, setStory] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Once the story is understood the interview carries on here, on this page,
+   * in the same column and under the same header. It used to navigate to a
+   * different route with a different layout — a wide two-column workbench —
+   * which read as being handed to a second product halfway through a sentence.
+   */
+  const [started, setStarted] = useState(false);
 
   const send = async () => {
     if (story.trim().length < 25 || busy) return;
@@ -50,17 +57,39 @@ export function StartFlow() {
         body: JSON.stringify({ text: story.trim(), lang: lang.code }),
       });
       if (!response.ok) throw new Error("triage-failed");
-      const analysis = await response.json() as IntakeAnalysis;
+      const payload = await response.json() as IntakeAnalysis & { callerName?: string; bankName?: string };
+      const { callerName, bankName, ...analysis } = payload;
       // Nothing of the last report comes with them: not the narrative, not the
       // extracted facts, and not the receipt for a previous voice call.
-      saveBrowserIntakeDraft({ ...emptyIntake("web"), ...draftFromStory(story, analysis) });
+      saveBrowserIntakeDraft({
+        ...emptyIntake("web"),
+        ...draftFromStory(story, analysis, new Date(), { callerName, bankName }),
+      });
       clearStoredVaaniSession();
-      router.push("/assist");
+      setStarted(true);
     } catch {
       setError(t("start.error"));
       setBusy(false);
     }
   };
+
+  const prompts = ["name", "bankName", "amount", "incidentAt", "utr", "suspectPhone"]
+    .map((id) => DETAIL_QUESTIONS.find((question) => question.id === id))
+    .filter((question) => question !== undefined)
+    .map((question) => t(question.label));
+
+  if (started) {
+    return (
+      <>
+        <SiteHeader width="2xl" />
+        <main id="main" className="px-5 sm:px-8 py-6 sm:py-10 flex items-start justify-center">
+          <div className="w-full max-w-xl">
+            <GuidedIntake lockChannel="web" />
+          </div>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
@@ -77,6 +106,7 @@ export function StartFlow() {
               onSubmit={send}
               submitLabel={t("begin.storyCta")}
               busy={busy}
+              prompts={prompts}
             />
           </div>
 

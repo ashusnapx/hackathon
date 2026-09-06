@@ -825,9 +825,10 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
         <div className={cn(
           "grid gap-6 lg:items-start",
           lockChannel ? "mt-0" : "mt-7",
-          lockChannel ? "max-w-xl mx-auto"
-            : voiceOnly ? "lg:grid-cols-[minmax(0,1fr)_19rem]"
-              : "lg:grid-cols-2",
+          lockChannel === "web" ? "max-w-xl mx-auto"
+            : lockChannel ? "max-w-xl mx-auto"
+              : voiceOnly ? "lg:grid-cols-[minmax(0,1fr)_19rem]"
+                : "lg:grid-cols-2",
         )}>
           {voiceOnly ? (
             <VaaniPanel
@@ -1013,8 +1014,13 @@ export function GuidedIntake({ lockChannel }: { lockChannel?: IntakeChannel } = 
           </Shell>
           )}
 
-          {!lockChannel && (
-          <aside className="no-scrollbar lg:sticky lg:top-28 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto space-y-4 lg:pb-4">
+          {(!lockChannel || lockChannel === "web") && (
+          <aside className={cn(
+            "no-scrollbar space-y-4",
+            lockChannel
+              ? ""
+              : "lg:sticky lg:top-28 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:pb-4",
+          )}>
             {!voiceOnly && (
               <CaseForm
                 draft={draft}

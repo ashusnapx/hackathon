@@ -979,7 +979,9 @@ export const en = {
   "begin.safeSummary": "Is this safe? Other ways to report",
   "compose.heading": "What you have said",
   "compose.listening": "Listening",
+  "compose.listeningEmpty": "Go ahead — we are listening.",
   "compose.placeholder": "Tap the microphone, or type here.",
+  "compose.promptsH": "Say as much of this as you can remember — it saves us asking:",
   "compose.hint": "Say it in as many goes as you like. You can fix anything here.",
   // Three ways in, named by what the person does rather than by our plumbing.
   "choose.h": "How would you like to tell us?",

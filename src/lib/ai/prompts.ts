@@ -35,7 +35,10 @@ Also:
 export const TRIAGE_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["categoryId", "subcategoryId", "confidence", "amount", "incidentAt", "rationale", "englishNarrative", "urgency"],
+  required: [
+    "categoryId", "subcategoryId", "confidence", "amount", "incidentAt",
+    "rationale", "englishNarrative", "urgency", "callerName", "bankName",
+  ],
   properties: {
     categoryId: { type: "string" },
     subcategoryId: { type: "string" },
@@ -45,6 +48,17 @@ export const TRIAGE_SCHEMA = {
     rationale: { type: "string", description: "One short sentence, addressed to the citizen, on why this category." },
     englishNarrative: { type: "string" },
     urgency: { type: "string", enum: ["critical", "high", "moderate"] },
+    // Two facts the interview would otherwise ask for one at a time. People
+    // routinely open with "I am Meera and ICICI took 47,500 from my account";
+    // asking them again afterwards is the app admitting it was not listening.
+    callerName: {
+      type: ["string", "null"],
+      description: "The speaker's own name, only if they state it. Never a fraudster's name, never a guess.",
+    },
+    bankName: {
+      type: ["string", "null"],
+      description: "The bank, wallet or payment app the money left, only if named. Not the beneficiary's bank.",
+    },
   },
 } as const;
 

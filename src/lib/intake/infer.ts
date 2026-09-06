@@ -91,6 +91,8 @@ export function draftFromStory(
   narrative: string,
   analysis: IntakeAnalysis,
   now = new Date(),
+  /** Facts the person stated outright, which must not be asked for again. */
+  said: { callerName?: string; bankName?: string } = {},
 ): Partial<IntakeDraft> {
   const safety = safetyFromAnalysis(analysis);
   const childContext = childFromAnalysis(analysis);
@@ -108,5 +110,7 @@ export function draftFromStory(
     childSafetyAcknowledged: childContext === "adult-or-no-child" ? false : undefined,
     moneyMoved: moneyFromAnalysis(analysis),
     incidentTiming: timingFromIncident(analysis.triage.incidentAt, now.getTime()),
+    callerName: said.callerName?.trim() || undefined,
+    bankName: said.bankName?.trim() || undefined,
   };
 }

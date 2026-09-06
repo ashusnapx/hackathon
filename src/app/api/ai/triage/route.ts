@@ -17,6 +17,14 @@ interface ModelTriage {
   amount: number | null; incidentAt: string | null;
   rationale: string; englishNarrative: string;
   urgency: "critical" | "high" | "moderate";
+  callerName: string | null; bankName: string | null;
+}
+
+/** A model that has nothing to say here returns null, "", or the word unknown. */
+function clean(value: string | null | undefined): string | undefined {
+  const text = value?.trim();
+  if (!text || text.length > 120) return undefined;
+  return /^(unknown|n\/a|none|not stated|not mentioned)$/i.test(text) ? undefined : text;
 }
 
 export async function POST(req: Request) {
@@ -85,5 +93,12 @@ ${JSON.stringify(entities)}`,
     source = "rules";
   }
 
-  return NextResponse.json({ triage, entities, source });
+  // Handed back beside the triage rather than inside it: they are facts about
+  // the person, not a classification of the fraud, and the interview uses them
+  // only to stop asking for what it has already been told.
+  const said = model && source === "openai"
+    ? { callerName: clean(model.callerName), bankName: clean(model.bankName) }
+    : {};
+
+  return NextResponse.json({ triage, entities, source, ...said });
 }

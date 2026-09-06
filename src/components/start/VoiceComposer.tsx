@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { VoiceInput } from "@/components/start/VoiceInput";
@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
  * pretending to stream.
  */
 export function VoiceComposer({
-  value, onChange, onSubmit, submitLabel, busy, disabled, minLength = 25,
+  value, onChange, onSubmit, submitLabel, busy, disabled, minLength = 25, prompts,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -36,11 +36,27 @@ export function VoiceComposer({
   disabled?: boolean;
   /** Below this, the story is too thin to route and the button waits. */
   minLength?: number;
+  /**
+   * What is worth mentioning, shown before anybody speaks.
+   *
+   * Every one of these is a question the interview would otherwise put
+   * afterwards, one at a time. Somebody who can see the list can answer six of
+   * them in a single breath — and each one they cover is one the conversation
+   * then knows not to ask.
+   */
+  prompts?: string[];
 }) {
   const t = useT();
   const [interim, setInterim] = useState("");
   const [mode, setMode] = useState<string>("idle");
   const listening = mode === "listening";
+  const flowRef = useRef<HTMLDivElement>(null);
+
+  // Follow the words down as they arrive, the way a chat follows a message.
+  useEffect(() => {
+    const el = flowRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [value, interim]);
   const ready = value.trim().length >= minLength && !busy && !disabled;
 
   const append = (chunk: string) => {
@@ -74,37 +90,80 @@ export function VoiceComposer({
               </span>
             )}
           </label>
-          {/* One field to look at. The words still being spoken sit directly
-              under the committed ones inside the same box, greyed, so it reads
-              as text arriving rather than as a second widget — but they stay
-              visually separate, so nobody watches their own sentence rewrite
-              itself and assumes the app lost it. */}
+          {/*
+            One field, one height, one flow.
+            
+            It used to be a growing textarea with the live words in a second
+            block underneath: the box got taller with every sentence and pushed
+            the whole page down while somebody was mid-thought, and the two
+            blocks read as two different things happening at once.
+            
+            The height is now fixed and the text scrolls inside it, so nothing
+            below ever moves. While the microphone is open the box shows one
+            continuous paragraph — what has been committed, then the words still
+            being revised in grey — because that is what a person is actually
+            saying: one sentence, some of which we are sure of. The moment they
+            stop it becomes an ordinary editable field again, on the same spot,
+            at the same size.
+          */}
           <div
             className={cn(
-              "mt-1.5 rounded-ctl border bg-raised transition-colors",
+              "mt-1.5 h-44 rounded-ctl border bg-raised transition-colors",
               listening ? "border-urgent/60" : "border-rule-strong focus-within:border-ink",
             )}
           >
-            <textarea
-              id="story"
-              value={value}
-              onChange={(event) => onChange(event.target.value)}
-              rows={5}
-              disabled={busy}
-              placeholder={t("compose.placeholder")}
-              /* 16px minimum, or iOS Safari zooms the page when it is focused. */
-              className={cn(
-                "block w-full min-h-[7.5rem] bg-transparent px-3 pt-2.5 pb-1",
-                "text-base leading-[1.6] resize-y focus:outline-none",
-                "placeholder:text-ink-3/70 disabled:opacity-60",
-              )}
-            />
-            <p aria-live="polite" className="px-3 pb-2.5 min-h-[1.5rem] text-base leading-[1.6] text-ink-3">
-              {interim}
-            </p>
+            {listening ? (
+              <div
+                ref={flowRef}
+                aria-live="polite"
+                className="h-full overflow-y-auto no-scrollbar px-3 py-2.5 text-base leading-[1.6]"
+              >
+                {value || interim ? (
+                  <p className="whitespace-pre-wrap">
+                    {value}
+                    {value && interim ? " " : ""}
+                    <span className="text-ink-3">{interim}</span>
+                  </p>
+                ) : (
+                  <p className="text-ink-3/70">{t("compose.listeningEmpty")}</p>
+                )}
+              </div>
+            ) : (
+              <textarea
+                id="story"
+                value={value}
+                onChange={(event) => onChange(event.target.value)}
+                disabled={busy}
+                placeholder={t("compose.placeholder")}
+                /* 16px minimum, or iOS Safari zooms the page when it is focused.
+                   resize-none: dragging this taller moved everything under it,
+                   which is the problem this whole block exists to stop. */
+                className={cn(
+                  "block h-full w-full resize-none bg-transparent px-3 py-2.5",
+                  "text-base leading-[1.6] focus:outline-none no-scrollbar",
+                  "placeholder:text-ink-3/70 disabled:opacity-60",
+                )}
+              />
+            )}
           </div>
         </div>
       </div>
+
+      {prompts && prompts.length > 0 && (
+        <div className="mt-3 border-t border-rule pt-3">
+          <p className="text-xs text-ink-3">{t("compose.promptsH")}</p>
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {prompts.map((prompt) => (
+              <li
+                key={prompt}
+                className="rounded-full border border-rule bg-sunk px-2.5 py-1 text-xs text-ink-2"
+              >
+                {prompt}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="mt-2 flex items-center gap-3 border-t border-rule pt-3">
         <p className="flex-1 min-w-0 text-xs leading-[1.4] text-ink-3">{t("compose.hint")}</p>
