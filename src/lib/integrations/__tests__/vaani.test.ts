@@ -11,6 +11,7 @@ import {
   issueVaaniTranscriptToken,
   readSmallJson,
   readVaaniTranscriptToken,
+  requestFromSameOrigin,
   requestHasSameOrigin,
   reserveVaaniDispatch,
   resetVaaniPrototypeStateForTests,
@@ -125,6 +126,34 @@ describe("Vaani dispatch validation", () => {
       headers: { Origin: "https://evil.test" },
     }))).toBe(false);
     expect(requestHasSameOrigin(new Request("https://kavach.test/api/vaani/dispatch"))).toBe(false);
+  });
+
+  it("admits media-element loads that carry no Origin header", () => {
+    const url = "https://kavach.test/api/vaani/recording?token=x.y";
+    // An <audio> tag sends no Origin: the same-origin Referer it does send is
+    // what admits the caller's own page.
+    expect(requestFromSameOrigin(new Request(url, {
+      headers: { Referer: "https://kavach.test/case/KVC-AAAA-BBBB" },
+    }))).toBe(true);
+    // A fetch with a matching Origin still passes, as before.
+    expect(requestFromSameOrigin(new Request(url, {
+      headers: { Origin: "https://kavach.test" },
+    }))).toBe(true);
+    // Another site's page is refused on every signal.
+    expect(requestFromSameOrigin(new Request(url, {
+      headers: { Referer: "https://evil.test/lure" },
+    }))).toBe(false);
+    expect(requestFromSameOrigin(new Request(url, {
+      headers: { Origin: "https://evil.test" },
+    }))).toBe(false);
+    // With no Referer at all, only the browser's own fetch metadata admits.
+    expect(requestFromSameOrigin(new Request(url, {
+      headers: { "Sec-Fetch-Site": "same-origin" },
+    }))).toBe(true);
+    expect(requestFromSameOrigin(new Request(url, {
+      headers: { "Sec-Fetch-Site": "cross-site" },
+    }))).toBe(false);
+    expect(requestFromSameOrigin(new Request(url))).toBe(false);
   });
 
   it("bounds and parses JSON bodies", async () => {

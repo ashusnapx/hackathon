@@ -38,6 +38,10 @@ export function CallRecord({ caseFile, transcriptToken, onApply }: {
   const [transcript, setTranscript] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "pending" | "ready" | "error">("idle");
+  // A player handed an error page instead of audio fails silently, so a failed
+  // load is surfaced with the reason and a retry rather than a dead control.
+  const [audioError, setAudioError] = useState<null | "not-ready" | "expired" | "generic">(null);
+  const [audioAttempt, setAudioAttempt] = useState(0);
 
   useEffect(() => {
     // The case carries its own capability, so an older case never borrows the
@@ -86,6 +90,28 @@ export function CallRecord({ caseFile, transcriptToken, onApply }: {
   }, [demo, token]);
 
   useEffect(() => { queueMicrotask(() => { void load(); }); }, [load]);
+
+  /**
+   * The player reports failure without the reason, so ask for the first byte
+   * and read the status: an expired capability, a recording still processing,
+   * and a genuine outage each get their own words below the player.
+   */
+  const diagnoseAudio = useCallback(async (src: string) => {
+    try {
+      const probe = await fetch(src, { headers: { Range: "bytes=0-0" } });
+      await probe.body?.cancel().catch(() => undefined);
+      if (probe.status === 401) setAudioError("expired");
+      else if (probe.status === 425) setAudioError("not-ready");
+      else setAudioError("generic");
+    } catch {
+      setAudioError("generic");
+    }
+  }, []);
+
+  const retryAudio = useCallback(() => {
+    setAudioError(null);
+    setAudioAttempt((attempt) => attempt + 1);
+  }, []);
 
   // What the agent captured, measured against the case as it stands now.
   const backfill = useMemo(
@@ -137,13 +163,30 @@ export function CallRecord({ caseFile, transcriptToken, onApply }: {
           {t(demo ? "call.recordingDemo" : "call.recordingConsent")}
         </p>
         <audio
+          key={`${audioAttempt}:${shown.audio}`}
           controls
           preload="none"
           src={shown.audio}
           className="mt-2 w-full"
+          onError={() => {
+            setAudioError("generic");
+            if (!demo) void diagnoseAudio(shown.audio);
+          }}
         >
           {t("call.recordingNone")}
         </audio>
+        {audioError && (
+          <div className="mt-2 rounded-ctl border border-rule bg-raised px-3 py-3">
+            <p role="alert" className="text-sm leading-[1.55] text-ink-2">
+              {t(audioError === "not-ready"
+                ? "call.audioNotReady"
+                : audioError === "expired" ? "call.audioExpired" : "call.audioFailed")}
+            </p>
+            <Button onClick={retryAudio} size="sm" variant="secondary" className="mt-2">
+              {t("call.audioRetry")}
+            </Button>
+          </div>
+        )}
       </section>
 
       <section className="mt-5">

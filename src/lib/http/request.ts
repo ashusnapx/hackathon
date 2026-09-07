@@ -19,6 +19,31 @@ export function requestHasSameOrigin(req: Request): boolean {
   }
 }
 
+/**
+ * Same-origin check for requests a media element makes, not `fetch`.
+ *
+ * An `<audio>` or `<video>` tag loads with a plain no-CORS GET, and browsers
+ * send no `Origin` header on those — so `requestHasSameOrigin` rejects every
+ * playback of the call recording with a 403 the player swallows silently. The
+ * `Referer` the element does send is checked the same way, with the browser's
+ * own fetch metadata as the last resort. None of this is forgeable
+ * cross-origin from a real browser: `Sec-Fetch-Site` is a forbidden header,
+ * and the recording route still requires the session-bound capability token,
+ * so this admits exactly the caller's own page, not another site.
+ */
+export function requestFromSameOrigin(req: Request): boolean {
+  if (requestHasSameOrigin(req)) return true;
+  const referer = req.headers.get("referer");
+  if (referer) {
+    try {
+      return new URL(referer).origin === new URL(req.url).origin;
+    } catch {
+      return false;
+    }
+  }
+  return req.headers.get("sec-fetch-site") === "same-origin";
+}
+
 export type SmallJsonResult =
   | { ok: true; value: unknown }
   | { ok: false; error: "unsupported-media-type" | "body-too-large" | "invalid-json" };

@@ -159,7 +159,7 @@ export function validateVaaniDispatchBody(
 
 // Shared with every other route that accepts a body, and kept re-exported here
 // so the Vaani modules that have always imported them from this file still can.
-export { requestHasSameOrigin, readSmallJson, type SmallJsonResult } from "@/lib/http/request";
+export { requestHasSameOrigin, requestFromSameOrigin, readSmallJson, type SmallJsonResult } from "@/lib/http/request";
 
 /**
  * Capabilities are signed, not stored.
@@ -913,9 +913,16 @@ export function consumeVaaniWebSessionBudget(
  * key stays server-side, and only for a call whose capability the browser holds.
  * A recording exists only where the caller consented to one.
  */
-export async function getVaaniRecordingStream(callId: string): Promise<Response> {
+export async function getVaaniRecordingStream(callId: string, range?: string | null): Promise<Response> {
   if (!CALL_ID_PATTERN.test(callId)) throw new VaaniProviderError("provider-response-invalid");
-  const response = await vaaniFetch(`/stream/${encodeURIComponent(callId)}`, { method: "GET" }, 30_000);
+  // Media elements page through audio with `Range: bytes=0-` rather than
+  // downloading it whole. Forwarding the range is what lets the player start
+  // promptly and seek; a provider that ignores ranges answers 200 and the
+  // proxy relays that unchanged.
+  const response = await vaaniFetch(`/stream/${encodeURIComponent(callId)}`, {
+    method: "GET",
+    ...(range ? { headers: { Range: range } } : {}),
+  }, 30_000);
   if (response.status === 404) throw new VaaniProviderError("transcript-not-ready", 404);
   assertProviderOk(response);
   return response;
