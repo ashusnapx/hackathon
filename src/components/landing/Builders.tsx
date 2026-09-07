@@ -44,7 +44,10 @@ const PEOPLE: Person[] = [
     // Shot indoors under warm light, so it needs lifting to sit beside the
     // other. Tuned against the dark footer, where both portraits now sit.
     lift: 1.16,
-    links: [{ name: "github", href: "https://github.com/ktripathi2281", label: "GitHub" }],
+    links: [
+      { name: "github", href: "https://github.com/ktripathi2281", label: "GitHub" },
+      { name: "linkedin", href: "https://www.linkedin.com/in/kaustubh-tripathi", label: "LinkedIn" },
+    ],
   },
 ];
 
