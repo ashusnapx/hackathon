@@ -45,6 +45,9 @@ const PUBLIC_PATHS = new Set<string>([
   // Behind the gate it answered 401 to the subscription handshake, so the
   // webhook could never have been registered at all.
   "/api/whatsapp/webhook",
+  // Same reasoning for the Twilio sandbox transport: Twilio has no session and
+  // signs every request with HMAC-SHA1 over the URL and the form fields.
+  "/api/whatsapp/twilio",
   "/api/cron/advisories",
   "/api/cron/reminders",
 ]);

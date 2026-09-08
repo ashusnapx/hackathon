@@ -132,50 +132,82 @@ export function CaseTable({ cases }: { cases: CaseFile[] }) {
         </div>
       )}
 
-      <ul className="mt-4 border-t border-rule-strong">
-        {shown.map(({ file, amount, done, total, next }) => (
-          <li key={file.id} className="border-b border-rule">
-            <Link
-              href={casePath(file.id)}
-              className="-mx-1 flex flex-wrap items-baseline gap-x-4 gap-y-1.5 px-1 py-4 transition-colors hover:bg-sunk/60"
-            >
-              <span className="num text-[0.9375rem] font-medium">{file.ref}</span>
+      {/*
+        A grid, not a flex row.
 
-              <span className="min-w-0 text-[0.9375rem] text-ink-2">
-                {findCategory(file.triage?.categoryId)?.label ?? "—"}
-              </span>
+        As a flex row the columns landed wherever the previous cell finished, so
+        one long category — "Social media and online abuse" — pushed the chip
+        and the date onto a second line and every row below it started in a
+        different place. A grid gives the columns fixed tracks, so long text
+        wraps inside its own cell and the list stays scannable down the page.
 
-              {amount > 0 && (
-                <span className="num text-[0.9375rem] font-semibold">{inr(amount)}</span>
-              )}
+        Below `sm` the tracks collapse and each case becomes a small stack: six
+        columns will not fit on a 360px screen, and shrinking them until they do
+        is how a table becomes unreadable rather than narrow.
+      */}
+      <div className="mt-4 border-t border-rule-strong">
+        <div
+          className="hidden sm:grid grid-cols-[minmax(7.5rem,auto)_minmax(0,1fr)_auto_auto_minmax(0,auto)] gap-x-4 border-b border-rule px-1 py-2"
+          aria-hidden
+        >
+          <span className="label">{t("case.ref")}</span>
+          <span className="label">{t("list.colWhat")}</span>
+          <span className="label text-end">{t("case.lost")}</span>
+          <span className="label text-end">{t("list.colSteps")}</span>
+          <span className="label text-end">{t("list.colNext")}</span>
+        </div>
 
-              <span className="num text-sm text-ink-3">
-                {t("list.doneOf").replace("{n}", String(done)).replace("{total}", String(total))}
-              </span>
-
-              <span className="ms-auto flex shrink-0 items-center gap-2">
-                {next ? (
-                  <span
-                    className={cn(
-                      "chip rounded-ctl border px-1.5 py-0.5",
-                      next.overdue
-                        ? "border-urgent/40 bg-urgent-soft text-urgent-ink"
-                        : "border-rule bg-sunk text-ink-3",
-                    )}
-                  >
-                    {t(next.title)}
-                  </span>
-                ) : (
-                  <span className="chip rounded-ctl border border-done/30 bg-done-soft px-1.5 py-0.5 text-done">
-                    {t("list.allDone")}
-                  </span>
+        <ul>
+          {shown.map(({ file, amount, done, total, next }) => (
+            <li key={file.id} className="border-b border-rule">
+              <Link
+                href={casePath(file.id)}
+                className={cn(
+                  "-mx-1 block px-1 py-3.5 transition-colors hover:bg-sunk/60",
+                  "sm:grid sm:grid-cols-[minmax(7.5rem,auto)_minmax(0,1fr)_auto_auto_minmax(0,auto)] sm:items-baseline sm:gap-x-4",
                 )}
-                <span className="num text-sm text-ink-3">{fmtDate(file.createdAt)}</span>
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+              >
+                <span className="num block text-[0.9375rem] font-medium break-all">{file.ref}</span>
+
+                {/* The cell that needed the wrap. `break-words` rather than
+                    `truncate`: a category the person chose is not something to
+                    hide behind an ellipsis. */}
+                <span className="mt-0.5 block min-w-0 break-words text-[0.9375rem] leading-snug text-ink-2 sm:mt-0">
+                  {findCategory(file.triage?.categoryId)?.label ?? "—"}
+                </span>
+
+                <span className="num mt-0.5 block text-[0.9375rem] font-semibold sm:mt-0 sm:text-end">
+                  {amount > 0 ? inr(amount) : <span className="text-ink-3">—</span>}
+                </span>
+
+                <span className="num mt-0.5 block whitespace-nowrap text-sm text-ink-3 sm:mt-0 sm:text-end">
+                  {t("list.doneOf").replace("{n}", String(done)).replace("{total}", String(total))}
+                </span>
+
+                <span className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 sm:mt-0 sm:justify-end">
+                  {next ? (
+                    <span
+                      className={cn(
+                        "chip min-w-0 break-words rounded-ctl border px-1.5 py-0.5 text-start",
+                        next.overdue
+                          ? "border-urgent/40 bg-urgent-soft text-urgent-ink"
+                          : "border-rule bg-sunk text-ink-3",
+                      )}
+                    >
+                      {t(next.title)}
+                    </span>
+                  ) : (
+                    <span className="chip rounded-ctl border border-done/30 bg-done-soft px-1.5 py-0.5 text-done">
+                      {t("list.allDone")}
+                    </span>
+                  )}
+                  <span className="num whitespace-nowrap text-sm text-ink-3">{fmtDate(file.createdAt)}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       {/*
         Only when there is more than one page. A pager under a list of three
