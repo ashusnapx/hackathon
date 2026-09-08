@@ -221,6 +221,26 @@ export function extractAmount(input: string): number | undefined {
     if (n >= 100) return n;
   }
 
+  /*
+   * The same thing said the other way round: "10000 rupees", "5000 rs",
+   * "2500/-".
+   *
+   * This was missing, and it is not a rare phrasing — it is the ordinary one
+   * in most of India, and the only one people type on a phone keyboard where
+   * the rupee sign is two taps away. Without it "I paid 10000 rupees" reached
+   * the case file with no amount at all, which then reached the bank letter and
+   * the NCRP description with no amount, and the person had to notice and fix
+   * it themselves.
+   *
+   * The trailing marker has to be a whole word: `rs` bounded, so a reference
+   * like "10000RSX2" is not read as ten thousand rupees.
+   */
+  const postfix = text.match(/([\d,]{3,})\s*(?:\/-|(?:₹|rs\.?|inr|rupees?|rupaye|रुपये|रुपए|रु\.?)(?![\p{L}\p{N}]))/iu);
+  if (postfix) {
+    const n = Number(postfix[1].replace(/,/g, ""));
+    if (n >= 100) return n;
+  }
+
   // Otherwise the largest comma-grouped number that is not a phone or reference.
   const candidates = (text.match(/\b\d{1,3}(?:,\d{2,3})+\b/g) || []).map((s) => Number(s.replace(/,/g, "")));
   if (candidates.length) return Math.max(...candidates);

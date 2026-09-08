@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CaseTable } from "@/components/case/CaseTable";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { casePath, findByRef, useCases } from "@/lib/case/store";
 import { useAccountCases } from "@/lib/case/account-cases";
-import { findCategory } from "@/lib/case/categories";
 import { useT } from "@/lib/i18n/context";
-import { fmtDate } from "@/lib/utils";
 
 /**
  * Coming back to a case you started before.
@@ -37,9 +36,9 @@ export default function CasesPage() {
 
   return (
     <>
-      <SiteHeader width="2xl" />
+      <SiteHeader width="3xl" />
 
-      <main id="main" className="mx-auto max-w-2xl px-5 sm:px-8 py-12 sm:py-16">
+      <main id="main" className="mx-auto max-w-3xl px-5 sm:px-8 py-12 sm:py-16">
         <h1 className="text-3xl sm:text-4xl">{t("case.findTitle")}</h1>
         <p className="mt-4 text-[1.0625rem] leading-[1.65] text-ink-2 max-w-prose">{t("case.findSub")}</p>
 
@@ -68,22 +67,7 @@ export default function CasesPage() {
                 {t("case.accountSync")}
               </p>
             )}
-            <ul className="mt-4 border-t border-rule-strong">
-              {cases.map((c) => (
-                <li key={c.id} className="border-b border-rule">
-                  <a
-                    href={casePath(c.id)}
-                    className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-4 hover:bg-sunk/60 transition-colors px-1 -mx-1"
-                  >
-                    <span className="num text-[0.9375rem]">{c.ref}</span>
-                    <span className="text-[0.9375rem] text-ink-2 min-w-0">
-                      {findCategory(c.triage?.categoryId)?.label ?? "—"}
-                    </span>
-                    <span className="num text-sm text-ink-3 ms-auto shrink-0">{fmtDate(c.createdAt)}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
+            <CaseTable cases={cases} />
           </section>
         )}
       </main>

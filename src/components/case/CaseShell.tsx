@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 import { SiteHeader } from "@/components/SiteHeader";
+import { useCaseCreatedEmail } from "@/lib/case/case-email";
 import { resolveCaseParam, useCase } from "@/lib/case/store";
 import { useCaseRestore } from "@/lib/case/restore";
 import { useCaseSyncState } from "@/lib/case/sync";
@@ -82,6 +83,11 @@ function Loaded({ id, t, children }: {
   const router = useRouter();
   const case_ = useCase(id);
   const { caseFile, ready, saving, saveError, externalConflict, retrySave, resolveExternalConflict, deleteCurrentCase } = case_;
+
+  // Mounted on every case screen rather than on the sharing panel, which is a
+  // page of its own now and therefore unmounted almost all of the time. See
+  // lib/case/case-email.ts for the two faults that made this silent.
+  useCaseCreatedEmail(caseFile);
 
   if (!ready) return <Centered>{t("g.loading")}…</Centered>;
 

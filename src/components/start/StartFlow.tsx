@@ -63,6 +63,10 @@ export function StartFlow() {
       window.history.replaceState(null, "", window.location.pathname);
       return;
     }
+    // An interview arriving from WhatsApp is still being claimed when this
+    // runs, so there is nothing in storage to find yet. `WhatsAppHandoff` owns
+    // the navigation until its token is spent.
+    if (params.get("wa")) return;
     // A report already under way belongs at the questions, not back at the box.
     if (loadBrowserIntakeDraft().draft?.analysis) router.replace("/say/questions");
   }, [router]);

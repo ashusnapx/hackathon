@@ -17,6 +17,10 @@ describe("what a signed-out stranger may reach", () => {
 
   it("lets the provider's own webhook through, which has no session to present", () => {
     expect(isPublicPath("/api/vaani/webhook")).toBe(true);
+    // Meta cannot present a session cookie. Behind the gate the subscription
+    // handshake gets a 401 and the webhook can never be registered.
+    expect(isPublicPath("/api/whatsapp/webhook")).toBe(true);
+    expect(isPublicPath("/api/whatsapp/claim")).toBe(false);
   });
 
   it("lets a confirmation link land, since a session is what it is coming to collect", () => {

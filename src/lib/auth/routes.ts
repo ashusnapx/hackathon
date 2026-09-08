@@ -39,6 +39,12 @@ const PUBLIC_PATHS = new Set<string>([
   DEMO_CASE_PATH,
   "/api/health",
   "/api/vaani/webhook",
+  // Meta has no session and never will. This route authenticates every request
+  // itself, by HMAC over the raw body against the app secret — a stronger check
+  // than the cookie this gate looks for, and the only one Meta can satisfy.
+  // Behind the gate it answered 401 to the subscription handshake, so the
+  // webhook could never have been registered at all.
+  "/api/whatsapp/webhook",
   "/api/cron/advisories",
   "/api/cron/reminders",
 ]);

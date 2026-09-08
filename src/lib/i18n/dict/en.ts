@@ -568,6 +568,20 @@ export const en = {
   "case.findCta": "Open it",
   "case.findNone": "No case with that reference in this browser. Check the reference, or open it on the device where you started it.",
   "case.recent": "Recently opened",
+
+  // The case list. Sorted by urgency rather than date, because a list of cases
+  // ordered by when they were created answers a question nobody has.
+  "list.sortBy": "Sort by",
+  "list.sortUrgent": "Needs you first",
+  "list.sortRecent": "Newest",
+  "list.sortAmount": "Most money",
+  "list.sortProgress": "Least done",
+  "list.doneOf": "{n} of {total} steps",
+  "list.allDone": "All steps done",
+  "list.pages": "Pages",
+  "list.pageOf": "Page {n} of {total}",
+  "list.prev": "Previous",
+  "list.next": "Next",
   "case.accountSync": "Signed in — cases from your other devices appear here on their own.",
   "case.mock": "Locally generated, not a government number",
   "case.opened": "Opened",
@@ -1690,6 +1704,17 @@ export const en = {
   "wa.sub": "A working prototype. Tap it and report a fraud, exactly as you would on WhatsApp.",
   "wa.realQ": "Is this really WhatsApp?",
   "wa.notReal": "This is a replica of the WhatsApp interface, not a connection to it. Nothing here reaches Meta, and no message leaves this page. It shows what a WhatsApp Business deployment of Kavach would do, using the working product behind it.",
+  // Shown instead of the replica's disclaimer once the Cloud API credentials
+  // are actually present. The claim on this page changes with the deployment
+  // rather than being edited by hand, because a page that says "this is real"
+  // when the integration is switched off is the exact dishonesty the rest of
+  // the site is built to avoid.
+  "wa.liveTitle": "This one is real",
+  "wa.liveBody": "Message Kavach on WhatsApp and it answers — the interview runs in the chat, voice notes included, and finishes by sending you your case file.",
+  "wa.liveCta": "Open WhatsApp",
+  "wa.liveNote": "A normal WhatsApp conversation: end-to-end encrypted between you and Kavach's business number. Reply STOP at any time and the conversation is deleted from our side.",
+  "wa.replicaTitle": "Or try it here first",
+  "wa.replicaBody": "The same interview, in a replica of the WhatsApp interface. Nothing in the replica reaches Meta.",
   "talk.transcriptH": "The conversation",
   "talk.transcriptEmpty": "What you and Kavach Saathi say will appear here as you speak, so you can read along.",
   "talk.h": "Tell us out loud.",

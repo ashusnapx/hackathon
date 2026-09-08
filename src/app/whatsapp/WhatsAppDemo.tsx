@@ -1,6 +1,7 @@
 "use client";
 
 import { GuidedIntake } from "@/components/intake/GuidedIntake";
+import { WhatsAppLive } from "@/components/intake/WhatsAppLive";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useT } from "@/lib/i18n/context";
 
@@ -26,6 +27,16 @@ export function WhatsAppDemo() {
       <main id="main" className="mx-auto max-w-2xl px-5 sm:px-8 py-6 sm:py-10">
         <h1 className="text-[1.75rem] sm:text-3xl leading-tight">{t("wa.title")}</h1>
         <p className="mt-2 text-[1.0625rem] leading-[1.5] text-ink-2">{t("wa.sub")}</p>
+
+        {/* The real number, when there is one. It renders nothing without
+            `NEXT_PUBLIC_WHATSAPP_NUMBER`, so a deployment with no credentials
+            keeps saying this is a replica — which is then true. */}
+        <WhatsAppLive
+          title={t("wa.liveTitle")}
+          body={t("wa.liveBody")}
+          cta={t("wa.liveCta")}
+          note={t("wa.liveNote")}
+        />
 
         {/* The one thing on this page. Everything that was around it — three
             benefit cards and a paragraph of justification — was explaining a
