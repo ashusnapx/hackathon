@@ -3,7 +3,9 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
+import { Button } from "@/components/ui/Button";
 import { DOCS, OneDocument, type DocKey } from "@/components/case/DocumentsPanel";
+import { useDraftGeneration } from "@/components/case/useDraftGeneration";
 import { fillDocument } from "@/lib/case/placeholders";
 import type { CaseFile } from "@/lib/case/types";
 import { useI18n } from "@/lib/i18n/context";
@@ -33,11 +35,13 @@ import { useI18n } from "@/lib/i18n/context";
  * takes it out of reach of every transform, `overflow: hidden` and stacking
  * context on the way up.
  */
-export function DocModal({ caseFile, docKey, update, onClose }: {
+export function DocModal({ caseFile, docKey, update, onClose, onSeeAll }: {
   caseFile: CaseFile;
   docKey: DocKey;
   update: (patch: Partial<CaseFile> | ((c: CaseFile) => Partial<CaseFile>)) => void;
   onClose: () => void;
+  /** Optional way out to the full documents screen, from inside the sheet. */
+  onSeeAll?: () => void;
 }) {
   const { t } = useI18n();
   const closeRef = useRef<HTMLButtonElement | null>(null);
@@ -69,9 +73,32 @@ export function DocModal({ caseFile, docKey, update, onClose }: {
     () => false,
   );
 
+  const { generate, busy, error } = useDraftGeneration(caseFile, update);
+
+  /*
+   * Kick it off as the sheet opens, if there is nothing to show.
+   *
+   * Guarded by a ref rather than by `busy`, because `generate` is recreated
+   * whenever the case changes and this must fire exactly once per open — a
+   * second request would race the first and be discarded by the sequence guard
+   * inside the hook, having spent a model call to get there.
+   */
+  const asked = useRef(false);
+  const existing = caseFile.docs[docKey];
+  useEffect(() => {
+    if (asked.current) return;
+    if (typeof existing === "string" && existing) return;
+    asked.current = true;
+    void generate();
+  }, [existing, generate]);
+
   const doc = DOCS.find((entry) => entry.key === docKey);
   const draft = caseFile.docs[docKey];
-  if (!doc || typeof draft !== "string" || !draft || !mounted) return null;
+  // Only two reasons not to render: there is no such document, or there is no
+  // browser to render into. A *missing draft* is emphatically not one of them —
+  // see the note at the top.
+  if (!doc || !mounted) return null;
+  const written = typeof draft === "string" && draft.length > 0;
 
   return createPortal(
     <div
@@ -101,12 +128,63 @@ export function DocModal({ caseFile, docKey, update, onClose }: {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">
-          <OneDocument
-            caseFile={caseFile}
-            doc={doc}
-            body={fillDocument(draft, caseFile)}
-            update={update}
-          />
+          {written ? (
+            <OneDocument
+              caseFile={caseFile}
+              doc={doc}
+              body={fillDocument(draft, caseFile)}
+              update={update}
+              // The sheet's own bar already says which letter this is.
+              titled={false}
+            />
+          ) : (
+            /*
+             * Writing, not asking.
+             *
+             * Opening this sheet *is* the request — somebody tapped "the
+             * letter" on the step that needs it. Meeting them with a second
+             * button that says "write it now" made them ask twice for the one
+             * thing they had already asked for, which is the shape of the
+             * problem this modal was added to fix in the first place.
+             *
+             * So it starts on open and this is a progress state. A failure
+             * offers a retry rather than a dead end, and says plainly that
+             * nothing in the case has changed — because the person cannot see
+             * that for themselves and it is the thing they will worry about.
+             */
+            <div>
+              {error ? (
+                <>
+                  <p className="text-[0.9375rem] font-medium">{t("doc.writeFailed")}</p>
+                  <p className="mt-2 max-w-prose text-[0.9375rem] leading-[1.55] text-ink-2">{t(error)}</p>
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                    <Button onClick={generate} disabled={busy} size="md">
+                      {busy ? `${t("doc.generating")}…` : t("doc.tryAgain")}
+                    </Button>
+                    {onSeeAll && (
+                      <button
+                        type="button"
+                        onClick={() => { onClose(); onSeeAll(); }}
+                        className="min-h-11 text-sm underline underline-offset-4 hover:text-ink"
+                      >
+                        {t("doc.seeAll")} →
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p className="flex items-center gap-2.5 text-[0.9375rem] font-medium">
+                  <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-urgent" aria-hidden />
+                  {t("doc.writing")}
+                </p>
+              )}
+              {!error && (
+                <p className="mt-2 max-w-prose text-[0.9375rem] leading-[1.55] text-ink-2">
+                  {t("doc.writingBody")}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>,

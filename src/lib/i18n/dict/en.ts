@@ -1540,6 +1540,14 @@ export const en = {
   "esc.source": "Officer details as published for complainants at",
   "esc.fileFirst": "If you have filed on NCRP, keep the acknowledgement number for tracking. Other police, bank and regulator routes can have their own prerequisites.",
 
+  // Shown in the letter modal when the case has no drafts yet — which used to
+  // mean the modal did not open at all.
+  "doc.writing": "Writing this from the facts in your case…",
+  "doc.writingBody": "A moment. You will be able to read it, change anything, and send it yourself — nothing is submitted for you.",
+  "doc.writeFailed": "That did not work. Nothing in your case has changed.",
+  "doc.tryAgain": "Try again",
+  "doc.writeIt": "Write it now",
+  "doc.seeAll": "See all documents",
   "doc.generate": "Write my documents",
   "doc.applicableOnly": "Only drafts linked to the currently confirmed route are shown. A draft is preparation, not proof that its legal or institutional preconditions are met.",
   "doc.generating": "Writing",

@@ -102,7 +102,6 @@ export function TrackList({ caseFile, toggleTrack, updateBank, onGoToDocs, updat
             onGoToDocs={onGoToDocs}
             caseFile={caseFile}
             update={update}
-            hasDoc={Boolean(track.def.doc && caseFile.docs[track.def.doc])}
             incidentAt={caseFile.incidentAt ?? caseFile.triage?.incidentAt}
           />
         ))}
@@ -112,7 +111,7 @@ export function TrackList({ caseFile, toggleTrack, updateBank, onGoToDocs, updat
 }
 
 function TrackRow({
-  track, roman, open, onToggleOpen, onMark, bank, onUpdateBank, onGoToDocs, hasDoc, incidentAt, caseFile, update,
+  track, roman, open, onToggleOpen, onMark, bank, onUpdateBank, onGoToDocs, incidentAt, caseFile, update,
 }: {
   track: LiveTrack;
   roman: string;
@@ -122,7 +121,6 @@ function TrackRow({
   bank: CaseFile["bank"];
   onUpdateBank: (patch: Partial<CaseFile["bank"]>) => void;
   onGoToDocs: () => void;
-  hasDoc: boolean;
   caseFile: CaseFile;
   update: Props["update"];
   /** Picks which RBI framework the bank deadline is measured against. */
@@ -338,7 +336,7 @@ function TrackRow({
                   >
                     {i + 1}
                   </span>
-                  <span className="pt-0.5 text-[1rem] leading-[1.5]"><StepText onOpenDoc={hasDoc ? () => setDocOpen(true) : undefined} docLabel={t("track.openDoc")}>{t(key)}</StepText></span>
+                  <span className="pt-0.5 text-[1rem] leading-[1.5]"><StepText onOpenDoc={def.doc ? () => setDocOpen(true) : undefined} docLabel={t("track.openDoc")}>{t(key)}</StepText></span>
                 </li>
               ))}
             </ol>
@@ -385,6 +383,7 @@ function TrackRow({
               docKey={def.doc as Parameters<typeof DocModal>[0]["docKey"]}
               update={update}
               onClose={() => setDocOpen(false)}
+              onSeeAll={onGoToDocs}
             />
           )}
 
@@ -484,25 +483,26 @@ function TrackRow({
                 </Button>
               )}
               {/*
-                The letter, opened here.
+                The letter, opened here — written here too, if it does not exist.
 
                 It used to send the person to the documents screen to find the
-                right one among five and come back — and they would come back
-                to the top of a list they were part way down. Now it opens over
-                the step that asked for it, with the same controls it has in
-                that screen. Without a draft yet, it still has to send them to
-                the screen that can make one.
+                right one among five and come back, arriving at the top of a
+                list they were part way down. That was fixed for cases that
+                already had drafts, and left in place for the ones that did not
+                — which is every case until somebody has pressed a button they
+                have not been shown. So a fresh case, which is every case at the
+                moment it matters most, still had no way to get a letter from
+                the step that was asking for one.
+
+                The sheet opens either way now. With a draft it shows it; with
+                none it offers to write it, and then shows it. The documents
+                screen is still one tap away inside the sheet for anybody who
+                wants the whole set.
               */}
               {def.doc && (
-                hasDoc ? (
-                  <Button onClick={() => setDocOpen(true)} size="sm" variant="secondary">
-                    {t("track.openLetter")}
-                  </Button>
-                ) : (
-                  <Button onClick={onGoToDocs} size="sm" variant="secondary">
-                    {t("doc.generate")}
-                  </Button>
-                )
+                <Button onClick={() => setDocOpen(true)} size="sm" variant="secondary">
+                  {t("track.openLetter")}
+                </Button>
               )}
 
               {state === "done" ? (

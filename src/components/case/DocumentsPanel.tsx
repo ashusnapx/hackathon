@@ -1,21 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { downloadCasePack } from "@/lib/case/pack";
+import { useDraftGeneration } from "@/components/case/useDraftGeneration";
 import { downloadLetter } from "@/lib/case/letter";
 import { DocumentFields } from "@/components/case/DocumentFields";
 import { fillDocument } from "@/lib/case/placeholders";
-import {
-  applicableDocumentKeys,
-  documentInputFingerprint,
-  parseDraftResponse,
-  type DocumentKey,
-} from "@/lib/case/documents";
+import { applicableDocumentKeys, type DocumentKey } from "@/lib/case/documents";
 import { completeness } from "@/lib/case/tracks";
 import { useI18n } from "@/lib/i18n/context";
 import type { DictKey } from "@/lib/i18n/dict/en";
-import type { CaseDocs, CaseFile } from "@/lib/case/types";
+import type { CaseFile } from "@/lib/case/types";
 import { cn, writeToClipboard } from "@/lib/utils";
 import { useIsClient } from "@/lib/useIsClient";
 
@@ -41,14 +37,7 @@ interface Props {
 
 export function DocumentsPanel({ caseFile, update }: Props) {
   const { t, lang } = useI18n();
-  const [busy, setBusy] = useState(false);
-  const [generateError, setGenerateError] = useState<DictKey | null>(null);
   const [active, setActive] = useState<DocKey>("ncrp");
-  const generationSequence = useRef(0);
-  const latestCase = useRef(caseFile);
-  useEffect(() => {
-    latestCase.current = caseFile;
-  }, [caseFile]);
   const applicableKeys = applicableDocumentKeys(caseFile);
   const visibleDocs = DOCS.filter((doc) => applicableKeys.includes(doc.key));
 
@@ -58,48 +47,9 @@ export function DocumentsPanel({ caseFile, update }: Props) {
   );
   const { score } = completeness(caseFile);
 
-  const generate = useCallback(async () => {
-    const sequence = ++generationSequence.current;
-    const requestedKeys = applicableDocumentKeys(caseFile);
-    const requestedFingerprint = documentInputFingerprint(caseFile);
-    setBusy(true);
-    setGenerateError(null);
-    try {
-      const res = await fetch("/api/ai/draft", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ caseFile }),
-      });
-      if (!res.ok) throw new Error(`draft-${res.status}`);
-      const data = parseDraftResponse(await res.json(), requestedKeys);
-      if (!data) throw new Error("invalid-draft-response");
-      if (
-        sequence !== generationSequence.current
-        || documentInputFingerprint(latestCase.current) !== requestedFingerprint
-      ) {
-        setGenerateError("doc.err.stale" as const);
-        return;
-      }
-      update((c) => ({
-        docs: {
-          ...(data.docs as CaseDocs),
-          generatedAt: new Date().toISOString(),
-          generatedBy: data.source,
-          // A regenerate invalidates the old translations rather than leaving a
-          // stale vernacular copy next to fresh English.
-          translated: {},
-          translatedLanguage: undefined,
-        },
-        events: [...c.events, { at: new Date().toISOString(), kind: "docs" as const, label: "Documents generated" }],
-      }));
-    } catch {
-      if (sequence === generationSequence.current) {
-        setGenerateError("doc.err.generate");
-      }
-    } finally {
-      if (sequence === generationSequence.current) setBusy(false);
-    }
-  }, [caseFile, update]);
+  // Shared with the letter modal, which opens over a step. See the note in
+  // `useDraftGeneration` for why this is not two copies.
+  const { generate, busy, error: generateError } = useDraftGeneration(caseFile, update);
 
   return (
     <section>
@@ -213,16 +163,19 @@ export function DocumentsPanel({ caseFile, update }: Props) {
  * would be the one that loses the clipboard fallback below, which exists
  * because `navigator.clipboard` rejects outright inside the WhatsApp browser.
  */
-export function OneDocument({ caseFile, doc, body, update }: {
+export function OneDocument({ caseFile, doc, body, update, titled }: {
   caseFile: CaseFile;
   doc: (typeof DOCS)[number];
   body: string;
   update: Props["update"];
+  /** False where the surrounding chrome already names the document. */
+  titled?: boolean;
 }) {
   const { t, lang } = useI18n();
   return (
     <Document
       docKey={doc.key}
+      titled={titled}
       title={t(doc.title)}
       blurb={t(doc.blurb)}
       body={body}
@@ -259,7 +212,7 @@ export function OneDocument({ caseFile, doc, body, update }: {
 }
 
 function Document({
-  docKey, title, blurb, body, translated, targetLang, onTranslated, onSave,
+  docKey, title, blurb, body, translated, targetLang, onTranslated, onSave, titled = true,
 }: {
   docKey: DocKey;
   title: string;
@@ -270,6 +223,15 @@ function Document({
   onTranslated: (text: string) => void;
   /** Persists an edit back into the case. */
   onSave?: (text: string) => void;
+  /**
+   * False inside the letter sheet, whose own bar already carries the title.
+   *
+   * It printed twice there — "Letter to your bank / Close / Letter to your
+   * bank" — which reads as a rendering fault rather than a heading. The blurb
+   * stays either way: it is the sentence that says what to do with the letter,
+   * and it is not a repeat of anything.
+   */
+  titled?: boolean;
 }) {
   const { t } = useI18n();
   const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
@@ -370,8 +332,8 @@ function Document({
   return (
     <article className="sheet overflow-hidden rise">
       <div className="px-5 py-4 border-b border-rule bg-sunk">
-        <h3 className="text-lg">{title}</h3>
-        <p className="mt-1.5 text-sm leading-snug text-ink-2 max-w-2xl">{blurb}</p>
+        {titled && <h3 className="text-lg">{title}</h3>}
+        <p className={cn("text-sm leading-snug text-ink-2 max-w-2xl", titled && "mt-1.5")}>{blurb}</p>
       </div>
 
       <div className="px-5 py-3 border-b border-rule flex flex-wrap items-center gap-2 no-print">
