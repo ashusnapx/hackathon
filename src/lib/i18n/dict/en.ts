@@ -1545,6 +1545,13 @@ export const en = {
   "doc.blocked.chakshu": "A Chakshu report is a report about a phone number, and your case does not have one recorded yet. Add the number they contacted you from and this letter becomes available.",
   "doc.blocked.general": "This letter does not apply to your case as it stands. If that looks wrong, add what is missing and it will become available.",
   "doc.blockedTitle": "Not available yet",
+  // Asked for right here, rather than sending somebody to another screen to
+  // find the field and then back again to find the letter.
+  "doc.addPhoneLabel": "The number they contacted you from",
+  "doc.addPhonePlaceholder": "10-digit mobile number",
+  "doc.addPhoneHint": "Whatever number the fraud came from — a call, an SMS or a WhatsApp message. Chakshu is a report about that number.",
+  "doc.addPhoneBad": "That does not look like an Indian mobile number. Ten digits, starting 6 to 9.",
+  "doc.addPhoneSave": "Add it and write the letter",
   "doc.addDetails": "Add the missing details",
   "doc.writing": "Writing this from the facts in your case…",
   "doc.polishing": "This is the plain version, ready to send. Checking whether we can improve the wording…",

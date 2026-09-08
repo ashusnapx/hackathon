@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/Button";
@@ -84,6 +84,18 @@ export function DocModal({ caseFile, docKey, update, onClose, onSeeAll }: {
    * second request would race the first and be discarded by the sequence guard
    * inside the hook, having spent a model call to get there.
    */
+  /*
+   * The missing number, typed here.
+   *
+   * A Chakshu report is a report about a phone number, so a case without one
+   * cannot have the letter. Saying that and then sending somebody to another
+   * screen to find the field — and back again to find the letter — is three
+   * navigations to enter ten digits we are already standing in front of them
+   * asking for.
+   */
+  const [phone, setPhone] = useState("");
+  const [phoneBad, setPhoneBad] = useState(false);
+
   const asked = useRef(false);
   const existing = caseFile.docs[docKey];
   /*
@@ -145,11 +157,67 @@ export function DocModal({ caseFile, docKey, update, onClose, onSeeAll }: {
               <p className="mt-2 max-w-prose text-[0.9375rem] leading-[1.55] text-ink-2">
                 {t(blocked)}
               </p>
+              {blocked === "doc.blocked.chakshu" && (
+                <form
+                  className="mt-5"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    // The same shape the extractor accepts, normalised the same
+                    // way, so a number typed here and a number lifted out of a
+                    // sentence are one number in the case file.
+                    const digits = phone.replace(/\D/g, "").replace(/^(?:0{0,2}91|0)(?=[6-9]\d{9}$)/, "");
+                    if (!/^[6-9]\d{9}$/.test(digits)) {
+                      setPhoneBad(true);
+                      return;
+                    }
+                    setPhoneBad(false);
+                    update((c) => ({
+                      suspect: { ...c.suspect, phones: [digits, ...c.suspect.phones.filter((p) => p !== digits)] },
+                      events: [
+                        ...c.events,
+                        { at: new Date().toISOString(), kind: "edit" as const, label: "Suspect number added" },
+                      ],
+                    }));
+                    // Nothing else to do: the case now has a number, the
+                    // document stops being blocked, and the effect above writes
+                    // the letter on the next render.
+                  }}
+                >
+                  <label htmlFor={`doc-phone-${docKey}`} className="label block">
+                    {t("doc.addPhoneLabel")}
+                  </label>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <input
+                      id={`doc-phone-${docKey}`}
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel"
+                      value={phone}
+                      onChange={(event) => { setPhone(event.target.value); setPhoneBad(false); }}
+                      placeholder={t("doc.addPhonePlaceholder")}
+                      aria-invalid={phoneBad}
+                      aria-describedby={`doc-phone-hint-${docKey}`}
+                      /* 16px, or iOS zooms the page when it is focused. */
+                      className="h-11 w-full max-w-[15rem] rounded-ctl border border-rule-strong bg-raised px-3 text-base focus:border-ink focus:outline-none"
+                    />
+                    <Button type="submit" size="md">{t("doc.addPhoneSave")}</Button>
+                  </div>
+                  <p id={`doc-phone-hint-${docKey}`} className="mt-2 max-w-prose text-[0.8125rem] leading-[1.45] text-ink-3">
+                    {t("doc.addPhoneHint")}
+                  </p>
+                  {phoneBad && (
+                    <p role="alert" className="mt-2 text-[0.8125rem] text-urgent-ink">
+                      {t("doc.addPhoneBad")}
+                    </p>
+                  )}
+                </form>
+              )}
+
               {onSeeAll && (
                 <button
                   type="button"
                   onClick={() => { onClose(); onSeeAll(); }}
-                  className="mt-5 min-h-11 text-sm underline underline-offset-4 hover:text-ink"
+                  className="mt-5 block min-h-11 text-sm underline underline-offset-4 hover:text-ink"
                 >
                   {t("doc.seeAll")} →
                 </button>
