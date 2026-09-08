@@ -19,7 +19,25 @@ export const UPI_HANDLES = [
 
 const RX = {
   email: /\b[\w.+-]+@[\w-]+\.[\w.-]{2,}\b/g,
-  upi: new RegExp(String.raw`\b[\w.\-]{2,40}@(?:${UPI_HANDLES.join("|")})\b`, "gi"),
+  /*
+   * A UPI id.
+   *
+   * Two patterns, because the known-handle list cannot be complete. There are
+   * hundreds of live handles and a fraudster's bank may have been onboarded
+   * last week; "scammmer@3696" was reported missing, and a victim who has
+   * carefully typed out the id they paid should never be told nothing was
+   * found.
+   *
+   * So: a known handle, or *any* handle with no dot in it. That second clause
+   * is what separates a UPI id from an e-mail address without needing a list —
+   * every e-mail domain has a dot and no UPI handle does. `RX.email` still runs
+   * first for the dotted ones, and `extractEntities` drops anything that
+   * matched both.
+   */
+  upi: new RegExp(
+    String.raw`\b[\w.\-]{2,40}@(?:(?:${UPI_HANDLES.join("|")})\b|[a-z0-9]{2,20}\b(?!\.?[a-z0-9]))`,
+    "gi",
+  ),
   /*
    * An Indian mobile, however it was typed.
    *
@@ -245,6 +263,52 @@ function composeWords(run: string): number {
  * Money, the way Indians actually write it: "85,000", "Rs 85000", "₹1.4L",
  * "eighty five thousand", "2 lakh", "दो लाख".
  */
+/**
+ * How close a loss or promise word has to be to a figure to be about it.
+ *
+ * A window rather than the whole sentence: in "10,000 lekar 30,000 diya
+ * jayega" the two figures are eight words apart and the words that distinguish
+ * them sit right beside each one.
+ */
+const NEAR_CHARS = 28;
+
+/** Money that went. Romanised Hindi included, because that is what people type. */
+const LOSS_NEAR = /fraud|scam|lost|lose|paid|pay|sent|transferr?ed|debit|deduct|gaya|gaye|gayi|liye|liya|lekar|leke|dekar|bheje|bheja|nikal|kat|katt|chala|thag|ठग|गया|गए|लिए|लेकर|भेजे|निकल|कट/i;
+
+/** Money that was promised and never arrived. */
+const GAIN_NEAR = /diya jayega|dega|denge|milega|milenge|return|profit|double|triple|times|guna|मिलेगा|देगा|दूंगा|गुना/i;
+
+/*
+ * A number with a scale word after it: "1.5 lakh", "2 crore", "10k".
+ *
+ * ── The bug this shape exists to prevent ────────────────────────────────────
+ *
+ * The scale group used to end without a boundary, and it listed `k` for
+ * "10k". So the `k` matched the *first letter of the next word* — and the next
+ * word in Hindi is very often का, की or को, romanised "ka", "ki", "ko",
+ * meaning "of" or "to". "10,000 ka fraud hua" — about the most natural way
+ * there is to say this — parsed as "10000 thousand" and put **one crore** in
+ * the case file. Reported by somebody who watched it happen to their own
+ * sentence.
+ *
+ * Two rules now. The alternation is longest-first, so "crores" is not matched
+ * as "crore" with a stranded "s". And the whole thing must end on a real word
+ * boundary, so a scale word has to be a word rather than a syllable somebody
+ * else's word begins with.
+ */
+const SCALE_WORDS = [
+  "crores", "crore", "cr",
+  "lakhs", "lakh", "lacs", "lac",
+  "thousand", "hazaar", "hazar", "hajar",
+  "k",
+  "लाख", "हज़ार", "हजार", "करोड़",
+].join("|");
+
+const SCALED_MONEY = new RegExp(
+  String.raw`(?:₹|rs\.?|inr)?\s*(\d+(?:[.,]\d+)?)\s*(${SCALE_WORDS})(?![\p{L}\p{N}])`,
+  "iu",
+);
+
 /*
  * The word for money, in the languages this is actually spoken in.
  *
@@ -304,9 +368,7 @@ export function extractAmount(input: string): number | undefined {
   if (!input) return undefined;
   const text = normaliseDigits(input).toLowerCase();
 
-  const scaled = text.match(
-    /(?:₹|rs\.?|inr)?\s*(\d+(?:[.,]\d+)?)\s*(lakh|lakhs|lac|lacs|lakhs?|crore|crores|cr|k|thousand|hazaar|hazar|hajar|लाख|हज़ार|हजार|करोड़)/i,
-  );
+  const scaled = text.match(SCALED_MONEY);
   if (scaled) {
     const n = parseFloat(scaled[1].replace(/,/g, ""));
     const unit = scaled[2].toLowerCase();
@@ -342,9 +404,63 @@ export function extractAmount(input: string): number | undefined {
     if (n >= 100) return n;
   }
 
-  // Otherwise the largest comma-grouped number that is not a phone or reference.
-  const candidates = (text.match(/\b\d{1,3}(?:,\d{2,3})+\b/g) || []).map((s) => Number(s.replace(/,/g, "")));
-  if (candidates.length) return Math.max(...candidates);
+  /*
+   * Several figures in one statement, and only one of them left the account.
+   *
+   * This used to take the largest, which is wrong in the commonest shape of
+   * investment and task fraud there is: "10,000 lekar 30,000 diya jayega" —
+   * give ten, get thirty. The thirty was never real and never moved, and
+   * taking the maximum put the fraudster's promise into the victim's case file
+   * as their loss.
+   *
+   * So the figure standing next to a word about losing wins over the figure
+   * standing next to a word about gaining. Where nothing distinguishes them the
+   * largest is still taken, and where two survive the summary asks — a rule
+   * cannot know which one, and guessing confidently is the failure this whole
+   * screen exists to avoid.
+   */
+  const grouped = [...text.matchAll(/\b\d{1,3}(?:,\d{2,3})+\b/g)];
+  if (grouped.length) {
+    /*
+     * Each marker belongs to the figure nearest it, not to every figure within
+     * a window of it. A fixed window was tried first and failed on the exact
+     * sentence this is for: in "10,000 lekar 30,000 diya jayega" the promise
+     * clause sat inside the ten thousand's window too, so both figures looked
+     * promised and the maximum won again.
+     */
+    const positions = grouped.map((m) => ({
+      value: Number(m[0].replace(/,/g, "")),
+      at: m.index ?? 0,
+      end: (m.index ?? 0) + m[0].length,
+      lost: false,
+      gained: false,
+    }));
+
+    // A promise always follows its figure: "give ten, get thirty" marks the
+    // thirty. So each gain word is attributed to the last figure before it.
+    for (const m of text.matchAll(new RegExp(GAIN_NEAR.source, "gi"))) {
+      const at = m.index ?? 0;
+      const owner = [...positions].reverse().find((p) => p.end <= at && at - p.end <= NEAR_CHARS);
+      if (owner) owner.gained = true;
+    }
+
+    // A loss word may sit on either side — "fraud of 10,000", "10,000 gaya" —
+    // so it goes to whichever figure is closest.
+    for (const m of text.matchAll(new RegExp(LOSS_NEAR.source, "gi"))) {
+      const at = m.index ?? 0;
+      const owner = positions
+        .map((p) => ({ p, gap: at >= p.end ? at - p.end : p.at - at }))
+        .filter((c) => c.gap >= 0 && c.gap <= NEAR_CHARS)
+        .sort((a, b) => a.gap - b.gap)[0]?.p;
+      if (owner) owner.lost = true;
+    }
+
+    const lost = positions.filter((p) => p.lost && !p.gained);
+    if (lost.length) return Math.max(...lost.map((p) => p.value));
+    const neutral = positions.filter((p) => !p.gained);
+    if (neutral.length) return Math.max(...neutral.map((p) => p.value));
+    return Math.max(...positions.map((p) => p.value));
+  }
 
   const words = text.match(WORD_AMOUNT);
   if (words) {

@@ -150,6 +150,74 @@ describe("identifiers, out of running prose", () => {
   });
 });
 
+describe("the k that was eating Hindi", () => {
+  // `k` was listed as a thousands suffix with no boundary after it, so it
+  // matched the first letter of the next word — and the next word in Hindi is
+  // very often का / की / को. "10,000 ka fraud hua" put one crore in the case
+  // file. Reported by somebody who watched it happen to their own sentence.
+  it.each([
+    ["10,000 ka fraud hua", 10_000],
+    ["10,000 ki baat hai", 10_000],
+    ["10,000 ko diya", 10_000],
+    ["45,000 kat gaye", 45_000],
+  ])("does not multiply %j by a thousand", (text, expected) => {
+    expect(extractAmount(text)).toBe(expected);
+  });
+
+  it.each([
+    ["10k", 10_000],
+    ["10 k", 10_000],
+    ["1.5 lakh", 150_000],
+    ["2 crores", 20_000_000],
+    ["2 crore ka nuksan", 20_000_000],
+    ["50 hazaar", 50_000],
+  ])("still reads %j as a real scale word", (text, expected) => {
+    expect(extractAmount(text)).toBe(expected);
+  });
+});
+
+describe("which figure actually left the account", () => {
+  // Give ten, get thirty. The thirty was never real and never moved, and
+  // taking the largest put the fraudster's promise in as the victim's loss.
+  it.each([
+    ["10,000 lekar 30,000 diya jayega", 10_000],
+    ["10,000 dekar 1,00,000 milega", 10_000],
+    ["I paid 5,000 and they promised 50,000 returns", 5_000],
+  ])("prefers the loss over the promise in %j", (text, expected) => {
+    expect(extractAmount(text)).toBe(expected);
+  });
+
+  it.each([
+    ["I lost 45,000", 45_000],
+    ["30,000 debit hua", 30_000],
+    ["fraud of 25,000 hua", 25_000],
+    ["order 12,345 and I paid Rs 3,000", 3_000],
+  ])("still reads a single figure plainly in %j", (text, expected) => {
+    expect(extractAmount(text)).toBe(expected);
+  });
+});
+
+describe("a UPI id whose handle we have never heard of", () => {
+  // The known-handle list cannot be complete — there are hundreds live and a
+  // fraudster's bank may have been onboarded last week. A victim who has
+  // carefully typed out the id they paid must not be told nothing was found.
+  it.each([
+    "unka UPI ID hai scammmer@3696",
+    "unka UPI ID hai scammmer@3696.",
+    "paid to someone@newbank",
+  ])("finds one in %j", (text) => {
+    expect(extractEntities(text).upiIds.length).toBeGreaterThan(0);
+  });
+
+  it("still tells an e-mail address apart from a UPI id", () => {
+    // Every e-mail domain has a dot; no UPI handle does.
+    const e = extractEntities("he emailed support@fakebank.com and paid ravi@okaxis");
+    expect(e.emails).toContain("support@fakebank.com");
+    expect(e.upiIds).toContain("ravi@okaxis");
+    expect(e.upiIds).not.toContain("support@fakebank.com");
+  });
+});
+
 describe("money, in the languages it is lost in", () => {
   // Bengali, Assamese and Odia do not say "rupee" at all. Leaving them out was
   // three hundred million people whose amount silently did not extract.
@@ -200,6 +268,21 @@ describe("a day of the month, as people in India give a date", () => {
   it("still reads the relative and named forms it always did", () => {
     expect(day("do din pehle")).toBe("2026-09-12");
     expect(day("kal raat")).toBe("2026-09-13");
+  });
+});
+
+describe("the second statement a user reported this failing on", () => {
+  it("reads the amount lost, not the amount promised, and finds the UPI id", () => {
+    const said =
+      "Mera naam Ashutosh Kumar hai aur mere saath 10,000 ka fraud hua Instagram app par aur wo "
+      + "aaj se 3 din pehle hua hai aur mujhse ye kaha gaya ki mujhe 10,000 lekar mujhe uska 30,000 "
+      + "diya jayega jo ki three times hota hai and unhone mujhse paise liye Paytm app ke through, "
+      + "unka UPI ID hai scammmer@3696.";
+    // Was one crore, from "10,000 ka".
+    expect(extractAmount(said)).toBe(10_000);
+    // Was missing entirely: an unknown handle, and a sentence-final full stop.
+    expect(extractEntities(said).upiIds).toContain("scammmer@3696");
+    expect(extractEntities(said).apps).toEqual(expect.arrayContaining(["instagram", "paytm"]));
   });
 });
 
