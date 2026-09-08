@@ -13,16 +13,12 @@ jobs:
   check:
     name: types, lint, tests
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: cybercrime-assistant
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: cybercrime-assistant/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npx eslint src
@@ -41,16 +37,12 @@ jobs:
     # before shipping a change to a prompt, a model version or the taxonomy.
     name: classifier still routes correctly
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: cybercrime-assistant
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: cybercrime-assistant/package-lock.json
       - run: npm ci
       - run: npm run eval:triage
         env:
@@ -73,9 +65,6 @@ jobs:
     name: legal sources still answer
     runs-on: ubuntu-latest
     continue-on-error: true
-    defaults:
-      run:
-        working-directory: cybercrime-assistant
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -89,7 +78,7 @@ jobs:
         with:
           script: |
             const fs = require("fs");
-            const log = fs.readFileSync("cybercrime-assistant/sources.log", "utf8");
+            const log = fs.readFileSync("sources.log", "utf8");
             const dead = log.split("\n").filter((l) => l.startsWith("DEAD"));
             await github.rest.issues.create({
               owner: context.repo.owner,

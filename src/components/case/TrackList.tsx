@@ -7,7 +7,6 @@ import { StepText } from "@/components/ui/StepText";
 import { daysLeftFor, type DaysLeftTone } from "@/lib/case/days-left";
 import { BankDesk } from "@/components/case/BankDesk";
 import { DocModal } from "@/components/case/DocModal";
-import { documentBlockedReason } from "@/lib/case/documents";
 import { Countdown } from "./Countdown";
 import { costOfDelay } from "@/lib/case/cost-of-delay";
 import { liveTracks, type LiveTrack } from "@/lib/case/tracks";
@@ -131,9 +130,6 @@ function TrackRow({
   const { def, state, deadline, naReason } = track;
   const left = daysLeftFor(track);
   const [docOpen, setDocOpen] = useState(false);
-  const docBlocked = def.doc
-    ? documentBlockedReason(caseFile, def.doc as Parameters<typeof documentBlockedReason>[1])
-    : "doc.blocked.general";
   const [ackRef, setAckRef] = useState(bank.ackRef ?? "");
   const [bankNoticeAt, setBankNoticeAt] = useState(toLocalDateTimeInput(bank.notifiedAt));
   const [noticeError, setNoticeError] = useState<"required" | "invalid" | "future" | null>(null);
@@ -340,7 +336,7 @@ function TrackRow({
                   >
                     {i + 1}
                   </span>
-                  <span className="pt-0.5 text-[1rem] leading-[1.5]"><StepText onOpenDoc={def.doc && !docBlocked ? () => setDocOpen(true) : undefined} docLabel={t("track.openDoc")}>{t(key)}</StepText></span>
+                  <span className="pt-0.5 text-[1rem] leading-[1.5]"><StepText onOpenDoc={def.doc ? () => setDocOpen(true) : undefined} docLabel={t("track.openDoc")}>{t(key)}</StepText></span>
                 </li>
               ))}
             </ol>
@@ -504,14 +500,21 @@ function TrackRow({
                 wants the whole set.
               */}
               {/*
-                  Offered only where it can actually be produced. Both the model
-                  and the rules run through `applicableDocumentKeys`, so a step
-                  advertising a letter that list excludes opens a sheet that
-                  waits for something nobody will ever write. The sheet explains
-                  itself if it is reached another way; this stops it being
-                  offered in the first place.
+                  Always offered, even when the letter cannot be written yet.
+
+                  The first attempt at this hid the button whenever
+                  `applicableDocumentKeys` excluded the document — which turned
+                  a sheet that span forever into a step with no way in at all,
+                  and no way to find out why. That is the worse failure of the
+                  two: a person looking for their Chakshu report could see the
+                  step telling them to file one and nothing to press.
+
+                  So the button stays and the sheet does the explaining. Where
+                  the document is blocked it says what is missing and what to
+                  add, which is the only version of this that leaves somebody
+                  knowing more than they did.
               */}
-              {def.doc && !docBlocked && (
+              {def.doc && (
                 <Button onClick={() => setDocOpen(true)} size="sm" variant="secondary">
                   {t("track.openLetter")}
                 </Button>
