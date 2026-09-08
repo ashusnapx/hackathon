@@ -580,6 +580,7 @@ export const en = {
   "list.colWhat": "What happened",
   "list.colSteps": "Steps",
   "list.colNext": "Next",
+  "list.colOpened": "Opened",
   "list.allDone": "All steps done",
   "list.pages": "Pages",
   "list.pageOf": "Page {n} of {total}",

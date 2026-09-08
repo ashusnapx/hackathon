@@ -145,16 +145,26 @@ export function CaseTable({ cases }: { cases: CaseFile[] }) {
         columns will not fit on a 360px screen, and shrinking them until they do
         is how a table becomes unreadable rather than narrow.
       */}
+      {/*
+        Fixed tracks for everything countable, one flexible track for prose.
+
+        With `auto` on the money and step columns the boundary moved row by row
+        — ₹35,000 is wider than ₹2,000 — so "Online financial fraud" wrapped on
+        some rows and not others, which reads as a rendering fault rather than
+        as a layout. Numbers now get the width their longest plausible value
+        needs and keep it; only "what happened" and the next step flex.
+      */}
       <div className="mt-4 border-t border-rule-strong">
         <div
-          className="hidden sm:grid grid-cols-[minmax(7.5rem,auto)_minmax(0,1fr)_auto_auto_minmax(0,auto)] gap-x-4 border-b border-rule px-1 py-2"
+          className="hidden sm:grid grid-cols-[8.5rem_minmax(0,1fr)_5rem_7rem_minmax(0,8.5rem)_6rem] gap-x-4 border-b border-rule px-1 py-2"
           aria-hidden
         >
           <span className="label">{t("case.ref")}</span>
           <span className="label">{t("list.colWhat")}</span>
           <span className="label text-end">{t("case.lost")}</span>
           <span className="label text-end">{t("list.colSteps")}</span>
-          <span className="label text-end">{t("list.colNext")}</span>
+          <span className="label">{t("list.colNext")}</span>
+          <span className="label text-end">{t("list.colOpened")}</span>
         </div>
 
         <ul>
@@ -164,10 +174,10 @@ export function CaseTable({ cases }: { cases: CaseFile[] }) {
                 href={casePath(file.id)}
                 className={cn(
                   "-mx-1 block px-1 py-3.5 transition-colors hover:bg-sunk/60",
-                  "sm:grid sm:grid-cols-[minmax(7.5rem,auto)_minmax(0,1fr)_auto_auto_minmax(0,auto)] sm:items-baseline sm:gap-x-4",
+                  "sm:grid sm:grid-cols-[8.5rem_minmax(0,1fr)_5rem_7rem_minmax(0,8.5rem)_6rem] sm:items-baseline sm:gap-x-4",
                 )}
               >
-                <span className="num block text-[0.9375rem] font-medium break-all">{file.ref}</span>
+                <span className="num block whitespace-nowrap text-[0.9375rem] font-medium">{file.ref}</span>
 
                 {/* The cell that needed the wrap. `break-words` rather than
                     `truncate`: a category the person chose is not something to
@@ -184,24 +194,30 @@ export function CaseTable({ cases }: { cases: CaseFile[] }) {
                   {t("list.doneOf").replace("{n}", String(done)).replace("{total}", String(total))}
                 </span>
 
-                <span className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 sm:mt-0 sm:justify-end">
-                  {next ? (
-                    <span
-                      className={cn(
-                        "chip min-w-0 break-words rounded-ctl border px-1.5 py-0.5 text-start",
-                        next.overdue
+                {/*
+                  Its own column, and a bounded one. While the chip shared a
+                  cell with the date, the track had to be wide enough to hold
+                  both on one line — so a long step name like "File on the NCRP
+                  portal" simply widened the column instead of wrapping, and
+                  squeezed every other column to pay for it.
+                */}
+                <span className="mt-1.5 block min-w-0 sm:mt-0">
+                  <span
+                    className={cn(
+                      "chip inline-block max-w-full break-words rounded-ctl border px-1.5 py-0.5 text-start leading-[1.45]",
+                      next
+                        ? next.overdue
                           ? "border-urgent/40 bg-urgent-soft text-urgent-ink"
-                          : "border-rule bg-sunk text-ink-3",
-                      )}
-                    >
-                      {t(next.title)}
-                    </span>
-                  ) : (
-                    <span className="chip rounded-ctl border border-done/30 bg-done-soft px-1.5 py-0.5 text-done">
-                      {t("list.allDone")}
-                    </span>
-                  )}
-                  <span className="num whitespace-nowrap text-sm text-ink-3">{fmtDate(file.createdAt)}</span>
+                          : "border-rule bg-sunk text-ink-3"
+                        : "border-done/30 bg-done-soft text-done",
+                    )}
+                  >
+                    {next ? t(next.title) : t("list.allDone")}
+                  </span>
+                </span>
+
+                <span className="num mt-1 block whitespace-nowrap text-sm text-ink-3 sm:mt-0 sm:text-end">
+                  {fmtDate(file.createdAt)}
                 </span>
               </Link>
             </li>

@@ -36,9 +36,9 @@ export default function CasesPage() {
 
   return (
     <>
-      <SiteHeader width="3xl" />
+      <SiteHeader width="5xl" />
 
-      <main id="main" className="mx-auto max-w-3xl px-5 sm:px-8 py-12 sm:py-16">
+      <main id="main" className="mx-auto max-w-5xl px-5 sm:px-8 py-12 sm:py-16">
         <h1 className="text-3xl sm:text-4xl">{t("case.findTitle")}</h1>
         <p className="mt-4 text-[1.0625rem] leading-[1.65] text-ink-2 max-w-prose">{t("case.findSub")}</p>
 
