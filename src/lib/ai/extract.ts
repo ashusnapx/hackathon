@@ -20,14 +20,43 @@ export const UPI_HANDLES = [
 const RX = {
   email: /\b[\w.+-]+@[\w-]+\.[\w.-]{2,}\b/g,
   upi: new RegExp(String.raw`\b[\w.\-]{2,40}@(?:${UPI_HANDLES.join("|")})\b`, "gi"),
-  phone: /(?:\+?91[\s-]?)?\b[6-9]\d{9}\b/g,
+  /*
+   * An Indian mobile, however it was typed.
+   *
+   * The ten digits used to have to be contiguous *and* the pattern leaned on
+   * `\b`, which quietly lost three of the commonest forms: "+919876543210"
+   * with no space (the canonical one), "098765 43210" off a contact card, and
+   * "+91 98765 43210" as pasted from almost anywhere. A word boundary never
+   * holds between two digits, so a country code written without a separator
+   * defeated it — and the number then fell through to the reference list,
+   * where it looked like a UTR.
+   *
+   * Digit boundaries are asserted with lookaround instead, and the trunk and
+   * country prefixes are consumed explicitly. Ten digits opening 6-9 is the
+   * whole of the Indian mobile range, and `(?!\d)` is what keeps a 12-digit
+   * bank reference from being read as a number with a prefix in front of it.
+   */
+  phone: /(?<!\d)(?:\+?91[\s-]?|0{1,2}91[\s-]?|0)?[6-9]\d{4}[\s-]?\d{5}(?!\d)/g,
   // UTR / RRN / bank reference: 12 digits, or a lettered prefix followed by digits.
   // Case-insensitive on the letter prefix. Transcription returns lowercase, so
   // a bank reference dictated aloud — "hdfc12345678901" — went unrecognised
   // while the same string typed in capitals matched.
   ref: /\b(?:[A-Z]{2,6}\d{8,20}|\d{12,22})\b/gi,
   account: /\b\d{9,18}\b/g,
-  url: /\bhttps?:\/\/[^\s<>"')]+|\b(?:www\.)[^\s<>"')]+/gi,
+  /*
+   * A link, with or without the scheme people never type.
+   *
+   * Almost no scam link arrives as "https://…". It arrives as
+   * "kyc-verify.link/8821" in a WhatsApp forward, and that is exactly the
+   * string a victim needs carried into the complaint and checked against the
+   * Suspect Repository. Requiring a scheme or a "www." meant the single most
+   * evidential thing in the message was dropped.
+   *
+   * The bare form is deliberately narrow: a dotted name followed by a known-
+   * shaped suffix, so "paid 10,000.00 rupees" and "ravi.kumar@okhdfcbank" are
+   * not read as links. The e-mail guard is a negative lookbehind on "@".
+   */
+  url: /\bhttps?:\/\/[^\s<>"')]+|\bwww\.[^\s<>"')]+|(?<![@\w.])(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+(?:com|in|net|org|co|io|link|xyz|info|top|site|online|shop|club|live|app|me|biz|ru|cc)\b(?:\/[^\s<>"')]*)?/gi,
   handle: /(?:^|\s)@([A-Za-z][A-Za-z0-9._]{2,29})\b/g,
 };
 
@@ -95,8 +124,25 @@ export function extractEntities(input: string): Entities {
   const upiSet = new Set(upiIds.map((u) => u.toLowerCase()));
   const realEmails = emails.filter((e) => !upiSet.has(e.toLowerCase()));
 
-  const phones = uniq((text.match(RX.phone) || []).map((p) => p.replace(/[\s-]/g, "").replace(/^\+?91/, "")));
-  const phoneSet = new Set(phones);
+  // Stored bare: ten digits, no prefix, so the same number written five ways
+  // is one number in the case file and one search in the Suspect Repository.
+  const phones = uniq(
+    (text.match(RX.phone) || []).map((p) =>
+      p.replace(/[\s-]/g, "").replace(/^(?:\+?0{0,2}91|0)(?=[6-9]\d{9}$)/, ""),
+    ),
+  );
+  /*
+   * Both spellings of every number found, for the exclusions below.
+   *
+   * A number written "+919876543210" is stored bare as "9876543210" but the
+   * reference pattern still sees the twelve digits it was written with, so
+   * matching the stored form alone let the same phone number appear a second
+   * time as a UTR — in the case file, in the complaint, and in the letter.
+   */
+  const phoneSet = new Set([
+    ...phones,
+    ...(text.match(RX.phone) || []).map((p) => p.replace(/\D/g, "")),
+  ]);
 
   const refs = uniq((text.match(RX.ref) || []).filter((r) => !phoneSet.has(r)));
   const refSet = new Set(refs);
@@ -199,6 +245,61 @@ function composeWords(run: string): number {
  * Money, the way Indians actually write it: "85,000", "Rs 85000", "₹1.4L",
  * "eighty five thousand", "2 lakh", "दो लाख".
  */
+/*
+ * The word for money, in the languages this is actually spoken in.
+ *
+ * ── Why this list is short, and why that is not a bug ───────────────────────
+ *
+ * The first version of this covered romanised Hindi and nothing else, which was
+ * a real gap: Bengali, Assamese and Odia do not say "rupee" at all, they say
+ * টাকা / ଟଙ୍କା — *taka* — and that is another three hundred million people whose
+ * amount silently did not extract.
+ *
+ * But the answer to that is not twenty-three sets of currency words. There is
+ * no npm package that extracts currency from multilingual Indic text; what
+ * exists is the opposite direction (`to-words`, number→words) and NER corpora
+ * like AI4Bharat's Naamapadam, which would mean training and serving a model to
+ * do what we already have a model for.
+ *
+ * Because we do. `api/ai/triage` reads the amount as `model.amount ?? extractAmount(text)`
+ * — the model first, and it is multilingual across all twenty-three. This
+ * function is the *fallback*, for when the model is unavailable, and a fallback
+ * that covers the largest few languages and then says "I could not find an
+ * amount, what was it?" is honest. One that pretends to twenty-three by
+ * accumulating regexes would be neither honest nor maintainable, and would
+ * still miss the twenty-fourth spelling of rupaye.
+ *
+ * So: the scripts with the most speakers, plus every romanisation people
+ * actually type. Everything else is the model's job, and failing that, a
+ * question — see `readDoubts` in `lib/intake/heard.ts`.
+ */
+const MONEY_WORDS = [
+  // Symbols and codes, which are script-independent.
+  String.raw`₹`, String.raw`rs\.?`, String.raw`inr`,
+  // Romanised, deliberately loose: rupay, rupaye, rupaya, rupya, rupiya,
+  // rupees, ruppee. There is no fixed transliteration and people use all of
+  // them. Tight enough that "rupture" is not money.
+  String.raw`rup[aeiyps]{1,5}`,
+  // Bengali, Assamese, Odia — taka, and its romanisations.
+  String.raw`t[ao]k[ao]`, String.raw`ta[nk]ka`, String.raw`টাকা`, String.raw`ଟଙ୍କା`,
+  // Devanagari: Hindi, Marathi, Nepali, Konkani, Maithili, Dogri, Sanskrit.
+  String.raw`रुपये`, String.raw`रुपए`, String.raw`रुपया`, String.raw`रुपयों`, String.raw`रु\.?`,
+  // The other major scripts, in their own words for it.
+  String.raw`રૂપિયા`,      // Gujarati
+  String.raw`ਰੁਪਏ`,        // Gurmukhi
+  String.raw`ரூபாய்`,      // Tamil
+  String.raw`రూపాయి`,     // Telugu
+  String.raw`ರೂಪಾಯಿ`,     // Kannada
+  String.raw`രൂപ`,        // Malayalam
+  String.raw`روپے`,        // Urdu
+].join("|");
+
+/** "10000 rupay", "5000 taka", "2500/-" — the marker after the number. */
+const POSTFIX_MONEY = new RegExp(
+  String.raw`([\d,]{3,})\s*(?:\/-|(?:${MONEY_WORDS})(?![\p{L}\p{N}]))`,
+  "iu",
+);
+
 export function extractAmount(input: string): number | undefined {
   if (!input) return undefined;
   const text = normaliseDigits(input).toLowerCase();
@@ -235,7 +336,7 @@ export function extractAmount(input: string): number | undefined {
    * The trailing marker has to be a whole word: `rs` bounded, so a reference
    * like "10000RSX2" is not read as ten thousand rupees.
    */
-  const postfix = text.match(/([\d,]{3,})\s*(?:\/-|(?:₹|rs\.?|inr|rupees?|rupaye|रुपये|रुपए|रु\.?)(?![\p{L}\p{N}]))/iu);
+  const postfix = text.match(POSTFIX_MONEY);
   if (postfix) {
     const n = Number(postfix[1].replace(/,/g, ""));
     if (n >= 100) return n;
@@ -288,6 +389,57 @@ const RELATIVE = new RegExp(
   "iu",
 );
 
+/*
+ * A day of the month, said the way people in India say it.
+ *
+ * "दस तारीख को इसी महीने", "10 तareekh ko", "on the 10th of last month". This
+ * is one of the two commonest ways a date is given here and it was not handled
+ * at all — only relative spans ("do din pehle") and named days ("kal") were —
+ * so a statement that named its date precisely produced no date whatsoever,
+ * and every deadline in the case was left uncomputed.
+ *
+ * `QTY` is reused, so the number may be digits in any script (normalised
+ * earlier), a romanised word, or Devanagari — "दस" is already in the table.
+ */
+const DAY_MARKER = String.raw`तारीख|तारिख|ता\.?|tari?kh|tareekh|taarikh|tarik`;
+const DAY_OF_MONTH = new RegExp(
+  String.raw`(?<![\p{L}\p{N}])(${QTY})\s*(?:${DAY_MARKER})` +
+  String.raw`|(?:on\s+)?(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)\b`,
+  "iu",
+);
+
+/** Also read by the summary panel, which asks when this contradicts the date. */
+export const THIS_MONTH = /इसी महीने|इस महीने|इसी माह|isi mahine|is mahine|this month/iu;
+const LAST_MONTH = /पिछले महीने|पिछले माह|गत माह|pich?hle mahine|last month/iu;
+
+/**
+ * Turn a day number into a real date, without ever landing in the future.
+ *
+ * A date after today is not a plausible incident date, and it is worse than
+ * none: it goes into a police complaint and every reporting clock in this app
+ * hangs off it. So an unqualified day that has not happened yet this month is
+ * read as last month, which is what somebody saying "the 28th" on the 3rd
+ * means.
+ */
+function fromDayOfMonth(day: number, now: Date, monthsBack: number, hour: number): string | undefined {
+  if (!Number.isFinite(day) || day < 1 || day > 31) return undefined;
+
+  const d = new Date(now.getTime());
+  d.setDate(1);
+  d.setMonth(d.getMonth() - monthsBack);
+
+  const lastOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  if (day > lastOfMonth) return undefined;
+  d.setDate(day);
+  d.setHours(hour, 0, 0, 0);
+
+  // Unqualified and still ahead of us: they meant the month before.
+  if (monthsBack === 0 && d.getTime() > now.getTime()) {
+    return fromDayOfMonth(day, now, 1, hour);
+  }
+  return d.getTime() > now.getTime() ? undefined : d.toISOString();
+}
+
 export function extractIncidentTime(input: string, now = new Date()): string | undefined {
   if (!input) return undefined;
   // Normalised here too. This function reads "3 din pehle" through a digit
@@ -329,6 +481,17 @@ export function extractIncidentTime(input: string, now = new Date()): string | u
   const morning = /(morning|subah|सुबह)/.test(t);
   const afternoon = /(afternoon|dopahar|दोपहर)/.test(t);
   const hour = evening ? 20 : afternoon ? 15 : morning ? 9 : 12;
+
+  // An explicit day of the month beats a named day, and is checked before
+  // them: "दस तारीख को" in a sentence that also contains "कल" means the tenth.
+  const dayMatch = t.match(DAY_OF_MONTH);
+  if (dayMatch) {
+    const said = dayMatch[1] ?? dayMatch[2];
+    const day = /^\d+$/.test(said) ? Number(said) : composeWords(said);
+    const monthsBack = LAST_MONTH.test(t) ? 1 : 0;
+    const at = fromDayOfMonth(day, now, monthsBack, hour);
+    if (at) return at;
+  }
 
   if (/(day before yesterday|parso|परसों)/.test(t)) {
     d.setDate(d.getDate() - 2);
