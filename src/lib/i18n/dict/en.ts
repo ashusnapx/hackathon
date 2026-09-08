@@ -1542,6 +1542,10 @@ export const en = {
 
   // Shown in the letter modal when the case has no drafts yet — which used to
   // mean the modal did not open at all.
+  "doc.blocked.chakshu": "A Chakshu report is a report about a phone number, and your case does not have one recorded yet. Add the number they contacted you from and this letter becomes available.",
+  "doc.blocked.general": "This letter does not apply to your case as it stands. If that looks wrong, add what is missing and it will become available.",
+  "doc.blockedTitle": "Not available yet",
+  "doc.addDetails": "Add the missing details",
   "doc.writing": "Writing this from the facts in your case…",
   "doc.polishing": "This is the plain version, ready to send. Checking whether we can improve the wording…",
   "doc.writingBody": "A moment. You will be able to read it, change anything, and send it yourself — nothing is submitted for you.",

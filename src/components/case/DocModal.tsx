@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { DOCS, OneDocument, type DocKey } from "@/components/case/DocumentsPanel";
 import { useDraftGeneration } from "@/components/case/useDraftGeneration";
 import { fillDocument } from "@/lib/case/placeholders";
+import { documentBlockedReason } from "@/lib/case/documents";
 import type { CaseFile } from "@/lib/case/types";
 import { useI18n } from "@/lib/i18n/context";
 
@@ -85,13 +86,22 @@ export function DocModal({ caseFile, docKey, update, onClose, onSeeAll }: {
    */
   const asked = useRef(false);
   const existing = caseFile.docs[docKey];
+  /*
+   * Whether this case can have this letter at all.
+   *
+   * Both the model and the rules are filtered through
+   * `applicableDocumentKeys`, so asking for one that is excluded produces
+   * nothing, forever, with no error — which is exactly how a Chakshu report
+   * came to sit on "writing this from the facts in your case" indefinitely.
+   */
+  const blocked = documentBlockedReason(caseFile, docKey);
   useEffect(() => {
-    if (asked.current) return;
+    if (asked.current || blocked) return;
     if (typeof existing === "string" && existing) return;
     asked.current = true;
     // Plain letter now, better one behind it.
     void generate(true);
-  }, [existing, generate]);
+  }, [existing, generate, blocked]);
 
   const doc = DOCS.find((entry) => entry.key === docKey);
   const draft = caseFile.docs[docKey];
@@ -129,7 +139,23 @@ export function DocModal({ caseFile, docKey, update, onClose, onSeeAll }: {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">
-          {written ? (
+          {blocked ? (
+            <div>
+              <p className="text-[0.9375rem] font-medium">{t("doc.blockedTitle")}</p>
+              <p className="mt-2 max-w-prose text-[0.9375rem] leading-[1.55] text-ink-2">
+                {t(blocked)}
+              </p>
+              {onSeeAll && (
+                <button
+                  type="button"
+                  onClick={() => { onClose(); onSeeAll(); }}
+                  className="mt-5 min-h-11 text-sm underline underline-offset-4 hover:text-ink"
+                >
+                  {t("doc.seeAll")} →
+                </button>
+              )}
+            </div>
+          ) : written ? (
             <>
               {/* The plain version is already usable and already saved. This
                   says so, rather than leaving somebody wondering whether to

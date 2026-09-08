@@ -1,3 +1,4 @@
+import type { DictKey } from "@/lib/i18n/dict/en";
 import type { CaseFile, TrackId } from "./types";
 
 export const DOCUMENT_KEYS = [
@@ -81,6 +82,26 @@ export function applicableDocumentKeys(c: CaseFile): DocumentKey[] {
     }
     return true;
   });
+}
+
+/**
+ * Why a document cannot be written for this case, if it cannot.
+ *
+ * `applicableDocumentKeys` answers yes or no and the answer used to go
+ * nowhere: the step still offered "the letter", the sheet opened, and it waited
+ * for a document that was never going to be produced — by the model or by the
+ * rules — because both are filtered through the same list. Reported as a
+ * Chakshu report stuck on "writing this from the facts in your case".
+ *
+ * A person who cannot have a document is owed the reason and, where there is
+ * one, the thing they could do about it. Chakshu is a report *about a number*,
+ * so without a number there is nothing to report — and that is worth saying,
+ * because they can go and add it.
+ */
+export function documentBlockedReason(c: CaseFile, key: DocumentKey): DictKey | null {
+  if (applicableDocumentKeys(c).includes(key)) return null;
+  if (key === "chakshu") return "doc.blocked.chakshu";
+  return "doc.blocked.general";
 }
 
 export function pickApplicableDocuments<T extends Partial<Record<DocumentKey, string>>>(
