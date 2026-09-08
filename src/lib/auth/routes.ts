@@ -40,6 +40,7 @@ const PUBLIC_PATHS = new Set<string>([
   "/api/health",
   "/api/vaani/webhook",
   "/api/cron/advisories",
+  "/api/cron/reminders",
 ]);
 
 /**

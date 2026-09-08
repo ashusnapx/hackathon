@@ -74,3 +74,48 @@ export async function releaseCase(userId: string, caseId: string): Promise<void>
 
   if (error) throw new Error(`case-owner-release-failed: ${error.message}`);
 }
+
+export interface OwnedCaseWithOwner {
+  caseId: string;
+  caseKey: string;
+  email: string;
+}
+
+/**
+ * Every attached case and the address of the account it belongs to.
+ *
+ * Only the reminder job calls this, and it is the one function here that is not
+ * scoped to a single verified user — so it is deliberately unexported from any
+ * route: it reads the whole table, and any route that returned its result would
+ * be handing out every case key in the system.
+ *
+ * The email comes from Supabase's auth records rather than from anything the
+ * person typed into a case, which is what makes the reminder go to an address
+ * they have actually proved they control.
+ */
+export async function everyOwnedCase(): Promise<OwnedCaseWithOwner[]> {
+  const db = database();
+  const { data, error } = await db
+    .from("case_owners")
+    .select("user_id, case_id, case_key");
+  if (error) throw new Error(`case-owner-scan-failed: ${error.message}`);
+
+  const rows = data ?? [];
+  // One lookup per distinct account rather than per case: somebody with six
+  // cases is one person with one address.
+  const emails = new Map<string, string>();
+  for (const userId of new Set(rows.map((row) => String(row.user_id)))) {
+    const { data: user } = await db.auth.admin.getUserById(userId);
+    const email = user?.user?.email;
+    if (email) emails.set(userId, email);
+  }
+
+  return rows.flatMap((row) => {
+    const email = emails.get(String(row.user_id));
+    // An account with no address cannot be reminded. Not an error: it simply
+    // has nowhere to send to.
+    return email
+      ? [{ caseId: String(row.case_id), caseKey: String(row.case_key), email }]
+      : [];
+  });
+}

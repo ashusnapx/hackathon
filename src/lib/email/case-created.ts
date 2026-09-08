@@ -84,28 +84,22 @@ function nextActions(input: CaseEmailInput): { title: string; body: string }[] {
   return actions;
 }
 
-export function caseCreatedHtml(input: CaseEmailInput): string {
-  const caseUrl = caseLink(input);
-  const actions = nextActions(input)
-    .map((action, index) => `
-      <tr>
-        <td class="k-num" style="padding:0 0 16px 0;vertical-align:top;width:30px;">
-          <div style="width:24px;height:24px;border-radius:12px;background:${DEEP};color:${PAPER};font:700 12px/24px ${FONT};text-align:center;">${index + 1}</div>
-        </td>
-        <td style="padding:0 0 16px 0;">
-          <div style="font:600 15px/1.4 ${FONT};color:${INK};">${escapeHtml(action.title)}</div>
-          <div style="font:400 14px/1.6 ${FONT};color:${MUTED};margin-top:4px;">${escapeHtml(action.body)}</div>
-        </td>
-      </tr>`)
-    .join("");
-
-  const facts = [
-    input.category ? ["What happened", input.category] : null,
-    typeof input.amountInr === "number" && input.amountInr > 0
-      ? ["Amount reported", `\u20B9${input.amountInr.toLocaleString("en-IN")}`]
-      : null,
-  ].filter(Boolean) as [string, string][];
-
+/**
+ * The chrome every Kavach email shares.
+ *
+ * Extracted so the messages cannot drift apart. Almost everything in the head
+ * is a workaround for one client or another — the dark-scheme meta pair, the
+ * media queries Gmail strips, the table scaffolding Outlook needs — and a
+ * second copy of it would be the one that quietly stopped handling dark mode.
+ *
+ * `body` is the only part a message writes, and it is inserted as-is, so every
+ * caller escapes its own values. Nothing here can do that for them.
+ */
+export function emailShell({ subject, preheader, body }: {
+  subject: string;
+  preheader: string;
+  body: string;
+}): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -113,7 +107,7 @@ export function caseCreatedHtml(input: CaseEmailInput): string {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">
-<title>${escapeHtml(caseCreatedSubject(input))}</title>
+<title>${escapeHtml(subject)}</title>
 <style>
   /* Clients that support media queries get a phone layout. Everything below is
      a progressive improvement on a table that already works without any of it —
@@ -142,9 +136,7 @@ export function caseCreatedHtml(input: CaseEmailInput): string {
 </style>
 </head>
 <body class="k-body" style="margin:0;padding:0;background:${PAPER};-webkit-text-size-adjust:100%;">
-<!-- Preheader: the grey line a phone shows next to the subject. Without one,
-     clients pull the first visible words, which here would be the disclaimer. -->
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your case reference is ${escapeHtml(input.ref)}. Nothing has been filed yet \u2014 here is what to do next.</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</div>
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="k-body" style="background:${PAPER};">
 <tr><td class="k-outer" align="center" style="padding:24px 12px;">
@@ -155,6 +147,39 @@ export function caseCreatedHtml(input: CaseEmailInput): string {
     <div style="font:400 13px/1.5 ${FONT};color:rgba(253,252,243,.78);margin-top:5px;">Independent cybercrime support \u2014 not police, not government</div>
   </td></tr>
 
+  ${body}
+
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
+export function caseCreatedHtml(input: CaseEmailInput): string {
+  const caseUrl = caseLink(input);
+  const actions = nextActions(input)
+    .map((action, index) => `
+      <tr>
+        <td class="k-num" style="padding:0 0 16px 0;vertical-align:top;width:30px;">
+          <div style="width:24px;height:24px;border-radius:12px;background:${DEEP};color:${PAPER};font:700 12px/24px ${FONT};text-align:center;">${index + 1}</div>
+        </td>
+        <td style="padding:0 0 16px 0;">
+          <div style="font:600 15px/1.4 ${FONT};color:${INK};">${escapeHtml(action.title)}</div>
+          <div style="font:400 14px/1.6 ${FONT};color:${MUTED};margin-top:4px;">${escapeHtml(action.body)}</div>
+        </td>
+      </tr>`)
+    .join("");
+
+  const facts = [
+    input.category ? ["What happened", input.category] : null,
+    typeof input.amountInr === "number" && input.amountInr > 0
+      ? ["Amount reported", `\u20B9${input.amountInr.toLocaleString("en-IN")}`]
+      : null,
+  ].filter(Boolean) as [string, string][];
+
+  return emailShell({
+    subject: caseCreatedSubject(input),
+    preheader: `Your case reference is ${input.ref}. Nothing has been filed yet \u2014 here is what to do next.`,
+    body: `
   <tr><td class="k-pad" style="padding:26px 26px 6px 26px;">
     <div class="k-muted" style="font:600 12px/1.4 ${FONT};color:${MUTED};text-transform:uppercase;letter-spacing:.7px;">Your case reference</div>
     <div class="k-ref k-ink" style="font:700 30px/1.2 ${MONO};color:${INK};margin-top:8px;letter-spacing:1px;word-break:break-all;">${escapeHtml(input.ref)}</div>
@@ -181,18 +206,30 @@ export function caseCreatedHtml(input: CaseEmailInput): string {
     <div class="k-muted" style="font:400 12px/1.6 ${FONT};color:${MUTED};margin-top:10px;">That link is the only way back into your case, and anyone who has it can read it. Keep this email to yourself.</div>
   </td></tr>
 
+  <!-- The promise. Several of these steps open or close on a date that is
+       weeks away, and nobody in the first hour of a fraud is going to hold a
+       calendar in their head. Saying it here is also what makes the reminder
+       that arrives later expected rather than alarming. -->
+  <tr><td class="k-pad" style="padding:0 26px 4px 26px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="k-rule" style="border:1px solid ${RULE};border-radius:10px;">
+      <tr><td style="padding:16px 18px;">
+        <div class="k-ink" style="font:600 14px/1.4 ${FONT};color:${INK};">You do not have to remember the dates.</div>
+        <div class="k-muted" style="font:400 13px/1.65 ${FONT};color:${MUTED};margin-top:6px;">Some of these steps only open weeks from now, and one or two close for good if they are missed. We will email you on the morning a step falls due, telling you which one and what to do. One email per step, and none once you have marked it done.</div>
+      </td></tr>
+    </table>
+  </td></tr>
+
   <tr><td class="k-pad k-soft k-rule" style="padding:18px 26px;border-top:1px solid ${RULE};background:#fbfaf2;">
     <div class="k-ink" style="font:600 13px/1.5 ${FONT};color:${INK};">Nothing has been filed yet.</div>
     <div class="k-muted" style="font:400 13px/1.6 ${FONT};color:${MUTED};margin-top:6px;">Kavach has prepared your case. No complaint, FIR or bank dispute exists until you submit it and receive an official acknowledgement.</div>
     <div class="k-muted" style="font:400 13px/1.6 ${FONT};color:${MUTED};margin-top:10px;">Never share an OTP, PIN, CVV, password or full card number \u2014 with anyone, including us.</div>
   </td></tr>
 
-</table>
-</td></tr></table>
-</body></html>`;
+`,
+  });
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

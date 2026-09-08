@@ -111,6 +111,14 @@ export interface CaseFile {
     policeStation?: string;
     ageContext?: "adult-or-no-child" | "self-minor" | "child-other" | "unknown";
   };
+  /**
+   * Which steps have already been chased by email, and when.
+   *
+   * Kept on the case rather than in a table of its own so the record travels
+   * with the case: a reminder job that re-runs, or runs after a restore, finds
+   * the stamp and stays quiet rather than sending a second copy.
+   */
+  remindedAt?: Record<string, string>;
   bank: {
     name?: string;
     /**

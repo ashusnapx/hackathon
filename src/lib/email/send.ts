@@ -3,6 +3,7 @@ import "server-only";
 import nodemailer from "nodemailer";
 
 import { emailAppPassword, emailConfigured, emailUser } from "./config";
+import { reminderHtml, reminderSubject, reminderText, type ReminderInput } from "./reminder";
 import {
   caseCreatedHtml,
   caseCreatedSubject,
@@ -80,5 +81,31 @@ export async function sendCaseCreatedEmail(to: string, input: CaseEmailInput): P
     // the log: a delivery failure is an operations problem, not a case record.
     console.error("case email not sent", { reason: error instanceof Error ? error.name : "unknown" });
     return { sent: false, reason: "send-failed" };
+  }
+}
+
+/**
+ * The one message Kavach sends that nobody asked for at the moment it lands.
+ *
+ * Same transport, same failure handling: a reminder that cannot be delivered is
+ * not an error anybody needs to see, because the case and its dates are on the
+ * screen either way.
+ */
+export async function sendReminderEmail(to: string, input: ReminderInput): Promise<EmailResult> {
+  if (!emailConfigured()) return { sent: false, reason: "not-configured" };
+  const smtp = transport();
+  try {
+    await smtp.sendMail({
+      from: `Kavach <${emailUser()}>`,
+      to,
+      subject: reminderSubject(input),
+      text: reminderText(input),
+      html: reminderHtml(input),
+    });
+    return { sent: true };
+  } catch {
+    return { sent: false, reason: "send-failed" };
+  } finally {
+    smtp.close();
   }
 }

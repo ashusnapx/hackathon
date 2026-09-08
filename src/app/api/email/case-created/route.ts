@@ -1,3 +1,4 @@
+import { currentUser } from "@/lib/auth/server";
 import { CASE_KEY_PATTERN } from "@/lib/case/key";
 import { emailConfigured, sendCaseCreatedEmail } from "@/lib/email/send";
 import { readSmallJson, requestHasSameOrigin } from "@/lib/integrations/vaani";
@@ -32,7 +33,20 @@ export async function POST(req: Request) {
   if (Object.keys(body).some((key) => !permitted.has(key))) {
     return json({ error: "unexpected-field" }, 400);
   }
-  if (typeof body.to !== "string" || !EMAIL_PATTERN.test(body.to) || body.to.length > 254) {
+  /*
+   * Where this is sent, in order of preference.
+   *
+   * The signed-in account's address wins over anything in the request, and
+   * that is a security property rather than a convenience: without it this
+   * route will post a working case link to whatever address a caller puts in
+   * the body, which is a way to have Kavach hand somebody else's case to an
+   * attacker. A typed address is only honoured when nobody is signed in, which
+   * is the path where the person has no account and the case lives solely in
+   * their browser.
+   */
+  const account = await currentUser();
+  const to = account?.email ?? (typeof body.to === "string" ? body.to : "");
+  if (!EMAIL_PATTERN.test(to) || to.length > 254) {
     return json({ error: "invalid-email" }, 400);
   }
   if (typeof body.ref !== "string" || !REF_PATTERN.test(body.ref)) {
@@ -53,7 +67,7 @@ export async function POST(req: Request) {
     return json({ sent: false, reason: "not-configured" }, 200);
   }
 
-  const result = await sendCaseCreatedEmail(body.to, {
+  const result = await sendCaseCreatedEmail(to, {
     ref: body.ref,
     caseId: body.caseId,
     caseKey: typeof body.caseKey === "string" ? body.caseKey : undefined,
