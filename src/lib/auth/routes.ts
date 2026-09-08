@@ -37,6 +37,38 @@ const PUBLIC_PATHS = new Set<string>([
   SIGN_IN_PATH,
   AUTH_CALLBACK_PATH,
   DEMO_CASE_PATH,
+  /*
+   * The interview, and everything it needs before anybody has an account.
+   *
+   * ── Why this is a list and not one path ─────────────────────────────────
+   *
+   * The first attempt at this opened `/assist` alone, which was worse than
+   * leaving it shut: the page rendered, the microphone worked, and then the
+   * button did nothing because `/api/ai/triage` answered 401. A door that
+   * opens onto a wall is a crueller failure than a locked door, and it took
+   * testing the whole path rather than the route to find it.
+   *
+   * So the rule is the journey, not the page. Everything a person touches
+   * between arriving and having a case is here: the three ways in, the
+   * questions, and the four endpoints those screens actually call.
+   *
+   * ── What stays shut, and why that is not arbitrary ──────────────────────
+   *
+   * Nothing here reads or writes a stored case. `/assist` and `/say` keep the
+   * draft in the browser's own storage; a case reaches the server only once it
+   * has a key, and every route that touches one still demands that key on top
+   * of the session. `/api/cases/*`, `/cases` and the account screens are
+   * therefore still gated, and there is a test below that says so — because
+   * the failure mode of a list like this is that it grows one convenient
+   * exception at a time until the gate means nothing.
+   */
+  "/start",
+  "/assist",
+  "/say",
+  "/say/questions",
+  "/api/ai/triage",
+  "/api/ai/transcribe",
+  "/api/whatsapp/claim",
   "/api/health",
   "/api/vaani/webhook",
   // Meta has no session and never will. This route authenticates every request

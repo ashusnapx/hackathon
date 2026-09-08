@@ -16,11 +16,19 @@ describe("what a signed-out stranger may reach", () => {
   });
 
   it("lets the provider's own webhook through, which has no session to present", () => {
+    // The whole interview, not just its front door. Opening the page but not
+    // the endpoints it calls renders a screen that cannot do anything — which
+    // is how this was shipped once already.
+    for (const path of [
+      "/start", "/assist", "/say", "/say/questions",
+      "/api/ai/triage", "/api/ai/transcribe", "/api/whatsapp/claim",
+    ]) {
+      expect(isPublicPath(path), path).toBe(true);
+    }
     expect(isPublicPath("/api/vaani/webhook")).toBe(true);
     // Meta cannot present a session cookie. Behind the gate the subscription
     // handshake gets a 401 and the webhook can never be registered.
     expect(isPublicPath("/api/whatsapp/webhook")).toBe(true);
-    expect(isPublicPath("/api/whatsapp/claim")).toBe(false);
   });
 
   it("lets a confirmation link land, since a session is what it is coming to collect", () => {
@@ -35,13 +43,29 @@ describe("what a signed-out stranger may reach", () => {
 
   it("shuts everything else", () => {
     for (const path of [
-      "/start", "/assist", "/cases", "/report", "/check", "/compare",
+      "/cases", "/report", "/check", "/compare", "/account",
       "/case/9f0b1e2c-1111-2222-3333-444455556666",
-      "/api/ai/triage", "/api/ai/draft", "/api/cases/fetch", "/api/cases/sync",
+      "/api/ai/draft", "/api/cases/fetch", "/api/cases/sync",
       "/api/vaani/session", "/api/vaani/transcript", "/api/email/case-created",
     ]) {
       expect(isPublicPath(path), path).toBe(false);
     }
+  });
+
+  it("opening the interview does not open the case store behind it", () => {
+    // `/assist` is public so somebody can start before they have an account.
+    // Everything that reads or writes a stored case still demands one, and the
+    // case key is still checked on top of that.
+    expect(isPublicPath("/assist")).toBe(true);
+    expect(isPublicPath("/say")).toBe(true);
+    for (const path of ["/api/cases/sync", "/api/cases/fetch", "/api/cases/mine", "/api/cases/delete"]) {
+      expect(isPublicPath(path), path).toBe(false);
+    }
+    // And the prefix is not a hole.
+    expect(isPublicPath("/assistant")).toBe(false);
+    expect(isPublicPath("/assist/../cases")).toBe(false);
+    expect(isPublicPath("/sayings")).toBe(false);
+    expect(isPublicPath("/api/ai/draft")).toBe(false);
   });
 
   it("is not fooled by a path dressed up to look like a public one", () => {
@@ -58,7 +82,8 @@ describe("what a signed-out stranger may reach", () => {
     expect(normalisePath("//start//")).toBe("/start");
     expect(normalisePath("/START")).toBe("/start");
     expect(isPublicPath("/API/HEALTH")).toBe(true);
-    expect(isPublicPath("//assist")).toBe(false);
+    expect(isPublicPath("//assist")).toBe(true);
+    expect(isPublicPath("//cases")).toBe(false);
   });
 
   it("does not gate what Next.js serves itself", () => {
