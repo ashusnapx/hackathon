@@ -1,6 +1,7 @@
 "use client";
 
 import { Chapter, Figure } from "@/components/landing/Chapter";
+import { SCALE_SOURCE } from "@/lib/landing-sources";
 import { useT } from "@/lib/i18n/context";
 
 const STATS = [
@@ -47,9 +48,27 @@ export function Scale() {
         ))}
       </div>
 
-      <p className="mt-14 max-w-[62ch] border-t border-rule pt-5 text-[0.8125rem] leading-[1.5] text-ink-3">
-        {t("problem.statSrc")}
-      </p>
+      {/* The citation is a link, not a sentence.
+          Two of the four numbers that used to sit above this line could not be
+          traced to anything when somebody finally checked them — on the page
+          that spends its length arguing a claim should carry its source. It now
+          points at the primary document rather than at a write-up of one, and
+          `scripts/check-sources.mjs` watches it every Monday alongside the RBI
+          and BNSS citations. */}
+      <div className="mt-14 max-w-[62ch] border-t border-rule pt-5">
+        <p className="text-[0.8125rem] leading-[1.5] text-ink-3">{t("problem.statSrc")}</p>
+        <a
+          href={SCALE_SOURCE.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-medium underline decoration-rule-strong underline-offset-[3px] hover:decoration-current"
+        >
+          {t("problem.statSrcCta")}: {SCALE_SOURCE.label}
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden className="rtl:-scale-x-100">
+            <path d="M7 17L17 7M9 7h8v8" />
+          </svg>
+        </a>
+      </div>
 
       {/* What the number felt like from inside it. */}
       <ul className="mt-14 grid md:grid-cols-3 gap-px bg-rule border-y border-rule" data-reveal>

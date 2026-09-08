@@ -14,7 +14,15 @@
  */
 import { readFileSync } from "node:fs";
 
-const files = ["src/lib/legal/rbi.ts", "src/lib/legal/ombudsman.ts", "src/lib/case/tracks.ts"];
+const files = [
+  "src/lib/legal/rbi.ts",
+  "src/lib/legal/ombudsman.ts",
+  "src/lib/case/tracks.ts",
+  // The landing page's own statistics. A dead link under a number telling
+  // somebody how big this problem is fails in exactly the way a dead link under
+  // a deadline does, and for a while these were not checked at all.
+  "src/lib/landing-sources.ts",
+];
 const urls = new Set();
 for (const file of files) {
   for (const [, url] of readFileSync(file, "utf8").matchAll(/"(https:\/\/[^"]+)"/g)) urls.add(url);

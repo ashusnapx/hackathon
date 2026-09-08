@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Mondays, 06:30 IST. The source check is the reason this runs on a clock
+    # rather than only on a push: nobody changes a file when RBI moves a PDF.
+    - cron: "0 1 * * 1"
+
+jobs:
+  check:
+    name: types, lint, tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cybercrime-assistant
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cybercrime-assistant/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx eslint src
+      - run: npm test
+
+  eval:
+    # ── Why this runs without an API key ─────────────────────────────────────
+    #
+    # With no key the harness scores the *rules fallback* — which is what runs
+    # whenever the model is unavailable, and the model is unavailable exactly
+    # when things are going badly. That path is deterministic, so it can gate a
+    # merge, and it is the path that was silently misfiling every
+    # women-and-children case until this evaluation was written.
+    #
+    # Add OPENAI_API_KEY as a secret to score the live model instead. Do that
+    # before shipping a change to a prompt, a model version or the taxonomy.
+    name: classifier still routes correctly
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cybercrime-assistant
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cybercrime-assistant/package-lock.json
+      - run: npm ci
+      - run: npm run eval:triage
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+
+  sources:
+    # ── Why this is a job and not a line in the one above ────────────────────
+    #
+    # It depends on RBI's, MHA's and NALSA's servers being up, so it fails for
+    # reasons that are nobody here's fault. Bundled into the main job it would
+    # redden a PR over somebody else's outage and teach everyone to ignore a red
+    # build — which is the failure this check exists to prevent.
+    #
+    # So it is separate, it is allowed to fail without blocking a merge, and it
+    # opens an issue when it does. A dead link under a sentence telling somebody
+    # their bank has ten working days to answer is worse than no link: it is the
+    # first thing they would check before believing us.
+    name: legal sources still answer
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: cybercrime-assistant
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: check
+        run: node scripts/check-sources.mjs | tee sources.log
+      - name: Raise an issue if a source has rotted
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const log = fs.readFileSync("cybercrime-assistant/sources.log", "utf8");
+            const dead = log.split("\n").filter((l) => l.startsWith("DEAD"));
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `A legal source stopped answering (${dead.length})`,
+              body: [
+                "`scripts/check-sources.mjs` could not reach one of the sources cited beside a legal claim.",
+                "",
+                "```",
+                dead.join("\n"),
+                "```",
+                "",
+                "Every one of these sits next to a sentence telling somebody what a bank or a portal owes them.",
+                "Find where it moved and update the citation — do not simply delete the link.",
+              ].join("\n"),
+              labels: ["sources"],
+            });

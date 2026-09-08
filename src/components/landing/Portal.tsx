@@ -3,6 +3,7 @@
 import Image from "next/image";
 
 import { Chapter, Figure } from "@/components/landing/Chapter";
+import { benchmark, PORTAL_OTP_MINUTES } from "@/lib/report/benchmark";
 import { Button } from "@/components/ui/Button";
 import { useT } from "@/lib/i18n/context";
 import type { DictKey } from "@/lib/i18n/dict/en";
@@ -40,15 +41,29 @@ const POINTS: DictKey[] = ["cmp.p1", "cmp.p2", "cmp.p3"];
 
 export function Portal() {
   const t = useT();
+  const bench = benchmark();
 
   return (
     <Chapter id="compare" n="02" kicker="ch.portal.k" heading="ch.portal.h" lede="ch.portal.b">
-      {/* The three numbers that are the argument. Computed where they can be,
-          quoted from the manual where they cannot. */}
-      <div className="grid sm:grid-cols-3 gap-x-8 gap-y-10 border-b border-rule pb-14">
-        <Figure v={t("ch.portal.s1v")} l={t("ch.portal.s1l")} tone="text-[color:var(--urgent-ink)]" />
-        <Figure v={t("ch.portal.s2v")} l={t("ch.portal.s2l")} tone="text-[color:var(--urgent-ink)]" />
-        <Figure v={t("ch.portal.s3v")} l={t("ch.portal.s3l")} tone="text-[color:var(--urgent-ink)]" />
+      {/* The three numbers that are the argument.
+          Two of them are counted from the field schema rather than typed into a
+          translation file, so they cannot go on saying something the product
+          stopped doing. The third is the portal's own published figure, and the
+          note underneath says which is which — because the difference between
+          "we counted this" and "they published this" is exactly the kind of
+          thing this chapter is about. */}
+      <div className="grid sm:grid-cols-3 gap-x-8 gap-y-10">
+        <Figure v={String(bench.portalRequired)} l={t("ch.portal.s1l")} tone="text-[color:var(--urgent-ink)]" />
+        <Figure v={String(PORTAL_OTP_MINUTES)} l={t("ch.portal.s2l")} tone="text-[color:var(--urgent-ink)]" />
+        <Figure v={String(bench.relaxed)} l={t("ch.portal.s3l")} tone="text-[color:var(--urgent-ink)]" />
+      </div>
+
+      {/* The rule runs the full measure; the note keeps its own. Hanging the
+          border on the paragraph made it stop wherever the sentence did. */}
+      <div className="mt-8 border-b border-rule pb-14">
+        <p className="max-w-[62ch] text-[0.8125rem] leading-[1.5] text-ink-3">
+          {t("ch.portal.benchNote")}
+        </p>
       </div>
 
       {/* The evidence. It is the only photograph-like thing on the page and it
