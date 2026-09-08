@@ -89,7 +89,8 @@ export function DocModal({ caseFile, docKey, update, onClose, onSeeAll }: {
     if (asked.current) return;
     if (typeof existing === "string" && existing) return;
     asked.current = true;
-    void generate();
+    // Plain letter now, better one behind it.
+    void generate(true);
   }, [existing, generate]);
 
   const doc = DOCS.find((entry) => entry.key === docKey);
@@ -129,7 +130,18 @@ export function DocModal({ caseFile, docKey, update, onClose, onSeeAll }: {
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">
           {written ? (
-            <OneDocument
+            <>
+              {/* The plain version is already usable and already saved. This
+                  says so, rather than leaving somebody wondering whether to
+                  wait — and it disappears by itself when the better wording
+                  arrives, or stays gone if it never does. */}
+              {busy && (
+                <p className="mb-4 flex items-start gap-2.5 rounded-ctl bg-sunk px-3 py-2.5 text-[0.8125rem] leading-[1.45] text-ink-2">
+                  <span className="mt-1.5 h-2 w-2 shrink-0 animate-pulse rounded-full bg-urgent" aria-hidden />
+                  {t("doc.polishing")}
+                </p>
+              )}
+              <OneDocument
               caseFile={caseFile}
               doc={doc}
               body={fillDocument(draft, caseFile)}
@@ -137,6 +149,7 @@ export function DocModal({ caseFile, docKey, update, onClose, onSeeAll }: {
               // The sheet's own bar already says which letter this is.
               titled={false}
             />
+            </>
           ) : (
             /*
              * Writing, not asking.
@@ -158,7 +171,7 @@ export function DocModal({ caseFile, docKey, update, onClose, onSeeAll }: {
                   <p className="text-[0.9375rem] font-medium">{t("doc.writeFailed")}</p>
                   <p className="mt-2 max-w-prose text-[0.9375rem] leading-[1.55] text-ink-2">{t(error)}</p>
                   <div className="mt-5 flex flex-wrap items-center gap-3">
-                    <Button onClick={generate} disabled={busy} size="md">
+                    <Button onClick={() => void generate(true)} disabled={busy} size="md">
                       {busy ? `${t("doc.generating")}…` : t("doc.tryAgain")}
                     </Button>
                     {onSeeAll && (

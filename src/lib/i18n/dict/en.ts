@@ -1543,6 +1543,7 @@ export const en = {
   // Shown in the letter modal when the case has no drafts yet — which used to
   // mean the modal did not open at all.
   "doc.writing": "Writing this from the facts in your case…",
+  "doc.polishing": "This is the plain version, ready to send. Checking whether we can improve the wording…",
   "doc.writingBody": "A moment. You will be able to read it, change anything, and send it yourself — nothing is submitted for you.",
   "doc.writeFailed": "That did not work. Nothing in your case has changed.",
   "doc.tryAgain": "Try again",

@@ -59,7 +59,7 @@ export function DocumentsPanel({ caseFile, update }: Props) {
           <p className="mt-1.5 text-[0.9375rem] text-ink-2 max-w-xl">{t("case.docsSub")}</p>
         </div>
         <div className="flex flex-wrap gap-2 no-print">
-          <Button onClick={generate} disabled={busy} size="sm">
+          <Button onClick={() => void generate()} disabled={busy} size="sm">
             {busy ? `${t("doc.generating")}…` : has ? t("doc.regenerate") : t("doc.generate")}
           </Button>
           {has && (
@@ -87,7 +87,7 @@ export function DocumentsPanel({ caseFile, update }: Props) {
       {!has ? (
         <div className="mt-8 sheet px-6 py-14 text-center">
           <p className="text-ink-2 max-w-md mx-auto leading-relaxed">{t("case.docsSub")}</p>
-          <Button onClick={generate} disabled={busy} size="lg" className="mt-6">
+          <Button onClick={() => void generate()} disabled={busy} size="lg" className="mt-6">
             {busy ? `${t("doc.generating")}…` : t("doc.generate")}
           </Button>
           {busy && (

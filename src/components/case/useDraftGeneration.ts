@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { ruleDocs } from "@/lib/ai/fallback";
 import {
   applicableDocumentKeys,
   documentInputFingerprint,
@@ -30,7 +31,16 @@ import type { CaseDocs, CaseFile } from "@/lib/case/types";
  * owner has already fixed is worse than no letter.
  */
 export interface DraftGeneration {
-  generate: () => Promise<void>;
+  /**
+   * Write the letters.
+   *
+   * `immediate` fills the case with the rule-written versions first and then
+   * upgrades them — see the note below. The documents screen passes false: it
+   * has a visible button, somebody pressed it deliberately, and replacing a set
+   * they are reading with a rougher one and then a better one would be worse
+   * than a moment's wait.
+   */
+  generate: (immediate?: boolean) => Promise<void>;
   busy: boolean;
   /** A translation key, so the caller decides how loudly to say it. */
   error: DictKey | null;
@@ -50,12 +60,47 @@ export function useDraftGeneration(
     latest.current = caseFile;
   }, [caseFile]);
 
-  const generate = useCallback(async () => {
+  const generate = useCallback(async (immediate = false) => {
     const mine = ++sequence.current;
     const requestedKeys = applicableDocumentKeys(caseFile);
     const fingerprint = documentInputFingerprint(caseFile);
     setBusy(true);
     setError(null);
+
+    /*
+     * The letter, now, before anybody waits for a model.
+     *
+     * `ruleDocs` is deterministic and runs here in the browser, so a complete,
+     * sendable version of every document exists the instant it is asked for.
+     * The model call then runs behind it and quietly replaces the text if it
+     * comes back with something better.
+     *
+     * This is what the fallback was always for — its own comment says
+     * "somebody filing at 2am on a patchy connection should still walk away
+     * with a filled-in complaint" — and it was reachable only from the server,
+     * only after the model had spent its thirty-second timeout failing. On a
+     * rate-limited key that meant half a minute of spinner before the thing we
+     * could have produced instantly appeared anyway.
+     *
+     * The fingerprint deliberately excludes `docs`, so writing these does not
+     * invalidate the request already in flight for the same facts.
+     */
+    if (immediate) {
+      update((c) => ({
+        docs: {
+          ...ruleDocs(caseFile),
+          generatedAt: new Date().toISOString(),
+          generatedBy: "rules" as const,
+          translated: {},
+          translatedLanguage: undefined,
+        },
+        events: [
+          ...c.events,
+          { at: new Date().toISOString(), kind: "docs" as const, label: "Documents drafted" },
+        ],
+      }));
+    }
+
     try {
       const res = await fetch("/api/ai/draft", {
         method: "POST",
@@ -87,7 +132,11 @@ export function useDraftGeneration(
         ],
       }));
     } catch {
-      if (mine === sequence.current) setError("doc.err.generate");
+      // With the rule-written set already in the case there is nothing to
+      // recover from and nothing to tell anybody: they have their letter, it
+      // is simply the plain one. Only a failure with nothing behind it is
+      // worth interrupting somebody for.
+      if (mine === sequence.current && !immediate) setError("doc.err.generate");
     } finally {
       if (mine === sequence.current) setBusy(false);
     }
