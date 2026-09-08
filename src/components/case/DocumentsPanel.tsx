@@ -239,12 +239,27 @@ export function OneDocument({ caseFile, doc, body, update }: {
           },
         }))
       }
+      onSave={(text) =>
+        update((c) => ({
+          docs: {
+            ...c.docs,
+            [doc.key]: text,
+            // A hand-edited draft must not keep a translation of the text it
+            // replaced sitting beside it, silently out of date.
+            translated: { ...c.docs.translated, [doc.key]: undefined },
+          },
+          events: [
+            ...c.events,
+            { at: new Date().toISOString(), kind: "docs" as const, label: `Edited ${doc.key}` },
+          ],
+        }))
+      }
     />
   );
 }
 
 function Document({
-  docKey, title, blurb, body, translated, targetLang, onTranslated,
+  docKey, title, blurb, body, translated, targetLang, onTranslated, onSave,
 }: {
   docKey: DocKey;
   title: string;
@@ -253,9 +268,23 @@ function Document({
   translated?: string;
   targetLang: string;
   onTranslated: (text: string) => void;
+  /** Persists an edit back into the case. */
+  onSave?: (text: string) => void;
 }) {
   const { t } = useI18n();
   const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
+  /**
+   * The person's own edit, if they have made one.
+   *
+   * A generated complaint is a draft, and it is theirs to correct: a model
+   * reading a transcript gets a name, a branch or a sequence of events wrong
+   * often enough that being unable to fix it would mean retyping the whole
+   * thing into the portal by hand. Copy, share and the PDF all take whatever
+   * is in the box, so an edit that is not saved still leaves with them.
+   */
+  const [draft, setDraft] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const text = draft ?? body;
   // navigator.share only exists on the client, and only over HTTPS.
   const canShare = useIsClient() && !!navigator.share;
   const [showTranslation, setShowTranslation] = useState(false);
@@ -275,7 +304,7 @@ function Document({
    * like this gets opened. So there is a fallback, and a visible failure.
    */
   const copy = async () => {
-    const ok = await writeToClipboard(body);
+    const ok = await writeToClipboard(text);
     setCopyState(ok ? "done" : "failed");
     setTimeout(() => setCopyState("idle"), ok ? 1800 : 4000);
   };
@@ -286,12 +315,12 @@ function Document({
    * signature block read as an application. Copy and share still carry the plain
    * text, which is what a portal box and WhatsApp actually want.
    */
-  const download = () => downloadLetter(body, { title, filename: `${docKey}-${fileDate()}.pdf` });
+  const download = () => downloadLetter(text, { title, filename: `${docKey}-${fileDate()}.pdf` });
 
   /** On a phone the useful destination is usually WhatsApp, not the filesystem. */
   const share = async () => {
     try {
-      await navigator.share({ title, text: body });
+      await navigator.share({ title, text });
     } catch {
       /* dismissed, or the share sheet is unavailable — copy is still there */
     }
@@ -377,15 +406,52 @@ function Document({
           <p className="px-5 pt-4 text-sm text-ink-3">{t("doc.whyEnglish")}</p>
           <pre className="px-5 py-4 whitespace-pre-wrap text-[0.9375rem] leading-[1.75] font-sans">{translated}</pre>
         </>
+      ) : editing ? (
+        <div className="px-5 py-5">
+          <label htmlFor={`doc-edit-${docKey}`} className="sr-only">{title}</label>
+          <textarea
+            id={`doc-edit-${docKey}`}
+            value={text}
+            onChange={(event) => setDraft(event.target.value)}
+            spellCheck={false}
+            /* 16px minimum or iOS zooms the page the moment it is focused. */
+            className="block h-80 w-full resize-y rounded-ctl border border-rule-strong bg-paper px-3.5 py-3 font-mono text-[1rem] leading-[1.7] focus:border-ink focus:outline-none"
+          />
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              onClick={() => {
+                if (draft !== null) onSave?.(draft);
+                setEditing(false);
+              }}
+            >
+              {t("doc.saveEdit")}
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => { setDraft(null); setEditing(false); }}>
+              {t("doc.revert")}
+            </Button>
+          </div>
+        </div>
       ) : (
         <pre className="px-5 py-5 whitespace-pre-wrap break-words text-[0.875rem] leading-[1.7] font-mono swipe-x no-bar">
-          {body}
+          {text}
         </pre>
       )}
 
-      <p className="px-5 py-2.5 border-t border-rule num text-xs text-ink-3">
-        {body.length} {t("doc.characters")}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rule px-5 py-2.5">
+        <p className="num text-xs text-ink-3">
+          {text.length} {t("doc.characters")}
+          {draft !== null && <span className="ms-2">· {t("doc.edited")}</span>}
+        </p>
+        {!editing && !showTranslation && (
+          <button
+            onClick={() => setEditing(true)}
+            className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4 hover:text-ink"
+          >
+            {t("doc.edit")}
+          </button>
+        )}
+      </div>
     </article>
   );
 }

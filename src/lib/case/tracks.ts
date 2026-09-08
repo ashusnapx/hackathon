@@ -380,9 +380,24 @@ export function scheduleFrom(at: Date): ScheduledTrack[] {
   });
 }
 
+/**
+ * Why a track is marked not needed.
+ *
+ *  · `not-financial` — no money moved, so the bank and Ombudsman routes have
+ *    nothing to act on.
+ *  · `other-category` — this kind of fraud is handled by a different set of
+ *    steps; the ones that apply are still on the list.
+ *  · `not-unauthorised` — the RBI liability clock runs from the bank's own
+ *    message about the transaction, and either that date is not recorded or
+ *    the transaction was authorised by the person themselves.
+ */
+export type NaReason = "not-financial" | "other-category" | "not-unauthorised";
+
 export interface LiveTrack {
   def: TrackDef;
   state: TrackState;
+  /** Set only when `state` is "na". */
+  naReason?: NaReason;
   /** Next relevant edge: opening date before a window opens, final date after. */
   deadline: Date | null;
   opensAt: Date | null;
@@ -413,15 +428,28 @@ export function liveTracks(c: CaseFile, now = new Date()): LiveTrack[] {
     const msLeft = deadline ? deadline.getTime() - now.getTime() : null;
 
     let state: TrackState;
+    // Why a step does not apply, not just that it does not.
+    //
+    // "Not needed for this case" on its own reads as the product having decided
+    // something on the person's behalf and not saying what. Each of the three
+    // routes to that state is a different fact about their case, and two of
+    // them are things they can change — a case categorised wrongly at intake,
+    // or a bank notice date that has not been entered yet.
+    let naReason: NaReason | undefined;
     if (progress?.doneAt) {
       state = "done";
-    } else if ((def.financialOnly && !financial) || (allowed && !allowed.includes(def.id))) {
+    } else if (def.financialOnly && !financial) {
       state = "na";
+      naReason = "not-financial";
+    } else if (allowed && !allowed.includes(def.id)) {
+      state = "na";
+      naReason = "other-category";
     } else if (
       def.requiresRbiUnauthorisedTransaction &&
       !rbiUnauthorisedTimingMayApply(c)
     ) {
       state = "na";
+      naReason = "not-unauthorised";
     } else if (def.blockedBy && !c.tracks.find((t) => t.id === def.blockedBy)?.doneAt) {
       state = "upcoming";
     } else if (waitingToOpen) {
@@ -432,7 +460,7 @@ export function liveTracks(c: CaseFile, now = new Date()): LiveTrack[] {
       state = "due";
     }
 
-    return { def, state, deadline, opensAt, finalDeadline, dateKind, msLeft };
+    return { def, state, naReason, deadline, opensAt, finalDeadline, dateKind, msLeft };
   });
 }
 

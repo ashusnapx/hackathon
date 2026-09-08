@@ -40,6 +40,7 @@ const ACT = [
   { href: "/whatsapp", key: "nav.whatsapp" },
   { href: "/cases", key: "nav.cases" },
   { href: DEMO_CASE_PATH, key: "nav.sample" },
+  { href: "/faq", key: "nav.faq" },
 ] as const;
 
 export function Nav() {

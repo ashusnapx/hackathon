@@ -92,6 +92,7 @@ export const en = {
   "bwmi.badge": "Hackathon build",
   "bwmi.text": "Kavach is an independent prototype built for Build What Moves India — not a government service.",
   "bwmi.link": "buildwhatmovesindia.com",
+  "bwmi.dismiss": "Hide this banner",
 
   // Reading controls, on the page rather than in a browser menu. GIGW 3.0 asks
   // for this, and the people here are often on a borrowed phone whose settings
@@ -309,17 +310,74 @@ export const en = {
   "clocks.today": "If it happened today",
 
   // ── Problem ───────────────────────────────────────────────────────────────
+
+  // ── The page as one story ─────────────────────────────────────────────────
+  // Six chapters on a single spine, numbered, each a beat in the same account:
+  // how big this is, what meeting it looks like today, what we built instead,
+  // why that is hard to copy, the proof, and the line we will not cross.
+  "ch.scale.k": "The scale",
+  "ch.scale.h": "This is not a rare thing that happens to careless people.",
+  "ch.scale.b": "One portal took twenty-four lakh complaints in 2025 alone. The money behind them is not a rounding error, and a quarter of it was taken from the people least equipped to chase it.",
+
+  "ch.portal.k": "Where it breaks today",
+  "ch.portal.h": "The reporting works. The reporting form is what people lose.",
+  "ch.portal.b": "Every claim here is from the Ministry of Home Affairs’ own Citizen Manual or the checklist printed on the portal’s login page. We are not guessing at the current experience — it is documented, by the people who built it.",
+  "ch.portal.s1v": "16",
+  "ch.portal.s1l": "fields it will not submit without",
+  "ch.portal.s2v": "30",
+  "ch.portal.s2l": "minutes before the OTP expires",
+  "ch.portal.s3v": "0",
+  "ch.portal.s3l": "of it saved as you type",
+  "ch.portal.cta": "See all eight, side by side",
+
+  "ch.moat.k": "What we built instead",
+  "ch.moat.h": "Four things that are hard to bolt on afterwards.",
+  "ch.moat.b": "Not features. Each one had to be decided before the first line was written, which is why a portal cannot add them in a release.",
+  "ch.moat.m1n": "23",
+  "ch.moat.m1t": "Languages, end to end",
+  "ch.moat.m1b": "Not a translated interface. The voice interview, the extraction, the drafts and the deadlines all run in every scheduled language of India, and in English. Retrofitting that means rebuilding the intake, not adding a dropdown.",
+  "ch.moat.m2n": "10",
+  "ch.moat.m2t": "Tracks, each carrying its source",
+  "ch.moat.m2b": "Every deadline we show names the rule it comes from — RBI, BNSS, the Citizen Manual — and links to it. A system that cannot say where a date came from cannot start saying it later.",
+  "ch.moat.m3n": "0",
+  "ch.moat.m3t": "Forms before you may speak",
+  "ch.moat.m3b": "You talk in the order it comes out, ungrammatically, in two languages at once, and a structured case comes out. The portal needs sixteen fields before it will accept a word about the crime.",
+  "ch.moat.m4n": "—",
+  "ch.moat.m4t": "Things we pretend are filed",
+  "ch.moat.m4b": "Kavach prepares and never submits. Nothing is marked done until an official channel returns a real receipt. Every product in this space is tempted by the opposite, and it is the one thing a victim cannot afford us to get wrong.",
+
+  "ch.proof.k": "The proof",
+  "ch.proof.h": "One real call, and the case it became.",
+  "ch.proof.b": "The recording, the transcript and the fields the model filled, committed to this repository. Check the extraction against what was actually said.",
+
+  "ch.line.k": "The line",
+
+  "ch.faq": "Questions",
+  "ch.faqCta": "Read the questions people ask",
   "problem.kicker": "The gap",
   "problem.h2": "Filing the complaint is one percent of the job.",
   "problem.body": "Advice often stops at “go to cybercrime.gov.in.” But an NCRP acknowledgement, a police FIR, a bank dispute, a fund hold and a refund are different states. Victims need one place that explains and follows each next step.",
-  "problem.stat1.v": "22.5 lakh",
-  "problem.stat1.l": "cybercrime complaints filed in a single year",
-  "problem.stat2.v": "78%",
-  "problem.stat2.l": "of them are financial fraud",
-  "problem.stat3.v": "₹22,800 cr",
-  "problem.stat3.l": "reported lost in 2024–25",
-  "problem.stat4.v": "~1 in 8",
-  "problem.stat4.l": "rupees actually recovered",
+  // The four numbers, for calendar 2025 — the last complete year as this page
+  // stands, and the figures the Ministry of Home Affairs gave Parliament.
+  //
+  // Two of the originals did not survive checking and were dropped: "78% of
+  // them are financial fraud" and "~1 in 8 rupees actually recovered" could not
+  // be traced to anything. A page whose whole argument is provenance cannot
+  // open with a statistic it is unable to source, and the replacements are the
+  // stronger claim anyway — the volume, the money, and how much of both lands
+  // on the people least able to fight it.
+  //
+  // These are dated on purpose. Re-check them when the next year's answer is
+  // tabled; a number with a year on it ages visibly, which is the point.
+  "problem.stat1.v": "24 lakh",
+  "problem.stat1.l": "cybercrime complaints on the portal in 2025",
+  "problem.stat2.v": "₹22,495 cr",
+  "problem.stat2.l": "reported lost in that one year",
+  "problem.stat3.v": "5.66 lakh",
+  "problem.stat3.l": "of those complaints came from senior citizens and women",
+  "problem.stat4.v": "₹7,769 cr",
+  "problem.stat4.l": "the money behind just those",
+  "problem.statSrc": "Calendar year 2025, as reported to the Lok Sabha by the Ministry of Home Affairs: the National Cyber Crime Reporting Portal and the Citizen Financial Cyber Fraud Reporting and Management System, both run by the Indian Cyber Crime Coordination Centre.",
   "problem.quotesTitle": "What filing actually feels like",
   "problem.q1": "I tried four times to register a complaint. After five minutes the portal threw me out. No complaint means no fraud, as far as the government is concerned.",
   "problem.q1a": "Siddhartha M., on LinkedIn",
@@ -579,6 +637,12 @@ export const en = {
   "track.status.done": "Done",
   "track.status.missed": "Deadline passed",
   "track.status.na": "Not needed for this case",
+
+  // Why a step does not apply. Two of these three are things the person can
+  // change, so "not needed" on its own was hiding an action from them.
+  "track.na.notFinancial": "**No money was taken**, so there is nothing for a bank or the Ombudsman to return. If money did move, add the amount and this step comes back.",
+  "track.na.otherCategory": "**This kind of fraud is handled by the other steps** on this list. If the category is wrong, change it and the list changes with it.",
+  "track.na.notUnauthorised": "**This clock starts from your bank\u2019s message** about the transaction. Add the date you were told, on the bank step above, and this opens.",
 
   // The count that replaced "Do now". Working days are named as such, because
   // the RBI windows are counted in them and a person planning around a weekend
@@ -2194,6 +2258,14 @@ export const en = {
   "fill.story": "What happened",
   "fill.story.h": "In your own words, in the order it happened.",
   "doc.characters": "characters",
+
+  // Editing a draft. The generated text is a draft, and a model reading a
+  // transcript gets a name or a sequence of events wrong often enough that
+  // being unable to fix it would mean retyping the whole thing into a portal.
+  "doc.edit": "Edit this",
+  "doc.saveEdit": "Save changes",
+  "doc.revert": "Undo my changes",
+  "doc.edited": "edited by you",
 } as const;
 
 export type Dict = Record<keyof typeof en, string>;

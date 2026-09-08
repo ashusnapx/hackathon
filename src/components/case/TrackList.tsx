@@ -12,10 +12,17 @@ import { costOfDelay } from "@/lib/case/cost-of-delay";
 import { liveTracks, type LiveTrack } from "@/lib/case/tracks";
 import { useT } from "@/lib/i18n/context";
 import type { CaseFile, TrackId, TrackState } from "@/lib/case/types";
+import type { DictKey } from "@/lib/i18n/dict/en";
 import { parseBankNoticeDate, toLocalDateTimeInput } from "@/lib/case/bank-notice";
 import { cn, fmtDate } from "@/lib/utils";
 
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+
+const NA_REASON: Record<NonNullable<LiveTrack["naReason"]>, DictKey> = {
+  "not-financial": "track.na.notFinancial",
+  "other-category": "track.na.otherCategory",
+  "not-unauthorised": "track.na.notUnauthorised",
+};
 
 const COUNT_STYLE: Record<DaysLeftTone, string> = {
   gone: "bg-urgent-soft text-urgent-ink border-urgent/40",
@@ -122,7 +129,7 @@ function TrackRow({
   incidentAt?: string;
 }) {
   const t = useT();
-  const { def, state, deadline } = track;
+  const { def, state, deadline, naReason } = track;
   const left = daysLeftFor(track);
   const [docOpen, setDocOpen] = useState(false);
   const [ackRef, setAckRef] = useState(bank.ackRef ?? "");
@@ -231,6 +238,15 @@ function TrackRow({
               {left ? countLabel(left, t) : t(STATE_LABEL[state])}
             </span>
           </span>
+
+          {/* The reason, where the row used to say only that it did not apply.
+              Two of the three reasons are things the person can change, so a
+              bare "not needed" was hiding an action from them. */}
+          {state === "na" && naReason && (
+            <span className="mt-1.5 block text-sm leading-[1.5] text-ink-3">
+              <Emphasis>{t(NA_REASON[naReason])}</Emphasis>
+            </span>
+          )}
 
           <span className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-ink-3">
             <span>{t(def.dueKey)}</span>

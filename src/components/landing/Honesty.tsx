@@ -1,6 +1,5 @@
 "use client";
 
-import { Headline } from "@/components/ui/Split";
 import { useT } from "@/lib/i18n/context";
 
 const REAL = ["honesty.r1", "honesty.r2", "honesty.r3", "honesty.r4", "honesty.r5", "honesty.r6", "honesty.r7", "honesty.r8"] as const;
@@ -18,19 +17,11 @@ export function Honesty() {
 
   return (
     <section id="honesty" className="on-dark panel-full overflow-hidden">
-      <div className="mx-auto max-w-6xl px-5 sm:px-8 py-20 sm:py-28">
-        <h2 className="max-w-[16ch]">
-          <Headline>{t("honesty.h2")}</Headline>
-        </h2>
-        <p
-          className="mt-8 max-w-[58ch] text-[1.0625rem] sm:text-lg leading-[1.6] text-ink-2"
-          data-reveal
-          style={{ "--i": 1 } as React.CSSProperties}
-        >
-          {t("honesty.body")}
-        </p>
-
-        <div className="mt-14 grid md:grid-cols-2 gap-4">
+      {/* No heading of its own: chapter 05's head sits on the road directly
+          above this slab and already carries `honesty.h2` and `honesty.body`.
+          Repeating them here printed the same argument twice. */}
+      <div className="mx-auto max-w-6xl px-5 sm:px-8 py-16 sm:py-24">
+        <div className="grid md:grid-cols-2 gap-4">
           <div
             className="rounded-card border border-rule bg-raised p-7 sm:p-9"
             data-reveal

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 
 import { authClient } from "@/lib/auth/browser";
 import { authConfigured } from "@/lib/auth/config";
-import { Button } from "@/components/ui/Button";
 import { useMenuBehaviour, moveMenuFocus } from "@/components/useMenu";
 import { useT } from "@/lib/i18n/context";
 import { casePath, useActiveCaseId } from "@/lib/case/store";
@@ -91,15 +90,24 @@ export function AccountAvatar() {
     );
   }
 
-  // No session: a way in, not an absence. The circle meant nothing to somebody
-  // who has never signed in; these words do.
-  if (!email) {
-    return (
-      <Button href="/signin" size="sm" variant="secondary" className="shrink-0">
-        {t("avatar.signIn")}
-      </Button>
-    );
-  }
+  /*
+   * No session: offer the thing to do, not the thing to join.
+   *
+   * This was a "Sign in" button, which put an account in front of somebody
+   * whose money left an hour ago — and Kavach works without one. Signing in
+   * only adds carrying cases between devices, which is worth nothing until
+   * there is a case to carry. The route in is now the same as the one on the
+   * landing page, and /start's own screen offers signing in to anybody who
+   * wants it.
+   */
+  /*
+   * Nothing. The bar this sits in already ends with its own "Start" button, so
+   * returning a second one printed "Start Start" side by side to every
+   * signed-out visitor — which is every first-time visitor. The paragraph above
+   * still holds: what a signed-out person is offered is the thing to do rather
+   * than an account to join. It is offered once.
+   */
+  if (!email) return null;
 
   const initial = (email.trim()[0] ?? "?").toUpperCase();
 

@@ -53,8 +53,16 @@ export function SiteHeader({ width = "5xl", status, action, noPrint }: {
         )}
       >
         <Wordmark />
-        {status && <div className="hidden sm:flex ms-auto items-center min-w-0">{status}</div>}
-        <div className={cn("flex items-center gap-2 shrink-0", !status && "ms-auto")}>
+        {/*
+          The status cannot be the thing that pushes the controls to the end of
+          the row: it is hidden below `sm`, so on a phone it collapsed to
+          nothing and the controls stayed bunched against the wordmark with a
+          dead gap beside them. This spacer pushes at every width, and the
+          status simply sits in it once there is room to show it.
+        */}
+        <div className="ms-auto hidden min-w-0 flex-1 items-center justify-end sm:flex">{status}</div>
+        <div className="ms-auto sm:hidden" aria-hidden />
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <LanguageSwitcher compact />
           <AccessibilityControls />
           <AccountAvatar />
