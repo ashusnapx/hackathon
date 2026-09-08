@@ -75,6 +75,9 @@ export function VoiceComposer({
             onResult={append}
             onInterim={setInterim}
             onModeChange={(next) => setMode(next)}
+            // Closes itself once somebody has clearly finished. See the note on
+            // the prop, and `lib/intake/vad.ts` for what "finished" means.
+            autoStop
           />
         </div>
 
@@ -151,12 +154,32 @@ export function VoiceComposer({
       </div>
 
       {/*
-        What used to be six unchanging pills. They are still the same six
-        things worth saying — the list simply reads the statement back now, and
-        goes green on what it has genuinely found. See HeardSoFar for why the
-        two the interview must ask for itself are not in the ticking set.
+        Read back after, never during.
+
+        This panel used to tick along while somebody was still speaking, and for
+        one revision it was fed the interim words so it ticked faster. Both were
+        wrong, for the same reason and for a second one.
+
+        The reason of manner: a person describing the worst hour of their year
+        does not need six rows blinking at them mid-sentence. What they need is
+        to be allowed to finish. So while the microphone is open there is one
+        line of reassurance and nothing else moves.
+
+        The reason of substance: this reader is regex over a string, and it can
+        only ever cover the few languages somebody has written patterns for.
+        Ticking it live would be showing the *weakest* extraction we have, at
+        the loudest possible moment, to somebody who may be speaking one of the
+        twenty-three it does not cover. The authoritative read is the model's,
+        it happens once when they stop, and it is editable — which is the only
+        version of this that works in every language.
       */}
-      {prompts && prompts.length > 0 && <HeardSoFar text={value} listening={listening} />}
+      {prompts && prompts.length > 0 && !listening && <HeardSoFar text={value} listening={false} />}
+
+      {listening && (
+        <p className="mt-3 border-t border-rule pt-3 text-[0.8125rem] leading-[1.5] text-ink-3">
+          {t("compose.takeYourTime")}
+        </p>
+      )}
 
       <div className="mt-2 flex items-center gap-3 border-t border-rule pt-3">
         <p className="flex-1 min-w-0 text-xs leading-[1.4] text-ink-3">{t("compose.hint")}</p>

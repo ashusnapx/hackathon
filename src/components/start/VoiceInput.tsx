@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n/context";
 import { appendPhrase, readRecognition } from "@/lib/intake/recognition";
+import { createVad } from "@/lib/intake/vad";
 import { VoiceRing, startVoiceMeter, type RingSize } from "@/components/start/VoiceRing";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,16 @@ type Mode = "idle" | "listening" | "processing" | "unsupported" | "nothing";
 
 interface Props {
   onResult: (text: string) => void;
+  /**
+   * Close the microphone by itself once somebody has clearly stopped talking.
+   *
+   * Off by default, because a composer that is holding a half-typed sentence
+   * has its own reasons to keep the take open. `/say` turns it on: the person
+   * it is written for should not have to remember a second tap, and the
+   * commonest failure was never a wrong tap but a forgotten one, ending with
+   * two minutes of silence recorded after the story.
+   */
+  autoStop?: boolean;
   disabled?: boolean;
   /**
    * "page" is the full control with its status line and disclosure.
@@ -123,7 +134,7 @@ function getRecognition(): SpeechRecognitionLike | null {
   return Ctor ? new Ctor() : null;
 }
 
-export function VoiceInput({ onResult, disabled, variant = "page", onModeChange, controller, onInterim }: Props) {
+export function VoiceInput({ onResult, disabled, variant = "page", onModeChange, controller, onInterim, autoStop }: Props) {
   const { lang, t } = useI18n();
   const [mode, setMode] = useState<Mode>("idle");
   const [interim, setInterim] = useState("");
@@ -228,6 +239,14 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
    * VoiceRing. What stays here is the only thing this component still needs
    * from the audio: the two numbers that decide whether a take is uploaded.
    */
+  const vadRef = useRef(createVad());
+  /** So the meter callback, created once, always calls the current `stop`. */
+  const stopRef = useRef<() => void>(() => {});
+  /** Distinguishes "they tapped stop" from "we heard them finish". */
+  const autoStoppedRef = useRef(false);
+  const autoStopRef = useRef(autoStop);
+  useEffect(() => { autoStopRef.current = autoStop; }, [autoStop]);
+
   const meter = useCallback((stream: MediaStream) => {
     const handle = startVoiceMeter({
       stream,
@@ -243,6 +262,16 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
       onLevel: (v) => {
         if (v > peakRef.current) peakRef.current = v;
         framesRef.current += 1;
+
+        // Hearing the person stop talking. The decision itself is in
+        // `lib/intake/vad.ts` — pure, and tested as a list of numbers rather
+        // than by talking at a laptop — so all that happens on this very hot
+        // path is one comparison and, at most once per take, a call to stop.
+        if (!autoStopRef.current) return;
+        if (vadRef.current.push(v, performance.now()) === "stop") {
+          autoStoppedRef.current = true;
+          stopRef.current();
+        }
       },
     });
     audioCtxRef.current = handle.ctx;
@@ -400,6 +429,8 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
   const start = useCallback(async () => {
     if (disabled) return;
     const activity = ++activityRef.current;
+    vadRef.current.reset();
+    autoStoppedRef.current = false;
     setInterim("");
     previewRef.current = "";
     setMode((m) => (m === "nothing" ? "idle" : m));
@@ -433,6 +464,10 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
     setMode("idle");
     setInterim("");
   }, [cleanup]);
+
+  // The meter's callback is built once per take and closes over whatever `stop`
+  // was at that moment. Without this the auto-stop would call a stale one.
+  useEffect(() => { stopRef.current = stop; }, [stop]);
 
   const listening = mode === "listening";
   const busy = mode === "processing";

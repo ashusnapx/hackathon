@@ -6,8 +6,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { SiteHeader } from "@/components/SiteHeader";
 import { VoiceComposer } from "@/components/start/VoiceComposer";
+import { SpokenSummary, type Understood } from "@/components/start/SpokenSummary";
 import { DETAIL_QUESTIONS } from "@/lib/intake/details";
 import { emptyIntake } from "@/lib/intake/interview";
+import { ruleTriage } from "@/lib/ai/fallback";
+import { extractEntities } from "@/lib/ai/extract";
 import { draftFromStory } from "@/lib/intake/infer";
 import { INTAKE_STORAGE_KEY, loadBrowserIntakeDraft, saveBrowserIntakeDraft } from "@/lib/intake/persistence";
 import { clearStoredVaaniSession } from "@/lib/integrations/vaani-client";
@@ -37,6 +40,7 @@ export function StartFlow() {
   const { t, lang } = useI18n();
   const [story, setStory] = useState("");
   const [busy, setBusy] = useState(false);
+  const [understood, setUnderstood] = useState<Understood | null>(null);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
@@ -71,7 +75,20 @@ export function StartFlow() {
     if (loadBrowserIntakeDraft().draft?.analysis) router.replace("/say/questions");
   }, [router]);
 
-  const send = async () => {
+  /*
+   * Read what they said, once, and show it back.
+   *
+   * The model first, because it is the only thing here that reads all
+   * twenty-three languages — the rule-based extractors cover a handful of
+   * scripts and will never cover the rest, however many currency words get
+   * added. One call, at the moment somebody has finished talking: not per
+   * keystroke and not per interim result, which is both what the quota allows
+   * and what a person describing a fraud deserves.
+   *
+   * The rules are the fallback, and when they run the summary says so rather
+   * than passing a keyword match off as a reading.
+   */
+  const read = async () => {
     if (story.trim().length < 25 || busy) return;
     setBusy(true);
     setError(null);
@@ -82,20 +99,47 @@ export function StartFlow() {
         body: JSON.stringify({ text: story.trim(), lang: lang.code }),
       });
       if (!response.ok) throw new Error("triage-failed");
-      const payload = await response.json() as IntakeAnalysis & { callerName?: string; bankName?: string };
-      const { callerName, bankName, ...analysis } = payload;
-      // Nothing of the last report comes with them: not the narrative, not the
-      // extracted facts, and not the receipt for a previous voice call.
-      saveBrowserIntakeDraft({
-        ...emptyIntake("web"),
-        ...draftFromStory(story, analysis, new Date(), { callerName, bankName }),
-      });
-      clearStoredVaaniSession();
-      router.push("/say/questions");
+      const payload = await response.json() as Understood;
+      setUnderstood(payload);
     } catch {
-      setError(t("start.error"));
+      // Unreachable, rate-limited or down. Read it with what we have and be
+      // plain about which one they are looking at.
+      const text = story.trim();
+      setUnderstood({
+        triage: ruleTriage(text),
+        entities: extractEntities(text),
+        source: "rules",
+      });
+    } finally {
       setBusy(false);
     }
+  };
+
+  /** They have read the summary and corrected whatever was wrong. */
+  const confirm = (edits: Record<string, string>) => {
+    if (!understood) return;
+    const { callerName, bankName, ...rest } = understood;
+    const analysis: IntakeAnalysis = {
+      triage: {
+        ...rest.triage,
+        // A correction is the person's own answer and outranks the reading.
+        amount: edits.amount ? Number(edits.amount.replace(/[^\d]/g, "")) || rest.triage.amount : rest.triage.amount,
+        incidentAt: edits.incidentAt ? new Date(edits.incidentAt).toISOString() : rest.triage.incidentAt,
+      },
+      entities: rest.entities,
+      source: rest.source,
+    };
+    // Nothing of the last report comes with them: not the narrative, not the
+    // extracted facts, and not the receipt for a previous voice call.
+    saveBrowserIntakeDraft({
+      ...emptyIntake("web"),
+      ...draftFromStory(story, analysis, new Date(), {
+        callerName: edits.callerName || callerName,
+        bankName: edits.bankName || bankName,
+      }),
+    });
+    clearStoredVaaniSession();
+    router.push("/say/questions");
   };
 
   const prompts = ["name", "bankName", "amount", "incidentAt", "utr", "suspectPhone"]
@@ -114,13 +158,25 @@ export function StartFlow() {
           <div className="mt-6">
             <VoiceComposer
               value={story}
-              onChange={(next) => { setStory(next); setError(null); }}
-              onSubmit={send}
+              onChange={(next) => { setStory(next); setError(null); setUnderstood(null); }}
+              onSubmit={read}
               submitLabel={t("begin.storyCta")}
               busy={busy}
               prompts={prompts}
             />
           </div>
+
+          {/* Shown once, after they have finished, and editable — see the note
+              at the top of SpokenSummary for why that is the only version of
+              this that works in every one of the twenty-three languages. */}
+          {(busy || understood) && (
+            <SpokenSummary
+              understood={busy ? null : understood}
+              story={story}
+              onConfirm={confirm}
+              onAddMore={() => setUnderstood(null)}
+            />
+          )}
 
           {error && <p role="alert" className="mt-3 text-sm text-urgent-ink">{error}</p>}
 

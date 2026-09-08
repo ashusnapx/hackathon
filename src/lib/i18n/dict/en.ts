@@ -322,12 +322,13 @@ export const en = {
   "ch.portal.k": "Where it breaks today",
   "ch.portal.h": "The reporting works. The reporting form is what people lose.",
   "ch.portal.b": "Every claim here is from the Ministry of Home Affairs’ own Citizen Manual or the checklist printed on the portal’s login page. We are not guessing at the current experience — it is documented, by the people who built it.",
-  "ch.portal.s1v": "16",
-  "ch.portal.s1l": "fields it will not submit without",
-  "ch.portal.s2v": "30",
-  "ch.portal.s2l": "minutes before the OTP expires",
-  "ch.portal.s3v": "0",
-  "ch.portal.s3l": "of it saved as you type",
+  // The values are computed from the field schema by `report/benchmark.ts` and
+  // are not written here — only the labels are. A hand-typed "16" in a
+  // translation file was a claim about the product that nothing checked.
+  "ch.portal.s1l": "fields the portal will not submit without",
+  "ch.portal.s2l": "minutes before its OTP expires",
+  "ch.portal.s3l": "of those we do not block on",
+  "ch.portal.benchNote": "The first and third are counted from the field schema this prototype actually implements, so they change when it does. The thirty minutes is the portal's own figure, from the Ministry of Home Affairs' Citizen Manual.",
   "ch.portal.cta": "See all eight, side by side",
 
   "ch.moat.k": "What we built instead",
@@ -338,7 +339,7 @@ export const en = {
   "ch.moat.m1b": "Not a translated interface. The voice interview, the extraction, the drafts and the deadlines all run in every scheduled language of India, and in English. Retrofitting that means rebuilding the intake, not adding a dropdown.",
   "ch.moat.m2n": "10",
   "ch.moat.m2t": "Tracks, each carrying its source",
-  "ch.moat.m2b": "Every deadline we show names the rule it comes from — RBI, BNSS, the Citizen Manual — and links to it. A system that cannot say where a date came from cannot start saying it later.",
+  "ch.moat.m2b": "Every deadline we show names the rule it comes from — RBI, BNSS, the Citizen Manual — links to it, and re-fetches that link every week. A system that cannot say where a date came from cannot start saying it later.",
   "ch.moat.m3n": "0",
   "ch.moat.m3t": "Forms before you may speak",
   "ch.moat.m3b": "You talk in the order it comes out, ungrammatically, in two languages at once, and a structured case comes out. The portal needs sixteen fields before it will accept a word about the crime.",
@@ -377,7 +378,8 @@ export const en = {
   "problem.stat3.l": "of those complaints came from senior citizens and women",
   "problem.stat4.v": "₹7,769 cr",
   "problem.stat4.l": "the money behind just those",
-  "problem.statSrc": "Calendar year 2025, as reported to the Lok Sabha by the Ministry of Home Affairs: the National Cyber Crime Reporting Portal and the Citizen Financial Cyber Fraud Reporting and Management System, both run by the Indian Cyber Crime Coordination Centre.",
+  "problem.statSrc": "Calendar year 2025, from the Ministry of Home Affairs' own answer to the Lok Sabha — the National Cyber Crime Reporting Portal and the Citizen Financial Cyber Fraud Reporting and Management System, both run by the Indian Cyber Crime Coordination Centre.",
+  "problem.statSrcCta": "Read the answer",
   "problem.quotesTitle": "What filing actually feels like",
   "problem.q1": "I tried four times to register a complaint. After five minutes the portal threw me out. No complaint means no fraud, as far as the government is concerned.",
   "problem.q1a": "Siddhartha M., on LinkedIn",
@@ -455,6 +457,17 @@ export const en = {
   "honesty.r6": "Downloadable PDF case pack, and the case file surviving a closed browser",
   "honesty.r7": "Cases stored in Postgres and reopened on another device from their own link",
   "honesty.r8": "Signed-in cases follow the same login across devices, and a call's transcript stays saved with its case after the recording expires",
+  // Two claims about process rather than features, added once they became true.
+  //
+  // Neither quotes a score. The classifier measures 92% balanced accuracy
+  // against the golden set as this is written, and putting that number on a
+  // landing page would be the same overstatement this section exists to refuse:
+  // it is twenty hand-built cases, which can tell you something has got worse
+  // and cannot tell you the thing is good. What is worth claiming is that the
+  // measurement happens at all and that a regression cannot ship — which is
+  // checkable, does not rot, and is a stronger claim than a percentage.
+  "honesty.r9": "Classification is scored against a published set of cases before any change to the model, the prompt or the category tree ships",
+  "honesty.r10": "Every legal citation on this site is fetched automatically each week, so a moved circular is found by us rather than by somebody relying on it",
   "honesty.m1": "Nothing is submitted to cybercrime.gov.in. You copy the text across yourself",
   "honesty.m2": "Complaint status and police-station routing are simulated, not fetched",
   "honesty.m3": "Kavach never asks for an OTP, password, bank login, Aadhaar or PAN. Do not enter them in your story or evidence notes.",
@@ -1733,6 +1746,47 @@ export const en = {
   "compose.heading": "What you have said",
   "compose.listening": "Listening",
   "compose.listeningEmpty": "Go ahead — we are listening.",
+  // Said while the microphone is open, and it is doing real work.
+  //
+  // A person describing the worst hour of their year stops every few seconds to
+  // check whether the machine is still with them, and the panel that used to
+  // tick along underneath was answering that question by interrupting the
+  // answer. Nothing is read back now until they have finished. This is the line
+  // that makes that silence feel like patience rather than absence.
+  "compose.takeYourTime": "Take your time. Say everything you remember, in any order, in whatever language is easiest — nobody will interrupt, and the microphone closes itself when you stop.",
+  "compose.stillListening": "Still listening — pause as long as you need.",
+
+  // ── The summary shown after somebody has finished speaking ────────────────
+  // The model reads the statement once, in whatever language it was given, and
+  // hands back what it understood. Everything is editable, because the point of
+  // showing it is that it can be wrong — and it is likeliest to be wrong in
+  // exactly the languages the rule-based reader cannot help with either.
+  "sum.title": "This is what I understood",
+  "sum.sub": "Read it over and change anything that is wrong. Nothing is filed anywhere yet.",
+  "sum.rules": "The model could not be reached, so this was read by keyword matching instead. Check it more carefully than usual — and add anything it missed.",
+  "sum.reading": "Reading what you said…",
+  "sum.name": "Your name",
+  "sum.amount": "Amount lost",
+  "sum.when": "When it happened",
+  "sum.contact": "Their number or ID",
+  "sum.where": "Where they contacted you",
+  "sum.bank": "Your bank",
+  "sum.category": "What this looks like",
+  "sum.empty": "Not mentioned",
+  "sum.add": "Add",
+  "sum.edit": "Change",
+  "sum.done": "Save",
+  "sum.confirm": "This is right — continue",
+  "sum.more": "Let me add more",
+  "sum.askTitle": "One thing I am not sure about",
+  "sum.askAmount": "You mentioned more than one figure. Which one actually left your account?",
+  "sum.askWhen": "I could not work out the date. Roughly when did this happen?",
+  "sum.askMonth": "You said this month, but that day has not come round yet — so I read it as last month. Which did you mean?",
+  "sum.thisMonth": "This month",
+  "sum.lastMonth": "Last month",
+  "sum.askContact": "Is that number the one who contacted you, or your own?",
+  "sum.theirs": "Theirs",
+  "sum.mine": "Mine",
   "compose.placeholder": "Tap the microphone, or type here.",
   "compose.promptsH": "Say as much of this as you can remember — it saves us asking:",
   "compose.hint": "Say it in as many goes as you like. You can fix anything here.",
