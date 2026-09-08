@@ -64,14 +64,27 @@ interface Row {
 }
 
 export function SpokenSummary({
-  understood, story, onConfirm, onAddMore,
+  understood, story, seed, onConfirm, onAddMore,
 }: {
   understood: Understood | null;
   story: string;
+  /**
+   * Corrections already made in the read-back above.
+   *
+   * Seeded rather than merged afterwards, so somebody who has just fixed the
+   * amount by tapping it does not find the model's version back in front of
+   * them a second later, asking to be fixed again.
+   */
+  seed?: Partial<Record<string, string>>;
   onConfirm: (corrected: Record<string, string>) => void;
   onAddMore: () => void;
 }) {
   const { t } = useI18n();
+  // No effect copies the seed into state. A correction made upstairs is simply
+  // the row's starting value (see `fromHeard` below), and `edits` holds only
+  // what was changed *here* — so the two cannot drift, and there is no render
+  // in which the model's version flashes up before the person's own answer
+  // replaces it.
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [editing, setEditing] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -94,12 +107,19 @@ export function SpokenSummary({
   const { triage, entities } = understood;
   const category = findCategory(triage.categoryId);
 
+  /*
+   * The read-back calls these `amount`, `when`, `contact`, `where`; the summary
+   * calls them by the draft's own field names. One map, here, rather than two
+   * vocabularies quietly drifting apart.
+   */
+  const fromHeard = (heardId: string) => seed?.[heardId];
+
   const rows: Row[] = [
     { id: "callerName", label: "sum.name", value: understood.callerName ?? "" },
-    { id: "amount", label: "sum.amount", value: triage.amount ? rupees(triage.amount) : "" },
+    { id: "amount", label: "sum.amount", value: fromHeard("amount") ?? (triage.amount ? rupees(triage.amount) : "") },
     { id: "incidentAt", label: "sum.when", value: triage.incidentAt?.slice(0, 10) ?? "", kind: "date" },
-    { id: "contact", label: "sum.contact", value: entities.phones[0] ?? entities.upiIds[0] ?? entities.emails[0] ?? "" },
-    { id: "where", label: "sum.where", value: entities.apps[0] ?? entities.urls[0] ?? "" },
+    { id: "contact", label: "sum.contact", value: fromHeard("contact") ?? entities.phones[0] ?? entities.upiIds[0] ?? entities.emails[0] ?? "" },
+    { id: "where", label: "sum.where", value: fromHeard("where") ?? entities.apps[0] ?? entities.urls[0] ?? "" },
     { id: "bankName", label: "sum.bank", value: understood.bankName ?? "" },
   ];
 

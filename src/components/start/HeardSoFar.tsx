@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { anyHeard, readHeard } from "@/lib/intake/heard";
 import { useI18n } from "@/lib/i18n/context";
@@ -39,7 +39,30 @@ import { cn } from "@/lib/utils";
 /** How long after the microphone closes before the summary is announced. */
 const SETTLE_MS = 1200;
 
-export function HeardSoFar({ text, listening }: { text: string; listening: boolean }) {
+/**
+ * Corrections the person made by tapping a row, keyed by `HeardId`.
+ *
+ * Held by the caller rather than here, because they outlive this panel: the
+ * whole point is that a correction survives into the case, and a value that
+ * only existed inside the component it was typed in would be lost the moment
+ * the interview moved on.
+ */
+export type HeardEdits = Partial<Record<string, string>>;
+
+export function HeardSoFar({
+  text, listening, edits, onEdit,
+}: {
+  text: string;
+  listening: boolean;
+  edits?: HeardEdits;
+  /**
+   * Given, each row becomes tappable and correctable.
+   *
+   * Without it the panel is the read-only summary it has always been — which
+   * is what the WhatsApp replica and any other read-back surface still want.
+   */
+  onEdit?: (id: string, value: string) => void;
+}) {
   const { t, lang } = useI18n();
 
   // A plain reading of the committed text, with no memory of earlier readings.
@@ -63,7 +86,24 @@ export function HeardSoFar({ text, listening }: { text: string; listening: boole
   }, [listening, text]);
   const announce = !listening && settledAt > 0;
 
-  const done = items.filter((item) => item.found).length;
+  const [editing, setEditing] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
+
+  /*
+   * A correction outranks the reading, always.
+   *
+   * Not merged into `readHeard`: that function is a pure reading of what was
+   * said and has no business knowing what was contradicted afterwards. The
+   * override lives beside it and wins here, which also means a row the reader
+   * never found can be filled in by hand — the one thing the panel could not
+   * do before, and the reason it was only ever a progress bar.
+   */
+  const shownValue = (item: { id: string; value?: string }) => edits?.[item.id] || item.value;
+  /** Corrected by hand counts as heard: somebody told us, which is the point. */
+  const isFound = (item: { id: string; found: boolean }) => item.found || Boolean(edits?.[item.id]);
+
+  const done = items.filter((item) => isFound(item)).length;
   const started = anyHeard(items);
 
   return (
@@ -84,11 +124,28 @@ export function HeardSoFar({ text, listening }: { text: string; listening: boole
         aria-atomic="true"
       >
         {items.map((item) => (
+          editing === item.id ? (
+            <li key={item.id} className="flex min-w-0 items-center gap-1.5">
+              <label className="sr-only" htmlFor={`heard-${item.id}`}>{t(item.label)}</label>
+              <input
+                id={`heard-${item.id}`}
+                ref={inputRef}
+                defaultValue={shownValue(item) ?? ""}
+                onBlur={(e) => { onEdit?.(item.id, e.target.value.trim()); setEditing(null); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  if (e.key === "Escape") setEditing(null);
+                }}
+                /* 16px, or iOS zooms the page the moment it is focused. */
+                className="w-40 rounded-full border border-ink bg-raised px-2.5 py-1 text-base focus:outline-none"
+              />
+            </li>
+          ) : (
           <li
             key={item.id}
             className={cn(
               "flex min-w-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors",
-              item.found
+              isFound(item)
                 ? "border-done/35 bg-done-soft text-ink-2"
                 // Not a failure state: the same pill it always was, just still
                 // waiting. Only the border is lifted, so the eye can find them.
@@ -103,24 +160,36 @@ export function HeardSoFar({ text, listening }: { text: string; listening: boole
               aria-hidden
               className={cn(
                 "grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full text-[9px] font-bold leading-none",
-                item.found ? "bg-done text-white" : "border border-rule-strong",
+                isFound(item) ? "bg-done text-white" : "border border-rule-strong",
               )}
             >
-              {item.found ? "✓" : ""}
+              {isFound(item) ? "✓" : ""}
             </span>
             <span className="min-w-0">
-              <span className={cn(item.found && "text-ink")}>{t(item.label)}</span>
+              <span className={cn(isFound(item) && "text-ink")}>{t(item.label)}</span>
               {/* The screen reader gets the state in words; the tick is
                   decorative and cannot carry it alone. */}
               <span className="sr-only">
                 {" — "}
-                {item.found ? t("heard.gotIt") : t("heard.toSay")}
+                {isFound(item) ? t("heard.gotIt") : t("heard.toSay")}
+                {edits?.[item.id] ? `, ${t("heard.corrected")}` : ""}
               </span>
-              {item.value && (
-                <span className="num ms-1.5 break-all font-semibold text-ink">{item.value}</span>
+              {shownValue(item) && (
+                <span className="num ms-1.5 break-all font-semibold text-ink">{shownValue(item)}</span>
               )}
             </span>
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => setEditing(item.id)}
+                className="ms-0.5 shrink-0 rounded-full px-1 text-[0.6875rem] text-ink-3 underline underline-offset-2 hover:text-ink"
+              >
+                <span aria-hidden>✎</span>
+                <span className="sr-only">{`${t("heard.editHint")}: ${t(item.label)}`}</span>
+              </button>
+            )}
           </li>
+          )
         ))}
       </ul>
 

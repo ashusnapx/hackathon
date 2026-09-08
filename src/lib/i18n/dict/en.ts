@@ -1806,7 +1806,10 @@ export const en = {
   "heard.later": "We will ask you for your name and your bank ourselves, next.",
   "heard.gotIt": "heard",
   "heard.toSay": "not yet",
-  "heard.check": "Check anything we have read back — tap the text above to fix it.",
+  "heard.check": "Tap anything we have read back to correct it — or fix it in the text above.",
+  "heard.editHint": "Tap to change",
+  "heard.editing": "Correcting",
+  "heard.corrected": "you corrected this",
   "heard.progress": "{n} of {total} heard",
   // Three ways in, named by what the person does rather than by our plumbing.
   "choose.h": "How would you like to tell us?",

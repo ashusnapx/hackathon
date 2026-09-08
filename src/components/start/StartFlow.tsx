@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { SiteHeader } from "@/components/SiteHeader";
 import { VoiceComposer } from "@/components/start/VoiceComposer";
 import { SpokenSummary, type Understood } from "@/components/start/SpokenSummary";
+import type { HeardEdits } from "@/components/start/HeardSoFar";
 import { DETAIL_QUESTIONS } from "@/lib/intake/details";
 import { emptyIntake } from "@/lib/intake/interview";
 import { ruleTriage } from "@/lib/ai/fallback";
@@ -41,6 +42,13 @@ export function StartFlow() {
   const [story, setStory] = useState("");
   const [busy, setBusy] = useState(false);
   const [understood, setUnderstood] = useState<Understood | null>(null);
+  /*
+   * Corrections made by tapping a row in the read-back, before the model has
+   * even been asked. They are the person's own answer, so they outrank both the
+   * reading and the model's, and they are seeded into the summary rather than
+   * being asked for a second time.
+   */
+  const [heardEdits, setHeardEdits] = useState<HeardEdits>({});
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
@@ -163,6 +171,15 @@ export function StartFlow() {
               submitLabel={t("begin.storyCta")}
               busy={busy}
               prompts={prompts}
+              heardEdits={heardEdits}
+              onHeardEdit={(id, value) =>
+                setHeardEdits((prev) => {
+                  const next = { ...prev };
+                  if (value) next[id] = value;
+                  else delete next[id];
+                  return next;
+                })
+              }
             />
           </div>
 
@@ -173,6 +190,7 @@ export function StartFlow() {
             <SpokenSummary
               understood={busy ? null : understood}
               story={story}
+              seed={heardEdits}
               onConfirm={confirm}
               onAddMore={() => setUnderstood(null)}
             />

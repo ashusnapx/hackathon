@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { VoiceInput } from "@/components/start/VoiceInput";
-import { HeardSoFar } from "@/components/start/HeardSoFar";
+import { HeardSoFar, type HeardEdits } from "@/components/start/HeardSoFar";
 import { useT } from "@/lib/i18n/context";
 import { appendPhrase } from "@/lib/intake/recognition";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
  */
 export function VoiceComposer({
   value, onChange, onSubmit, submitLabel, busy, disabled, minLength = 25, prompts,
+  heardEdits, onHeardEdit,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -46,6 +47,9 @@ export function VoiceComposer({
    * then knows not to ask.
    */
   prompts?: string[];
+  /** Corrections the person made by tapping a row. Owned above, so they last. */
+  heardEdits?: HeardEdits;
+  onHeardEdit?: (id: string, value: string) => void;
 }) {
   const t = useT();
   const [interim, setInterim] = useState("");
@@ -173,7 +177,9 @@ export function VoiceComposer({
         it happens once when they stop, and it is editable — which is the only
         version of this that works in every language.
       */}
-      {prompts && prompts.length > 0 && !listening && <HeardSoFar text={value} listening={false} />}
+      {prompts && prompts.length > 0 && !listening && (
+        <HeardSoFar text={value} listening={false} edits={heardEdits} onEdit={onHeardEdit} />
+      )}
 
       {listening && (
         <p className="mt-3 border-t border-rule pt-3 text-[0.8125rem] leading-[1.5] text-ink-3">
