@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
-import { findByRef, useCases } from "@/lib/case/store";
+import { casePath, findByRef, useCases } from "@/lib/case/store";
+import { useAccountCases } from "@/lib/case/account-cases";
 import { findCategory } from "@/lib/case/categories";
 import { useT } from "@/lib/i18n/context";
 import { fmtDate } from "@/lib/utils";
@@ -24,12 +25,13 @@ export default function CasesPage() {
   const t = useT();
   const router = useRouter();
   const cases = useCases();
+  const account = useAccountCases();
   const [ref, setRef] = useState("");
   const [missed, setMissed] = useState(false);
 
   const open = () => {
     const found = findByRef(ref);
-    if (found) router.push(`/case/${found.id}`);
+    if (found) router.push(casePath(found.id));
     else setMissed(true);
   };
 
@@ -61,11 +63,16 @@ export default function CasesPage() {
         {cases.length > 0 && (
           <section className="mt-14">
             <p className="label">{t("case.recent")}</p>
+            {(account === "synced" || account === "syncing") && (
+              <p className="mt-2 text-sm text-ink-3" aria-live="polite">
+                {t("case.accountSync")}
+              </p>
+            )}
             <ul className="mt-4 border-t border-rule-strong">
               {cases.map((c) => (
                 <li key={c.id} className="border-b border-rule">
                   <a
-                    href={`/case/${c.id}`}
+                    href={casePath(c.id)}
                     className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-4 hover:bg-sunk/60 transition-colors px-1 -mx-1"
                   >
                     <span className="num text-[0.9375rem]">{c.ref}</span>

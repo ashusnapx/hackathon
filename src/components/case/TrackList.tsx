@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { Emphasis } from "@/components/ui/Emphasis";
+import { StepText } from "@/components/ui/StepText";
+import { daysLeftFor, type DaysLeftTone } from "@/lib/case/days-left";
+import { BankDesk } from "@/components/case/BankDesk";
+import { DocModal } from "@/components/case/DocModal";
 import { Countdown } from "./Countdown";
+import { costOfDelay } from "@/lib/case/cost-of-delay";
 import { liveTracks, type LiveTrack } from "@/lib/case/tracks";
 import { useT } from "@/lib/i18n/context";
 import type { CaseFile, TrackId, TrackState } from "@/lib/case/types";
@@ -10,6 +16,25 @@ import { parseBankNoticeDate, toLocalDateTimeInput } from "@/lib/case/bank-notic
 import { cn, fmtDate } from "@/lib/utils";
 
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+
+const COUNT_STYLE: Record<DaysLeftTone, string> = {
+  gone: "bg-urgent-soft text-urgent-ink border-urgent/40",
+  today: "bg-urgent-soft text-urgent-ink border-urgent/40",
+  urgent: "bg-urgent-soft text-urgent-ink border-urgent/30",
+  soon: "bg-wait-soft text-ink-2 border-wait/30",
+  later: "bg-sunk text-ink-3 border-rule",
+};
+
+/** "3 working days left", "Today", "2 days late". */
+function countLabel(left: ReturnType<typeof daysLeftFor>, t: ReturnType<typeof useT>): string {
+  if (!left) return "";
+  if (left.tone === "gone") {
+    return t("track.nLate").replace("{n}", String(Math.max(1, Math.abs(left.days))));
+  }
+  if (left.days === 0) return t("track.today");
+  const key = left.working ? "track.nWorkingLeft" : "track.nLeft";
+  return t(key).replace("{n}", String(left.days));
+}
 
 const STATE_LABEL: Record<TrackState, Parameters<ReturnType<typeof useT>>[0]> = {
   due: "track.status.due",
@@ -32,9 +57,11 @@ interface Props {
   toggleTrack: (id: TrackId, done: boolean, extra?: { ref?: string; doneAt?: string }) => void;
   updateBank: (patch: Partial<CaseFile["bank"]>) => void;
   onGoToDocs: () => void;
+  /** Writes the picked bank and anything the letter modal changes. */
+  update: (patch: Partial<CaseFile> | ((c: CaseFile) => Partial<CaseFile>)) => void;
 }
 
-export function TrackList({ caseFile, toggleTrack, updateBank, onGoToDocs }: Props) {
+export function TrackList({ caseFile, toggleTrack, updateBank, onGoToDocs, update }: Props) {
   const t = useT();
   const tracks = liveTracks(caseFile);
   const [open, setOpen] = useState<TrackId | null>(tracks.find((x) => x.state === "due")?.def.id ?? null);
@@ -66,7 +93,10 @@ export function TrackList({ caseFile, toggleTrack, updateBank, onGoToDocs }: Pro
             bank={caseFile.bank}
             onUpdateBank={updateBank}
             onGoToDocs={onGoToDocs}
+            caseFile={caseFile}
+            update={update}
             hasDoc={Boolean(track.def.doc && caseFile.docs[track.def.doc])}
+            incidentAt={caseFile.incidentAt ?? caseFile.triage?.incidentAt}
           />
         ))}
       </ol>
@@ -75,7 +105,7 @@ export function TrackList({ caseFile, toggleTrack, updateBank, onGoToDocs }: Pro
 }
 
 function TrackRow({
-  track, roman, open, onToggleOpen, onMark, bank, onUpdateBank, onGoToDocs, hasDoc,
+  track, roman, open, onToggleOpen, onMark, bank, onUpdateBank, onGoToDocs, hasDoc, incidentAt, caseFile, update,
 }: {
   track: LiveTrack;
   roman: string;
@@ -86,9 +116,15 @@ function TrackRow({
   onUpdateBank: (patch: Partial<CaseFile["bank"]>) => void;
   onGoToDocs: () => void;
   hasDoc: boolean;
+  caseFile: CaseFile;
+  update: Props["update"];
+  /** Picks which RBI framework the bank deadline is measured against. */
+  incidentAt?: string;
 }) {
   const t = useT();
   const { def, state, deadline } = track;
+  const left = daysLeftFor(track);
+  const [docOpen, setDocOpen] = useState(false);
   const [ackRef, setAckRef] = useState(bank.ackRef ?? "");
   const [bankNoticeAt, setBankNoticeAt] = useState(toLocalDateTimeInput(bank.notifiedAt));
   const [noticeError, setNoticeError] = useState<"required" | "invalid" | "future" | null>(null);
@@ -176,13 +212,23 @@ function TrackRow({
             <span className={cn("text-lg leading-snug", state === "done" && "line-through decoration-1 text-ink-2")}>
               {t(def.titleKey)}
             </span>
+            {/*
+              A count, not an opinion.
+
+              This read "Do now" or "Coming up". Everything says "do now" on the
+              morning somebody loses their money, and by Thursday they cannot
+              tell which of the six things saying it is the one about to close.
+              A number changes on its own and sorts itself. Tracks with no
+              statutory date keep the plain label rather than being given an
+              invented countdown.
+            */}
             <span
               className={cn(
                 "chip px-1.5 py-0.5 rounded-ctl border shrink-0",
-                STATE_STYLE[state],
+                left ? COUNT_STYLE[left.tone] : STATE_STYLE[state],
               )}
             >
-              {t(STATE_LABEL[state])}
+              {left ? countLabel(left, t) : t(STATE_LABEL[state])}
             </span>
           </span>
 
@@ -200,6 +246,48 @@ function TrackRow({
           {deadline && def.workingDayEstimate && state !== "done" && state !== "na" && (
             <span className="mt-1 block text-xs leading-snug text-ink-3">{t("track.calendarCaveat")}</span>
           )}
+          {/* A date on its own is an instruction to hurry, which everybody has
+              already worked out. What changes the day after is the reason. */}
+          {(() => {
+            const cost = state === "done" || state === "na" ? null : costOfDelay(def.id, incidentAt);
+            if (!cost) return null;
+            const good = cost.kind === "entitlement";
+            return (
+              <span
+                className={cn(
+                  "mt-2 block rounded-ctl border px-3 py-2 text-xs leading-[1.6]",
+                  good ? "border-done/30 bg-done-soft text-ink-2" : "border-wait/30 bg-wait-soft text-ink-2",
+                )}
+              >
+                <span className="font-semibold">{t(good ? "delay.labelGood" : "delay.label")}: </span>
+                <Emphasis>{t(cost.bodyKey)}</Emphasis>{" "}
+
+                {/* The ladder, when the rule is one. Four short lines beat four
+                    sentences: the person is looking for the rung they are
+                    standing on, not reading an argument. */}
+                {cost.rungKeys && (
+                  <span className="mt-2 block space-y-1">
+                    {cost.rungKeys.map((key) => (
+                      <span key={key} className="flex gap-2">
+                        <span aria-hidden className="mt-[0.45em] h-1 w-1 shrink-0 rounded-full bg-ink/40" />
+                        <span><Emphasis>{t(key)}</Emphasis></span>
+                      </span>
+                    ))}
+                  </span>
+                )}
+
+                <a
+                  href={cost.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(event) => event.stopPropagation()}
+                  className="underline underline-offset-4 hover:text-ink"
+                >
+                  {cost.sourceTitle}
+                </a>
+              </span>
+            );
+          })()}
         </span>
 
         <span
@@ -214,15 +302,42 @@ function TrackRow({
 
       {open && (
         <div className="pb-6 ps-[3rem] pe-1 space-y-5 rise">
-          <div>
-            <p className="label">{t("track.why")}</p>
-            <p className="mt-1.5 text-[0.9375rem] leading-[1.65] text-ink-2 max-w-2xl">{t(def.whyKey)}</p>
-          </div>
+          {/*
+            The steps, first and unfolded.
 
-          <div>
-            <p className="label">{t("track.how")}</p>
-            <p className="mt-1.5 text-[0.9375rem] leading-[1.65] text-ink-2 max-w-2xl">{t(def.howKey)}</p>
-          </div>
+            This used to open with two paragraphs — why it matters, then how to
+            do it — followed by the legal citation. All of it was true and none
+            of it was read: the person reading has lost money in the last few
+            hours and needs the next tap, not the reasoning behind it. The
+            reasoning is still here, one fold down, for the minority who want it
+            and for anybody checking our work.
+          */}
+          {def.stepKeys && (
+            <ol className="max-w-2xl space-y-3">
+              {def.stepKeys.map((key, i) => (
+                <li key={key} className="flex gap-3.5">
+                  <span
+                    className="num mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full border border-rule-strong text-[0.8125rem] font-semibold text-ink-2"
+                    aria-hidden
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="pt-0.5 text-[1rem] leading-[1.5]"><StepText onOpenDoc={hasDoc ? () => setDocOpen(true) : undefined} docLabel={t("track.openDoc")}>{t(key)}</StepText></span>
+                </li>
+              ))}
+            </ol>
+          )}
+
+          {/* Folded, and second. Everything that was on top before. */}
+          <details className="border-t border-rule pt-4">
+            <summary className="cursor-pointer text-sm font-medium text-ink-2 min-h-11 flex items-center">
+              {t("track.detailH")}
+            </summary>
+            <div className="mt-3 space-y-4">
+              <p className="text-[0.9375rem] leading-[1.65] text-ink-2 max-w-2xl">{t(def.whyKey)}</p>
+              <p className="text-[0.9375rem] leading-[1.65] text-ink-2 max-w-2xl">{t(def.howKey)}</p>
+            </div>
+          </details>
 
           {def.source && (
             <div className="border-s-2 border-rule-strong ps-3 text-xs leading-relaxed text-ink-3">
@@ -241,6 +356,20 @@ function TrackRow({
                 </a>
               )}
             </div>
+          )}
+
+          {/* Which bank, where that bank takes complaints, and what to do if
+              the person walks into a branch. Only on this track: it is the one
+              step whose "how" depends on who they bank with. */}
+          {def.id === "bank-notice" && <BankDesk caseFile={caseFile} update={update} />}
+
+          {def.doc && docOpen && (
+            <DocModal
+              caseFile={caseFile}
+              docKey={def.doc as Parameters<typeof DocModal>[0]["docKey"]}
+              update={update}
+              onClose={() => setDocOpen(false)}
+            />
           )}
 
           {def.id === "bank-notice" && state !== "done" && (
@@ -338,10 +467,26 @@ function TrackRow({
                   {t(def.action.labelKey)}
                 </Button>
               )}
+              {/*
+                The letter, opened here.
+
+                It used to send the person to the documents screen to find the
+                right one among five and come back — and they would come back
+                to the top of a list they were part way down. Now it opens over
+                the step that asked for it, with the same controls it has in
+                that screen. Without a draft yet, it still has to send them to
+                the screen that can make one.
+              */}
               {def.doc && (
-                <Button onClick={onGoToDocs} size="sm" variant="secondary">
-                  {hasDoc ? t("case.tabDocs") : t("doc.generate")}
-                </Button>
+                hasDoc ? (
+                  <Button onClick={() => setDocOpen(true)} size="sm" variant="secondary">
+                    {t("track.openLetter")}
+                  </Button>
+                ) : (
+                  <Button onClick={onGoToDocs} size="sm" variant="secondary">
+                    {t("doc.generate")}
+                  </Button>
+                )
               )}
 
               {state === "done" ? (

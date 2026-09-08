@@ -1,12 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Wordmark } from "@/components/Wordmark";
+import { LotusMark } from "@/components/Motifs";
+import { AccessibilityControls } from "@/components/AccessibilityControls";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { AccountAvatar } from "@/components/auth/AccountAvatar";
 import { Button } from "@/components/ui/Button";
+import { useMenuBehaviour, useScrollLock } from "@/components/useMenu";
 import { useT } from "@/lib/i18n/context";
-import { useActiveCaseId } from "@/lib/case/store";
+import { casePath, useActiveCaseId } from "@/lib/case/store";
+import { useAccountCases } from "@/lib/case/account-cases";
 import { cn } from "@/lib/utils";
 import { DEMO_CASE_PATH } from "@/lib/demo/id";
 
@@ -17,40 +22,38 @@ import { DEMO_CASE_PATH } from "@/lib/demo/id";
  *
  * The bar now carries three shortcuts at most and never wraps — every child is
  * `shrink-0` inside a `flex-nowrap` row. The menu holds the complete list at
- * every width, including the three that are not shortcuts, so nothing on the
- * page is reachable only by scrolling.
+ * every width, in two groups: looking around, and doing something. The first
+ * group is the page's own sections; the second is every way in.
  */
 
 /** Shown inline from `lg` up. Three is the ceiling, on purpose. */
 const PRIMARY = [
   { href: "#demo", key: "nav.demo" },
-  { href: "#how", key: "nav.how" },
+  { href: "#features", key: "nav.features" },
   { href: "/check", key: "nav.check" },
 ] as const;
 
-/** The full index, in the menu at every width. */
-const ALL = [
-  { href: "#demo", key: "nav.demo" },
-  { href: "#how", key: "nav.how" },
+/** Doing something: every way in, with the sample case among them. */
+const ACT = [
   { href: "/check", key: "nav.check" },
-  { href: "/compare", key: "nav.compare" },
   { href: "/talk", key: "nav.talk" },
   { href: "/whatsapp", key: "nav.whatsapp" },
   { href: "/cases", key: "nav.cases" },
   { href: DEMO_CASE_PATH, key: "nav.sample" },
-  { href: "#clocks", key: "nav.clocks" },
-  { href: "#honesty", key: "nav.honesty" },
-  { href: "#faq", key: "nav.faq" },
 ] as const;
 
 export function Nav() {
   const t = useT();
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const caseId = useActiveCaseId();
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  // Signing in on the landing page must already start pulling the account's
+  // cases, not wait for a later screen.
+  useAccountCases();
 
   useEffect(() => {
     // A scroll listener fires on every frame to answer one boolean. An observer
@@ -74,56 +77,72 @@ export function Nav() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!menu) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setMenu(false);
-        buttonRef.current?.focus();
-      }
-    };
-    const onDown = (e: PointerEvent) => {
-      const target = e.target as Node;
-      // Both cards, not just the desktop one. The phone menu is a separate
-      // element, and leaving it out closed the menu on pointerdown — unmounting
-      // the link before its click could land, so every item did nothing.
-      if (
-        menuRef.current?.contains(target)
-        || mobileMenuRef.current?.contains(target)
-        || buttonRef.current?.contains(target)
-      ) return;
-      setMenu(false);
-    };
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("pointerdown", onDown);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("pointerdown", onDown);
-    };
-  }, [menu]);
+  // Focus in on open, Tab trapped inside, Escape and outside tap close, focus
+  // back on the button on Escape, page frozen behind. One hook, both cards:
+  // the phone sheet and the desktop card are twins showing the same list.
+  const close = () => setMenu(false);
+  useMenuBehaviour({
+    open: menu,
+    onClose: close,
+    containerRef: menuRef,
+    extraRefs: [mobileMenuRef, buttonRef],
+    triggerRef: buttonRef,
+  });
+  useMenuBehaviour({
+    open: menu,
+    onClose: close,
+    containerRef: mobileMenuRef,
+    extraRefs: [menuRef, buttonRef],
+    triggerRef: buttonRef,
+  });
+  useScrollLock(menu);
 
-  const items = (
+  const link = (href: string, labelKey: (typeof ACT)[number]["key"]) => {
+    const current = href.startsWith("/") && pathname === href;
+    return (
+      <a
+        key={href}
+        href={href}
+        onClick={close}
+        aria-current={current ? "page" : undefined}
+        className={cn(
+          "flex items-center justify-between gap-4 transition-colors",
+          "py-3.5 sm:py-2.5 px-0 sm:px-3 rounded-ctl",
+          "border-b border-rule last:border-0 sm:border-0",
+          "text-[1.0625rem] sm:text-[0.9375rem] font-medium hover:bg-ink/[0.055] hover:text-ink",
+          current && "font-semibold text-ink",
+        )}
+      >
+        <span className="flex items-center gap-2.5 min-w-0">
+          {/* The dot is the only thing that changes between "here" and
+              "elsewhere": no layout shift, and a screen reader gets
+              `aria-current` instead of decoration. */}
+          <span
+            aria-hidden
+            className={cn(
+              "w-1.5 h-1.5 rounded-full shrink-0",
+              current ? "bg-urgent" : "bg-transparent",
+            )}
+          />
+          {t(labelKey)}
+        </span>
+        <Chevron />
+      </a>
+    );
+  };
+
+  const groups = (
     <>
-      {ALL.map((l) => (
-        <a
-          key={l.href}
-          href={l.href}
-          onClick={() => setMenu(false)}
-          className={cn(
-            "flex items-center justify-between gap-4 transition-colors",
-            "py-3.5 sm:py-2.5 px-0 sm:px-3 rounded-ctl",
-            "border-b border-rule last:border-0 sm:border-0",
-            "text-[1.0625rem] sm:text-[0.9375rem] font-medium hover:bg-ink/[0.055] hover:text-ink",
-          )}
-        >
-          {t(l.key)}
-          <Chevron />
-        </a>
-      ))}
+      <p className="label px-0 sm:px-3 pt-1 flex items-center gap-2">
+        <LotusMark className="text-urgent-ink" />
+        {t("nav.groupAct")}
+      </p>
+      <div className="mt-1">{ACT.map((l) => link(l.href, l.key))}</div>
       {caseId && (
         <a
-          href={`/case/${caseId}`}
-          onClick={() => setMenu(false)}
+          href={casePath(caseId)}
+          onClick={close}
+          aria-current={pathname === casePath(caseId) ? "page" : undefined}
           className={cn(
             "flex items-center justify-between gap-4 transition-colors",
             "py-3.5 sm:py-2.5 px-0 sm:px-3 sm:rounded-ctl sm:mt-1 sm:border-t sm:border-rule sm:pt-3",
@@ -159,11 +178,12 @@ export function Nav() {
           <Wordmark />
         </div>
 
-        <nav className="hidden lg:flex items-center gap-1 ms-5 xl:ms-7 shrink-0 text-[0.9375rem] text-ink-2">
+        <nav className="hidden lg:flex items-center gap-1 ms-5 xl:ms-7 shrink-0 text-[0.9375rem] text-ink-2" aria-label={t("nav.menu")}>
           {PRIMARY.map((l) => (
             <a
               key={l.href}
               href={l.href}
+              aria-current={l.href.startsWith("/") && pathname === l.href ? "page" : undefined}
               className="press inline-flex items-center h-11 whitespace-nowrap rounded-ctl px-3 font-medium hover:text-ink hover:bg-ink/[0.055] transition-colors"
             >
               {t(l.key)}
@@ -173,6 +193,7 @@ export function Nav() {
 
         <div className="ms-auto flex flex-nowrap items-center gap-1 sm:gap-2.5 shrink-0">
           <LanguageSwitcher compact />
+          <AccessibilityControls />
           <AccountAvatar />
           <Button href="/start" size="sm" className="shrink-0">{t("nav.start")}</Button>
 
@@ -181,8 +202,8 @@ export function Nav() {
               ref={buttonRef}
               onClick={() => setMenu((m) => !m)}
               aria-expanded={menu}
-              aria-controls="site-menu"
-              aria-label={t("nav.menu")}
+              aria-controls="site-menu site-menu-mobile"
+              aria-label={t(menu ? "nav.closeMenu" : "nav.menu")}
               className={cn(
                 "press inline-flex h-10 w-10 items-center justify-center rounded-ctl border transition-colors",
                 menu ? "border-ink bg-ink text-paper" : "border-ink/25 bg-transparent hover:border-ink",
@@ -197,9 +218,11 @@ export function Nav() {
               <div
                 ref={menuRef}
                 id="site-menu"
-                className="hidden sm:block absolute end-0 top-full mt-3 w-60 rounded-card border border-ink/20 bg-paper/95 backdrop-blur-xl p-1.5 shadow-[0_18px_50px_-18px_rgba(26,26,26,0.5)] rise"
+                role="dialog"
+                aria-label={t("nav.menu")}
+                className="hidden sm:block absolute end-0 top-full mt-3 w-64 max-h-[70dvh] overflow-y-auto rounded-card border border-ink/20 bg-paper/95 backdrop-blur-xl p-1.5 pb-3 shadow-[0_18px_50px_-18px_rgba(26,26,26,0.5)] rise"
               >
-                {items}
+                {groups}
               </div>
             )}
           </div>
@@ -209,8 +232,14 @@ export function Nav() {
       {/* On a phone it drops in under the pill as a second card — more room for
           a thumb than a 240px menu hung off the button would give. */}
       {menu && (
-        <div ref={mobileMenuRef} className="pointer-events-auto sm:hidden mx-auto mt-2 max-w-6xl rounded-card border border-ink/20 bg-paper/95 backdrop-blur-xl shadow-[0_16px_44px_-18px_rgba(26,26,26,0.5)] rise">
-          <nav className="px-4 py-1">{items}</nav>
+        <div
+          ref={mobileMenuRef}
+          id="site-menu-mobile"
+          role="dialog"
+          aria-label={t("nav.menu")}
+          className="pointer-events-auto sm:hidden mx-auto mt-2 max-w-6xl max-h-[70dvh] overflow-y-auto rounded-card border border-ink/20 bg-paper/95 backdrop-blur-xl shadow-[0_16px_44px_-18px_rgba(26,26,26,0.5)] rise"
+        >
+          <nav className="px-4 py-1 pb-3" aria-label={t("nav.menu")}>{groups}</nav>
         </div>
       )}
     </header>

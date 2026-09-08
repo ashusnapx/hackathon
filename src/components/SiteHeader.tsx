@@ -1,8 +1,10 @@
 "use client";
 
 import { AccountAvatar } from "@/components/auth/AccountAvatar";
+import { AccessibilityControls } from "@/components/AccessibilityControls";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Wordmark } from "@/components/Wordmark";
+import { useAccountCases } from "@/lib/case/account-cases";
 import { cn } from "@/lib/utils";
 
 /**
@@ -36,6 +38,10 @@ export function SiteHeader({ width = "5xl", status, action, noPrint }: {
   /** A page's own call to action, kept to the end of the row. */
   action?: React.ReactNode;
 }) {
+  // Mounted here so every non-landing page reconciles the signed-in account's
+  // keyring with this device's. The return is unused: the pull writes cases
+  // into the store, and the list re-renders itself.
+  useAccountCases();
   return (
     <header className={cn("sticky top-0 z-40 px-3 sm:px-5 pt-3 sm:pt-4 pointer-events-none", noPrint && "no-print")}>
       <div
@@ -50,6 +56,7 @@ export function SiteHeader({ width = "5xl", status, action, noPrint }: {
         {status && <div className="hidden sm:flex ms-auto items-center min-w-0">{status}</div>}
         <div className={cn("flex items-center gap-2 shrink-0", !status && "ms-auto")}>
           <LanguageSwitcher compact />
+          <AccessibilityControls />
           <AccountAvatar />
           {action}
         </div>

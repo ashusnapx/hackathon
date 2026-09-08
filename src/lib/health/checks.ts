@@ -1,5 +1,5 @@
 import demoCall from "@/lib/demo/call.json";
-import { verifyEmailTransport } from "@/lib/email/send";
+import { emailConfigured, verifyEmailTransport } from "@/lib/email/send";
 import { database, databaseConfigured } from "@/lib/db/supabase";
 import { authConfig } from "@/lib/auth/config";
 import {
@@ -111,7 +111,9 @@ async function checkVoice(): Promise<ServiceHealth> {
 }
 
 async function checkEmail(): Promise<ServiceHealth> {
-  if (!process.env.GMAIL_USER?.trim() || !process.env.GMAIL_APP_PASSWORD?.trim()) {
+  // Asked of the sender rather than re-derived, so the status line cannot
+  // disagree with whether email will actually go out.
+  if (!emailConfigured()) {
     return { id: "email", state: "off", ms: null, missing: absentees(["GMAIL_USER", "GMAIL_APP_PASSWORD"]) };
   }
   const { ok, ms } = await timed(verifyEmailTransport);

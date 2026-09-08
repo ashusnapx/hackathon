@@ -62,6 +62,17 @@ export function readCaseKey(id: string): string | null {
   return readAll()[id] ?? null;
 }
 
+/**
+ * Every key this browser holds.
+ *
+ * Used by one caller: the reconciliation that attaches a signed-in person's
+ * cases to their account, which has to know what this device can already open
+ * before it can work out what it is missing.
+ */
+export function readAllCaseKeys(): Record<string, string> {
+  return readAll();
+}
+
 export function rememberCaseKey(id: string, key: string): void {
   if (!CASE_KEY_PATTERN.test(key)) return;
   writeAll({ ...readAll(), [id]: key });

@@ -10,7 +10,7 @@ import { StageReview } from "@/components/report/StageReview";
 import { STAGES, type Stage } from "@/lib/report/schema";
 import { useDraft, useOnline } from "@/lib/report/draft";
 import { reportDraftToCase } from "@/lib/report/handoff";
-import { newCase, saveCase } from "@/lib/case/store";
+import { casePath, newCase, saveCase } from "@/lib/case/store";
 import { useI18n } from "@/lib/i18n/context";
 import { hasCompletedSafetyGate, type ChildContext } from "@/lib/intake/interview";
 import { loadBrowserIntakeDraft } from "@/lib/intake/persistence";
@@ -118,7 +118,7 @@ export default function ReportPage() {
 
       setDone({ caseRef: c.ref });
       reset();
-      setTimeout(() => router.push(`/case/${c.id}`), 2600);
+      setTimeout(() => router.push(casePath(c.id)), 2600);
     } finally {
       setSubmitting(false);
     }

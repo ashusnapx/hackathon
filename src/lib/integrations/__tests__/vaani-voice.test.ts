@@ -119,6 +119,21 @@ describe("post-call outcome", () => {
     expect(outcome.disposition).toBeUndefined();
     expect(outcome.summary).toBeUndefined();
   });
+
+  it("reads the documented call-details body: entity, eval tag and conversation eval", () => {
+    const outcome = normaliseVaaniCallOutcome("call-4", {
+      transcription: "AGENT: Hello\n\nUSER: I lost money.",
+      entity: { amount_inr: "25000", Call_back: "No" },
+      conversation_eval: { cooperation: "high" },
+      summary: "Caller reported a debit.",
+      call_eval_tag: "fraud_report",
+    });
+    expect(outcome.extracted.amount_inr).toBe("25000");
+    expect(outcome.transcriptAvailable).toBe(true);
+    expect(outcome.summary).toBe("Caller reported a debit.");
+    expect(outcome.callEvalTag).toBe("fraud_report");
+    expect(outcome.conversationEval).toEqual({ cooperation: "high" });
+  });
 });
 
 describe("unsigned webhook events", () => {

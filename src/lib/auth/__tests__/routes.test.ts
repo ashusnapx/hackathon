@@ -88,3 +88,21 @@ describe("where somebody lands after signing in", () => {
     expect(safeRedirect("")).toBe("/start");
   });
 });
+
+describe("the sample case's own screens", () => {
+  // Its doors became separate pages. Allowlisting only the home would put the
+  // one thing somebody can open without an account back behind the wall.
+  it.each(["steps", "money", "evidence", "papers", "recording", "ask", "manage"])(
+    "keeps /case/demo-vaani-call/%s public",
+    (door) => {
+      expect(isPublicPath(`/case/demo-vaani-call/${door}`)).toBe(true);
+    },
+  );
+
+  it("does not open anybody else's case", () => {
+    expect(isPublicPath("/case/KVC-5DLK-3XPL/money")).toBe(false);
+    expect(isPublicPath("/case/9f0b1e2c-1111-2222-3333-444455556666/steps")).toBe(false);
+    // A path that merely begins with the same characters is not the sample.
+    expect(isPublicPath("/case/demo-vaani-call-other/steps")).toBe(false);
+  });
+});

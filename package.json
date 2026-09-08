@@ -9,7 +9,11 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check:sources": "node scripts/check-sources.mjs"
+    "check:sources": "node scripts/check-sources.mjs",
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "check:demo": "node scripts/seed-demo.mjs --check",
+    "email:test": "tsx scripts/send-test-email.mjs",
+    "check:banks": "node scripts/check-bank-links.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",

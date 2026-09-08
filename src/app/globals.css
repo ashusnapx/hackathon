@@ -163,6 +163,51 @@
   background: var(--dawn);
 }
 
+/* ── Higher contrast ───────────────────────────────────────────────────
+   Not a second theme: the same design with the soft tokens hardened. The
+   cream ground and the ink stay; what changes is that every muted grey and
+   hairline rule moves far enough to clear WCAG AAA for body text, which the
+   0.6-alpha inks do not. Meant for daylight on a cheap screen as much as for
+   low vision — the two turn out to need the same thing.
+
+   Unlayered on purpose. The base tokens above are unlayered too, and an
+   unlayered rule always beats a layered one no matter the specificity — which
+   is exactly how this block once sat inside `@layer base` and silently lost
+   every override while the toggle looked alive. */
+:root[data-contrast="high"] {
+  --paper: #fffff5;
+  --raised: #ffffff;
+  --sunk: #f2f0dc;
+  --ink: #000000;
+  --ink-2: #1a1a1a;
+  --ink-3: #333330;
+  --rule: rgba(0, 0, 0, 0.45);
+  --rule-strong: rgba(0, 0, 0, 0.75);
+  --urgent-ink: #8f2409;
+  --wait: #5a3a00;
+  --info: #2f1a63;
+  --done: #023b34;
+}
+:root[data-contrast="high"] :focus-visible {
+  outline-width: 3px;
+  outline-offset: 3px;
+}
+/* Decorative washes stop carrying meaning at this contrast; they only muddy
+   the text sitting on them. */
+:root[data-contrast="high"] .ledger,
+:root[data-contrast="high"] .grad { background-image: none; }
+/* Dark slabs set their own tokens on the element, which beats anything
+   inherited from `:root` — so without this the mode would fix the cream
+   sections and leave the footer, honesty panel and demo exactly as soft as
+   before. Same hardening, on their ground. */
+:root[data-contrast="high"] .on-dark,
+:root[data-contrast="high"] .on-deep {
+  --ink-2: #ffffeb;
+  --ink-3: rgba(255, 255, 235, 0.88);
+  --rule: rgba(255, 255, 235, 0.42);
+  --rule-strong: rgba(255, 255, 235, 0.68);
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --paper: #141410;
@@ -199,6 +244,30 @@
   html {
     font-family: var(--font-sans);
     -webkit-text-size-adjust: 100%;
+    /* Stated rather than inherited from the browser default, because the two
+       steps below scale it — and everything on this site is sized in rem, so
+       moving this moves the whole page together instead of leaving controls at
+       one size and prose at another. */
+    font-size: 16px;
+  }
+
+  /* ── Reading size ──────────────────────────────────────────────────────
+     A page about legal deadlines is read by people who cannot always reach
+     browser zoom: on a borrowed phone, in a browser whose menus are in a
+     language they do not read, or with hands that are shaking. Two steps, set
+     on the element, persisted per device. */
+  :root[data-text="l"]  { font-size: 18px; }
+  :root[data-text="xl"] { font-size: 20px; }
+
+  /* ── Windows High Contrast / forced colours ────────────────────────────
+     The OS replaces our palette wholesale here, and anything drawn as a
+     background — the status dots, the money-ledger bar, the timeline pillars —
+     silently disappears. `forced-color-adjust: none` on those keeps the ones
+     that are the only carrier of their meaning, and borders bring back the
+     edges the OS flattens. */
+  @media (forced-colors: active) {
+    .sheet, .panel, .chip { border: 1px solid CanvasText; }
+    :focus-visible { outline: 3px solid Highlight; }
   }
 
   body {
@@ -254,17 +323,24 @@
      that size runs to four lines, collides with the paragraph under it, and
      stops being a headline at all. Long-form copy caps lower and breathes. */
   .h1-long { font-size: clamp(2.375rem, 1.1rem + 4.4vw, 4.5rem); line-height: 1.02; }
+
+  /* The hero sets its two beats one per line inside roughly forty rems of a
+     split grid, not across a centred page. `.h1-long`'s 4.5rem ceiling breaks
+     "Know what to do next." across the turn at that measure, which is the one
+     wrap this headline cannot take, so the hero caps lower and holds its
+     lines. */
+  .h1-hero { font-size: clamp(2.375rem, 1.1rem + 3.6vw, 4rem); line-height: 1.02; }
   h2 { font-size: clamp(2.375rem, 1.3rem + 4.6vw, 4.25rem); }
   h3 { font-size: clamp(1.75rem, 1.2rem + 2vw, 2.5rem); }
 
   /* Indic scripts have no italic and much taller line boxes; a serif display
-     face designed for Latin makes them worse, not better. */
+     face designed for Latin makes them worse, not better. The family comes
+     from `--font-display`, which each script re-points at its own serif. */
   :root[data-script]:not([data-script="latin"]) h1,
   :root[data-script]:not([data-script="latin"]) h2,
   :root[data-script]:not([data-script="latin"]) h3,
   :root[data-script]:not([data-script="latin"]) h4 {
-    font-family: var(--font-indic), var(--font-ui), sans-serif;
-    font-weight: 600;
+    font-weight: 500;
     letter-spacing: -0.01em;
     line-height: 1.3;
   }
@@ -279,6 +355,7 @@
      600 weight is far heavier on the page than 6rem of Garamond at 400. */
   :root[data-script]:not([data-script="latin"]) h1 { font-size: clamp(2.25rem, 1.2rem + 4.6vw, 4.25rem); line-height: 1.4; }
   :root[data-script]:not([data-script="latin"]) .h1-long { font-size: clamp(1.875rem, 1rem + 3.2vw, 3.25rem); line-height: 1.45; }
+  :root[data-script]:not([data-script="latin"]) .h1-hero { font-size: clamp(1.75rem, 1rem + 2.6vw, 2.875rem); line-height: 1.45; }
   :root[data-script]:not([data-script="latin"]) h2 { font-size: clamp(1.875rem, 1.1rem + 3.2vw, 3.25rem); line-height: 1.35; }
   :root[data-script]:not([data-script="latin"]) h3 { font-size: clamp(1.5rem, 1.1rem + 1.5vw, 2rem); line-height: 1.35; }
 
@@ -288,20 +365,31 @@
   section[id] { scroll-margin-top: 7rem; }
 }
 
-/* ── Script-specific font stacks ─────────────────────────────────────────── */
+/* ── Script-specific font stacks ───────────────────────────────────────────
+   `--font-indic` is the workhorse sans; `--font-display` is re-pointed at the
+   serif of the script wherever one exists, so headlines, figures, the italic
+   second beat and every `font-display` utility keep their grace in Tamil just
+   as in English. Meetei Mayek and Ol Chiki have no serif: there the display
+   stack skips Garamond (useless glyphs, harmful metrics) for the sans. */
 .script-latin      { --font-indic: var(--font-ui); }
-.script-devanagari { --font-indic: var(--font-devanagari); }
-.script-bengali    { --font-indic: var(--font-bengali); }
-.script-gujarati   { --font-indic: var(--font-gujarati); }
-.script-gurmukhi   { --font-indic: var(--font-gurmukhi); }
-.script-kannada    { --font-indic: var(--font-kannada); }
-.script-malayalam  { --font-indic: var(--font-malayalam); }
-.script-odia       { --font-indic: var(--font-odia); }
-.script-tamil      { --font-indic: var(--font-tamil); }
-.script-telugu     { --font-indic: var(--font-telugu); }
-.script-arabic     { --font-indic: var(--font-arabic); }
-.script-meetei     { --font-indic: var(--font-meetei); }
-.script-olchiki    { --font-indic: var(--font-olchiki); }
+.script-devanagari { --font-indic: var(--font-devanagari); --font-display: var(--font-dserif-devanagari), var(--font-devanagari), var(--font-ui), sans-serif; }
+.script-bengali    { --font-indic: var(--font-bengali); --font-display: var(--font-dserif-bengali), var(--font-bengali), var(--font-ui), sans-serif; }
+.script-gujarati   { --font-indic: var(--font-gujarati); --font-display: var(--font-dserif-gujarati), var(--font-gujarati), var(--font-ui), sans-serif; }
+.script-gurmukhi   { --font-indic: var(--font-gurmukhi); --font-display: var(--font-dserif-gurmukhi), var(--font-gurmukhi), var(--font-ui), sans-serif; }
+.script-kannada    { --font-indic: var(--font-kannada); --font-display: var(--font-dserif-kannada), var(--font-kannada), var(--font-ui), sans-serif; }
+.script-malayalam  { --font-indic: var(--font-malayalam); --font-display: var(--font-dserif-malayalam), var(--font-malayalam), var(--font-ui), sans-serif; }
+.script-odia       { --font-indic: var(--font-odia); --font-display: var(--font-dserif-odia), var(--font-odia), var(--font-ui), sans-serif; }
+.script-tamil      { --font-indic: var(--font-tamil); --font-display: var(--font-dserif-tamil), var(--font-tamil), var(--font-ui), sans-serif; }
+.script-telugu     { --font-indic: var(--font-telugu); --font-display: var(--font-dserif-telugu), var(--font-telugu), var(--font-ui), sans-serif; }
+.script-arabic     { --font-indic: var(--font-arabic); --font-display: var(--font-naskh), var(--font-arabic), var(--font-ui), sans-serif; }
+.script-meetei     { --font-indic: var(--font-meetei); --font-display: var(--font-meetei), var(--font-ui), sans-serif; }
+.script-olchiki    { --font-indic: var(--font-olchiki); --font-display: var(--font-olchiki), var(--font-ui), sans-serif; }
+
+/* The `font-display` utility bakes the Latin stack at build time, so without
+   this every component reaching for it (FAQ questions, pull quotes) would stay
+   on the sans while the headings went serif. Unlayered, so it beats the
+   layered utility; the variable itself already points at the right serif. */
+:root[data-script]:not([data-script="latin"]) .font-display { font-family: var(--font-display); }
 
 /* ── Primitives ──────────────────────────────────────────────────────────── */
 
@@ -342,8 +430,7 @@
   font-variant-numeric: lining-nums tabular-nums;
 }
 :root[data-script]:not([data-script="latin"]) .figure {
-  font-family: var(--font-indic), var(--font-ui), sans-serif;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.01em;
 }
 
@@ -405,6 +492,340 @@
   mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 75%);
 }
 
+/* ── Kolam ──────────────────────────────────────────────────────────────────
+   The dot grid a kolam is drawn around — pulli, laid on the threshold at dawn
+   before the lines are looped through them.
+
+   Chosen over the lotus-and-temple vocabulary that the obvious "Indian design"
+   move reaches for, and over anything resembling the State Emblem, which this
+   product may not use and should not imply: it is explicitly not a government
+   service, and the Emblem is restricted under the State Emblem of India
+   (Prohibition of Improper Use) Act, 2005.
+
+   A kolam earns its place beyond decoration. It is drawn by hand, every
+   morning, at the entrance — an ordinary domestic act of order and welcome
+   rather than a religious icon, practised across the south and mirrored by
+   rangoli and alpana elsewhere. It is also, structurally, a grid of dots with
+   a path traced through it, which is what this product is: fixed points and a
+   route between them. And it sits on the same geometry the ledger already
+   uses, so it reads as the existing paper rather than as a sticker on it. */
+.kolam {
+  background-image: radial-gradient(currentColor 2.25px, transparent 2.35px);
+  background-size: 1.5rem 1.5rem;
+  background-position: center;
+  opacity: 0.5;
+}
+
+/* ── Kos minar ──────────────────────────────────────────────────────────────
+   The pillars set along the Grand Trunk Road to mark a kos travelled.
+
+   Used for the case timeline for one reason: a milestone counts ground already
+   covered on a journey whose end is not yet in sight, which is exactly the
+   shape of a fraud case and exactly what a progress bar gets wrong. Nobody can
+   honestly tell somebody they are "60% recovered".
+
+   Only the marker is drawn here; the road is a plain rule in the component. */
+.minar {
+  position: relative;
+}
+.minar::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 50%;
+  bottom: calc(100% + 3px);
+  width: 0.4rem;
+  height: 0.4rem;
+  translate: -50% 0;
+  rotate: 45deg;
+  background: currentColor;
+  border-radius: 1px;
+  opacity: 0.85;
+}
+@media (forced-colors: active) {
+  .kolam { display: none; }
+}
+
+/* ── Pulli ──────────────────────────────────────────────────────────────────
+   The dot ring around the microphone, and the rings a voice leaves behind it.
+
+   Same argument as `.kolam` above, doing work instead of sitting there: the
+   dots are the fixed points and the route between them is the citizen's. They
+   are 4.5px — the same 2.25px radius `.kolam` draws — laid on a circle just
+   outside the button, and they never travel. What travels is the record: a
+   hairline ring leaves the button every 700ms carrying the loudest thing heard
+   since the last one left, frozen into --m0/1/2, and keeps that brightness for
+   its whole journey out. Three of them are in the air at once, so what is on
+   screen is the last two seconds of what was said, drifting outward — not a
+   needle showing the present instant.
+
+   Everything here is a transform or an opacity, so it stays on the compositor
+   and never triggers a style recalc or a repaint. VoiceRing.tsx writes at most
+   ten custom properties a frame and none at all in a silent room. The waves
+   travel on this file's clock rather than on a rAF loop; JS touches them about
+   1.4 times a second.
+
+   DO NOT declare these with @property. Registering a custom property makes
+   Chrome interpolate it under `transition: all`, and the hero button carries
+   Tailwind's `transition-all duration-200`. Keeping them unregistered — and on
+   this wrapper rather than on the button — is what stops every frame's write
+   acquiring a 200ms transition and smearing the ring into permanent lag. */
+.pulli {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 240ms var(--ease);
+
+  --pulli-c: var(--urgent);
+  /* Where the dots sit, and how far a wave gets. Both derived from the button:
+     --rim is its radius plus 10px, --reach is a scale on its own box. The hero
+     lives in an 8.5rem column in VoiceComposer with a 1rem gutter beside it, so
+     a wave may reach 84px from centre before it touches the text field. At the
+     sm size that is 64 x 1.26 = 80.6px. These two numbers are the whole layout
+     budget; nothing else needs changing to move it. */
+  --rim: 66px;
+  --reach: 1.34;
+
+  /* Declared here, all of them, so a var() can never resolve
+     invalid-at-computed-value and take a whole transform down with it — which
+     would park every dot unscaled in the middle of the button. */
+  --b: 0;
+  --p0: 0; --p1: 0; --p2: 0; --p3: 0; --p4: 0;
+  --p5: 0; --p6: 0; --p7: 0; --p8: 0;
+  --m0: 0.3; --m1: 0.3; --m2: 0.3;
+}
+.pulli[data-live] { opacity: 1; }
+
+.pulli[data-size="page"] { --rim: 50px; --reach: 1.4; }
+/* The composer circle keeps the WhatsApp red the button beside it is already
+   deliberately wearing, and reaches 34.5px — inside the 38px the box-shadow
+   this replaces was already occupying, so nothing in the composer row moves. */
+.pulli[data-size="compact"] { --reach: 1.5; --pulli-c: #e5533d; }
+@media (min-width: 640px) {
+  .pulli[data-size="hero"] { --rim: 74px; --reach: 1.26; }
+}
+
+/* Layers exist only while a microphone is genuinely open. GuidedIntake mounts
+   two VoiceInputs at once and only one of them can hold the mic; without this
+   gate the other one would be holding nineteen promoted layers for nothing. */
+.pulli[data-live] .pulli-dot,
+.pulli[data-live] .pulli-wave { will-change: transform, opacity; }
+
+/* ── The rim ────────────────────────────────────────────────────────────────
+   The one part that answers within a frame of somebody speaking, and the only
+   part that survives reduced motion, forced colours and high contrast. It sits
+   outside the button's own edge rather than on it, so a flare ring on a flare
+   fill still reads: while listening the button is --urgent, and 3px of cream
+   between the two is what separates them. */
+.pulli-rim {
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--pulli-c);
+  opacity: calc(0.14 + var(--b) * 0.44);
+  transform: scale(calc(1 + var(--b) * 0.05));
+}
+
+/* ── The waves ──────────────────────────────────────────────────────────────
+   --m is stamped once, at the moment the ring leaves, and held for the trip.
+   The keyframe reads it through calc(), so a stamp that lands slightly late
+   changes a ring that is still at zero opacity.
+
+   No colour walk from flare to glow, though it was tempting: interpolating
+   border-color repaints the ring on every frame instead of compositing it, and
+   this is a page whose whole argument is that it works on a cheap phone. Age is
+   carried by brightness alone. */
+.pulli-wave {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1px solid var(--pulli-c);
+  opacity: 0;
+  transform: scale(1.02);
+}
+.pulli[data-live] .pulli-wave {
+  animation: pulli-out 2100ms var(--ease) infinite;
+}
+/* One wave, a little quicker, on the 46px circle: three hairlines inside 34px
+   is soup. */
+.pulli[data-size="compact"] .pulli-wave + .pulli-wave { display: none; }
+.pulli[data-size="compact"] .pulli-wave { animation-duration: 1400ms; }
+
+@keyframes pulli-out {
+  0%   { transform: scale(1.02); opacity: 0; }
+  12%  { opacity: calc(var(--m) * 0.42); }
+  100% { transform: scale(var(--reach)); opacity: 0; }
+}
+
+/* ── The dots ───────────────────────────────────────────────────────────────
+   4.5px, which is `.kolam`'s own 2.25px radius. A dot grows and brightens; it
+   never stretches outward into a bar. That is the line between a pulli and the
+   polar equaliser every voice assistant already draws, and it is the reason the
+   placement is kept in --place rather than written out twice: the fallback
+   keyframe below reuses it, so moving --rim can never leave the two disagreeing
+   at the exact moment nobody is testing. */
+.pulli-dot {
+  --place: rotate(var(--a)) translateY(calc(var(--rim) * -1));
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4.5px;
+  height: 4.5px;
+  margin: -2.25px 0 0 -2.25px;
+  border-radius: 50%;
+  background: var(--pulli-c);
+  opacity: calc(0.28 + var(--p) * 0.6);
+  transform: var(--place) scale(calc(0.5 + var(--p) * 0.85));
+}
+
+/* ── When there is nothing to hear ──────────────────────────────────────────
+   A suspended iOS context, or a WebView that hands back a source wired to
+   nothing. VoiceRing sets data-deaf and stops writing, and this takes over with
+   no per-frame JavaScript at all — which is the point, on the devices most
+   likely to land here.
+
+   A slow, perfectly even, perfectly symmetric crest travels from the crown down
+   both flanks and back over 2.8s. It is deliberately not the rhythm of speech,
+   so it can say "the microphone is open" and can never be read as "I heard
+   you"; and it is deliberately not an arc travelling round a circle, because
+   that is this app's own Spinner and already means "processing". */
+@media (prefers-reduced-motion: no-preference) {
+  .pulli[data-live][data-deaf] .pulli-dot {
+    animation: pulli-tide 2800ms var(--ease-soft) infinite;
+    animation-delay: calc(var(--band) * -170ms);
+  }
+}
+@keyframes pulli-tide {
+  0%, 100% { transform: var(--place) scale(0.55); opacity: 0.3; }
+  50%      { transform: var(--place) scale(1.05); opacity: 0.62; }
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────────────────
+   Nothing travels. One ring that brightens in four steps as somebody speaks and
+   dims when they stop — a level, not an animation. The damping and the
+   quantising are done in JS, because the blanket reduce block at the bottom of
+   this file has already crushed every transition to 0.01ms and per-frame values
+   would otherwise snap between themselves.
+
+   Something is kept rather than nothing on purpose. This is the only visual
+   confirmation that a microphone the user has just tapped is actually open, and
+   a static circle under a line of text saying "listening" is how a frightened
+   person decides the app has hung and abandons a report they were halfway
+   through. The status line still carries the meaning in words. */
+@media (prefers-reduced-motion: reduce) {
+  .pulli-wave, .pulli-dot { display: none; }
+  .pulli-rim {
+    transform: none;
+    border-width: 2.5px;
+    opacity: calc(0.24 + var(--b) * 0.52);
+  }
+}
+
+/* High contrast hardens the indicator rather than deleting it: the precedent
+   two hundred lines up is about decorative washes sitting behind text, and a
+   live-microphone mark is not that. The waves go, because at this contrast they
+   are the wash; the dots and the rim get the ink that can carry weight. */
+:root[data-contrast="high"] .pulli-wave { display: none; }
+:root[data-contrast="high"] .pulli-dot {
+  background: var(--urgent-ink);
+  opacity: calc(0.55 + var(--p) * 0.45);
+}
+:root[data-contrast="high"] .pulli-rim {
+  border-color: var(--urgent-ink);
+  border-width: 2.5px;
+  opacity: calc(0.5 + var(--b) * 0.5);
+}
+
+/* The OS palette has no room for the dots or the waves — same call `.kolam` and
+   `.jaali` make above. The rim stays, in a colour the OS has actually chosen,
+   so this is the one state where the control does not go silent. */
+@media (forced-colors: active) {
+  .pulli-wave, .pulli-dot { display: none; }
+  .pulli-rim {
+    transform: none;
+    opacity: 1;
+    border-width: 2px;
+    border-color: CanvasText;
+  }
+}
+
+/* ── Jaali ──────────────────────────────────────────────────────────────────
+   The pierced stone lattice of Indian architecture — Sidi Saiyyed in
+   Ahmedabad, the screens at Fatehpur Sikri, a hundred stepwells.
+
+   A jaali does something specific that a decorative pattern does not: it is a
+   wall you can see through. It gives shade and privacy while still letting the
+   light and the view come past. That is a fair description of what this
+   product is trying to be with somebody's worst week — hold it, without
+   sealing them in — and it is why the motif is used on panels that carry
+   difficult content rather than sprinkled everywhere.
+
+   Built from four gradients so it costs no image request on a 2G connection. */
+.jaali {
+  background-image:
+    repeating-linear-gradient(45deg, currentColor 0 1px, transparent 1px 14px),
+    repeating-linear-gradient(-45deg, currentColor 0 1px, transparent 1px 14px);
+  opacity: 0.1;
+}
+
+/* ── Threshold ──────────────────────────────────────────────────────────────
+   The same jaali lattice, run as a band at the very top of every page — the
+   toran of mango leaves hung over a doorway, minus anything that wilts.
+
+   A toran marks a threshold: crossing under it, you are inside and welcome.
+   Six pixels of it is enough to say "this was made in India" before a single
+   word is read, and on a dark ground the same band reads as the marble screen
+   it came from. Stronger than the panel-grade `.jaali` because at this size
+   the lattice would otherwise dissolve into grey. */
+/* ── Kantha ─────────────────────────────────────────────────────────────────
+   The running stitch of Bengali and Odia kantha, where old cloth is quilted
+   into something new with a single repeated line.
+
+   Used as a section divider in place of a plain rule. The metaphor is not
+   decoration either: kantha is made from worn saris that were not thrown away,
+   which is close enough to what a case file does with the wreckage of a fraud
+   to be worth the borrowing. */
+.kantha {
+  height: 4px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--flare) 0 12px,
+    transparent 12px 20px
+  );
+  opacity: 0.85;
+}
+
+/* ── Bahi-khata ─────────────────────────────────────────────────────────────
+   The red cloth-bound ledger of the Indian shopkeeper, still opened on Diwali
+   before the new year's first entry.
+
+   Applied to the money panel, which is the one place in this product that is
+   literally an account of what is owed and what has come back. The binding is
+   the only piece of colour asserted on a card here, so it is kept to a 3px
+   spine on the leading edge — a nod, not a costume. */
+.khata {
+  position: relative;
+  overflow: hidden;
+}
+.khata::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 3px;
+  background: linear-gradient(
+    to bottom,
+    var(--flare) 0%,
+    var(--pulse) 55%,
+    var(--flare) 100%
+  );
+}
+
+@media (forced-colors: active) {
+  .jaali, .kantha { display: none; }
+  .khata::before { display: none; }
+}
+
 /* Underline that grows on hover — used for text links in prose. */
 .link {
   color: var(--ink);
@@ -455,9 +876,10 @@
   padding-bottom: 0.06em;
 }
 :root[data-script]:not([data-script="latin"]) .quiet-em {
-  font-family: var(--font-indic), var(--font-ui), sans-serif;
+  /* No faux italic: the second beat steps down a weight instead, in the same
+     serif, so the turn still reads as a turn. */
   font-style: normal;
-  font-weight: 600;
+  font-weight: 400;
   line-height: inherit;
   padding-bottom: 0;
 }
@@ -550,23 +972,56 @@
 }
 .pulse-ring { animation: pulse-ring 2.2s ease-out infinite; }
 
-@keyframes tick {
-  from { opacity: 0.45; }
-  to   { opacity: 1; }
-}
-.tick { animation: tick 1s steps(2, jump-none) infinite alternate; }
+/* ── The utterance ──────────────────────────────────────────────────────────
+   The dot matrix in the hero's call card: a column of pulli per slice of time,
+   lit outward from the centre line by how loud that slice was.
 
-@keyframes sweep {
-  from { transform: translateX(-100%); }
-  to   { transform: translateX(300%); }
+   Only `opacity` is ever touched, which keeps two hundred and ten nodes on the
+   compositor with no style recalc and no repaint. The resting value sits on the
+   element itself rather than only in the keyframe, so when the blanket reduce
+   block at the bottom of this file crushes the animation the grid holds the
+   shape of the sentence instead of collapsing to a flat, dead rectangle. */
+.pulli-cell {
+  opacity: var(--o, 0.1);
 }
-.sweep::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--flare) 22%, transparent), transparent);
-  animation: sweep 1.6s ease-in-out infinite;
+@media (prefers-reduced-motion: no-preference) {
+  .pulli-cell {
+    animation: pulli-cell 900ms var(--ease-soft) infinite alternate;
+    /* Negative, so all thirty columns are already mid-sentence on the first
+       frame rather than starting together like a stadium wave. */
+    animation-delay: calc(var(--n, 0) * -70ms);
+  }
 }
+@keyframes pulli-cell {
+  from { opacity: var(--o, 0.1); }
+  to   { opacity: var(--o2, 0.4); }
+}
+
+/* ── The walkthrough ────────────────────────────────────────────────────────
+   The hero card's five frames and the rail above them.
+
+   `step-fill` runs the active rail segment across in exactly the dwell time, so
+   the card tells you how long it is about to stay before it moves. It is set
+   only while the rotation is actually running: the class comes off under the
+   pointer, so a paused card shows a stopped bar rather than one that keeps
+   travelling toward a step that is not coming.
+
+   `frame-in` is the arrival. Each frame is remounted rather than crossfaded,
+   which is what makes the sequence read as five screens instead of one screen
+   dissolving into itself. Both are decoration — the blanket reduce block at the
+   bottom of this file collapses them, and the rotation they belong to never
+   starts in the first place when motion is unwelcome. */
+@keyframes step-fill {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.step-fill { animation: step-fill linear forwards; }
+
+@keyframes frame-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.frame-in { animation: frame-in 380ms var(--ease) both; }
 
 /* ── Scroll reveal ───────────────────────────────────────────────────────
    Gated on `data-reveal-ready`, which useReveal sets only when JavaScript runs
@@ -830,16 +1285,14 @@
 
 /* ── Scrollbar ───────────────────────────────────────────────────────────── */
 /*
- * Only devices with a real pointer get a styled scrollbar. A touch screen has
- * no cursor to aim with, and a 10px track inside a short strip (the case-file
- * tabs, the language list) stole enough height to clip the label it sat under.
+ * Invisible everywhere, on every device. Scrolling still works — wheel, touch,
+ * keyboard, drag — there is just no track painted for it. The page already
+ * signals scrollability through cut-off content, sticky sheets and swipeable
+ * strips; a 10px chrome rail added nothing except visual noise against the
+ * cream panels and the folk motifs.
  */
-@media (pointer: fine) {
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: var(--sunk); }
-  ::-webkit-scrollbar-thumb { background: var(--rule-strong); border: 3px solid var(--sunk); border-radius: 10px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
-}
+html { scrollbar-width: none; -ms-overflow-style: none; }
+html::-webkit-scrollbar, body::-webkit-scrollbar, ::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
 /* Swipeable strips: the content itself is the affordance, not a track. */
 .no-bar { scrollbar-width: none; -ms-overflow-style: none; }

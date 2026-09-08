@@ -5,6 +5,7 @@ import { EMPTY_ENTITIES, type CaseEvent, type CaseFile, type TrackId } from "./t
 import { createDefaultEvidence, ensureEvidence } from "./evidence";
 import { deleteEvidenceForCase } from "./evidence-store";
 import { isValidPastOrPresentIso } from "./bank-notice";
+import { DEMO_CASE_ID, DEMO_CASE_PATH } from "@/lib/demo/id";
 
 /**
  * The case file lives in the browser and nowhere else.
@@ -85,11 +86,36 @@ function writeAll(cases: CaseFile[]): boolean {
 }
 
 /** KVC-2A7F-4B91: short enough to read down a phone line, clearly not official. */
+/**
+ * Ambiguous glyphs are absent on purpose: no I, O, 0 or 1. This gets read down
+ * a phone line to a police officer and copied off a screen by hand.
+ */
+const REF_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+/** `KVC-XXXX-XXXX`, in the address bar and on every document. */
+export const CASE_REF_PATTERN = /^KVC-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4}-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4}$/i;
+
+/**
+ * The reference, which is now also the URL.
+ *
+ * Drawn from `crypto.getRandomValues` rather than `Math.random`. Math.random is
+ * seeded per page and its sequence is recoverable from a handful of outputs, so
+ * references generated that way are predictable from one another — which was
+ * tolerable while this was only a label and is not once it is the address of
+ * the page. It buys no secrecy either way: the server will not return a case
+ * without the key hash, so knowing an address gets nobody in. It stops one
+ * person's reference from being derivable from another's.
+ */
 function makeRef(): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const block = (n: number) =>
-    Array.from({ length: n }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
-  return `KVC-${block(4)}-${block(4)}`;
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  // Rejection-free and unbiased: 32 divides 256 exactly, so the modulo is flat.
+  const chars = Array.from(bytes, (b) => REF_ALPHABET[b % REF_ALPHABET.length]);
+  return `KVC-${chars.slice(0, 4).join("")}-${chars.slice(4).join("")}`;
+}
+
+export function isCaseRef(value: string): boolean {
+  return CASE_REF_PATTERN.test((value || "").trim());
 }
 
 export function newCase(partial: Partial<CaseFile> = {}): CaseFile {
@@ -146,6 +172,37 @@ export function saveCase(c: CaseFile): boolean {
   // from the UI's point of view, so subscribers never observe a mismatch.
   emit();
   queueCaseSync(c);
+  return true;
+}
+
+/**
+ * Take in a case that came from storage, without adopting it.
+ *
+ * `saveCase` does two things beyond writing the record: it makes the case the
+ * active one, and it queues a push back to the server. Both are right when the
+ * person is starting or opening a case, and both are wrong when this device is
+ * merely catching up with an account's other devices.
+ *
+ * The active pointer feeds the "My case" shortcut in the header. Reconciling an
+ * account with four old cases through `saveCase` would leave whichever one
+ * happened to be pulled last sitting behind that link — so somebody signs in on
+ * a new phone and the header offers them a case from March instead of the one
+ * they are in the middle of.
+ *
+ * The push is worse than useless: it sends back the exact bytes just received,
+ * which bumps the stored revision, which makes the next reconciliation think
+ * the server is ahead again.
+ *
+ * So this writes the record, publishes it, and stops.
+ */
+export function mergeStoredCase(c: CaseFile): boolean {
+  if (isDeletedCase(c.id) !== false) return false;
+  const all = readAll();
+  const i = all.findIndex((x) => x.id === c.id);
+  if (i >= 0) all[i] = c;
+  else all.unshift(c);
+  if (!writeAll(all)) return false;
+  emit();
   return true;
 }
 
@@ -591,4 +648,43 @@ export function useCase(id: string | undefined) {
     toggleTrack,
     deleteCurrentCase,
   };
+}
+
+/**
+ * The address of a case, given either half of its identity.
+ *
+ * The URL carries the reference — `/case/KVC-5DLK-3XPL` — because that is the
+ * string the person already has: it is on their complaint, in the documents,
+ * and read down the phone to an officer. A UUID in the address bar is a second
+ * identifier for the same case that nobody can repeat out loud.
+ *
+ * Two things this deliberately does not change:
+ *
+ *  · Shared links stay on the UUID. `caseShareLink` builds from the id, and it
+ *    has to: a reference can only be resolved against cases on THIS device, and
+ *    the whole point of a shared link is that it opens on a device that has
+ *    never seen the case.
+ *  · The sample keeps its own path. Its reference happens to match the pattern,
+ *    and the proxy's public allowlist names the sample's path exactly, so
+ *    rewriting it would put the one page that needs no account behind the
+ *    sign-in wall.
+ */
+export function casePath(idOrRef: string): string {
+  if (idOrRef === DEMO_CASE_ID) return DEMO_CASE_PATH;
+  if (typeof window === "undefined") return `/case/${idOrRef}`;
+  const found = readAll().find((c) => c.id === idOrRef);
+  return `/case/${found?.ref ?? idOrRef}`;
+}
+
+/**
+ * Turn whatever is in the address bar into the id everything else uses.
+ *
+ * A reference resolves against local storage. When it does not resolve the
+ * reference is passed straight through, and the case screen reports it as not
+ * found — which is the honest answer: a reference from somebody else's device
+ * cannot be looked up here, and the server would not answer without the key.
+ */
+export function resolveCaseParam(param: string): string {
+  if (typeof window === "undefined" || !isCaseRef(param)) return param;
+  return findByRef(param)?.id ?? param;
 }

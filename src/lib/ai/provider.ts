@@ -48,6 +48,15 @@ interface JsonCallOpts {
   model?: string;
   /** Higher for drafting prose, lower for classification. */
   temperature?: number;
+  /**
+   * A `data:` URL for one image to read alongside the prompt.
+   *
+   * Used by the evidence reader, which points the model at a screenshot of a
+   * bank SMS the citizen already holds. Both OpenAI and Gemini's compatibility
+   * layer accept an inline base64 image in this shape, so this stays one code
+   * path like the rest of the module.
+   */
+  imageDataUrl?: string;
 }
 
 async function post(path: string, body: unknown, signal: AbortSignal) {
@@ -77,7 +86,17 @@ export async function jsonCall<T>(opts: JsonCallOpts): Promise<T | null> {
         model: opts.model || MODEL,
         messages: [
           { role: "system", content: opts.system },
-          { role: "user", content: opts.user },
+          {
+            role: "user",
+            // A plain string when there is no image, because that is what every
+            // existing caller sends and what the shim handles most reliably.
+            content: opts.imageDataUrl
+              ? [
+                { type: "text", text: opts.user },
+                { type: "image_url", image_url: { url: opts.imageDataUrl } },
+              ]
+              : opts.user,
+          },
         ],
         response_format: {
           type: "json_schema",

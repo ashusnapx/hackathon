@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { writeStoredVaaniSession } from "@/lib/integrations/vaani-client";
-import { parseCaption, type Caption } from "@/lib/integrations/vaani-captions";
+import { parseLiveMessage, type Caption } from "@/lib/integrations/vaani-captions";
 import { useT } from "@/lib/i18n/context";
 import { LANGUAGES } from "@/lib/i18n/languages";
 
@@ -54,6 +54,11 @@ export function LiveVoiceCall({
   ];
   const [failure, setFailure] = useState<Failure>("connect");
   const [captions, setCaptions] = useState<Caption[]>([]);
+  // A line still being spoken: shown muted, replaced when its final lands.
+  const [interim, setInterim] = useState<Caption | null>(null);
+  // The provider says when the agent is composing a reply. Shown as a typing
+  // row so a few seconds of silence do not read as a dead call.
+  const [thinking, setThinking] = useState(false);
   const [muted, setMuted] = useState(false);
   const roomRef = useRef<{ disconnect: () => void; localParticipant: { setMicrophoneEnabled: (on: boolean) => Promise<unknown> } } | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
@@ -73,6 +78,8 @@ export function LiveVoiceCall({
     setPicking(false);
     setPhase("connecting");
     setCaptions([]);
+    setInterim(null);
+    setThinking(false);
     try {
       const response = await fetch("/api/vaani/session", {
         method: "POST",
@@ -152,8 +159,30 @@ export function LiveVoiceCall({
     try {
       const socket = new WebSocket(url);
       socket.onmessage = (event) => {
-        const line = parseCaption(event.data);
-        if (line) setCaptions((current) => [...current.slice(-40), line]);
+        const message = parseLiveMessage(event.data);
+        if (message.kind === "history") {
+          if (message.captions.length) setCaptions(message.captions.slice(-40));
+          return;
+        }
+        if (message.kind === "signal") {
+          if (message.signal === "thinking") setThinking(true);
+          if (message.signal === "call-ended") {
+            socket.close();
+            setPhase("ended");
+            onCallEnded?.();
+          }
+          return;
+        }
+        if (message.kind !== "caption") return;
+        const line = message.caption;
+        // Any final line clears the thinking row: the agent has spoken.
+        setThinking(false);
+        if (line.interim) {
+          setInterim(line);
+          return;
+        }
+        setInterim(null);
+        setCaptions((current) => [...current.slice(-40), { speaker: line.speaker, text: line.text }]);
       };
       socketRef.current = socket;
     } catch {
@@ -172,6 +201,8 @@ export function LiveVoiceCall({
   const end = () => {
     teardown();
     setPhase("ended");
+    setInterim(null);
+    setThinking(false);
     onCallEnded?.();
   };
 
@@ -240,17 +271,32 @@ export function LiveVoiceCall({
             aria-live="polite"
             className="mt-1.5 min-h-[7.5rem] max-h-64 overflow-y-auto no-scrollbar rounded-ctl border border-rule-strong bg-raised px-3 py-2.5"
           >
-            {captions.length === 0 ? (
+            {captions.length === 0 && !interim && !thinking ? (
               <p className="text-[0.9375rem] leading-[1.6] text-ink-3/80">{t("talk.transcriptEmpty")}</p>
             ) : (
-              captions.map((caption, index) => (
-                <p key={index} className="text-[0.9375rem] leading-[1.6] [&+p]:mt-2">
-                  <span className="text-ink-3">
-                    {caption.speaker === "agent" ? t("intake.vaaniBrowserAgent") : t("intake.vaaniBrowserYou")}:{" "}
-                  </span>
-                  <span className="text-ink-2">{caption.text}</span>
-                </p>
-              ))
+              <>
+                {captions.map((caption, index) => (
+                  <p key={index} className="text-[0.9375rem] leading-[1.6] [&+p]:mt-2">
+                    <span className="text-ink-3">
+                      {caption.speaker === "agent" ? t("intake.vaaniBrowserAgent") : t("intake.vaaniBrowserYou")}:{" "}
+                    </span>
+                    <span className="text-ink-2">{caption.text}</span>
+                  </p>
+                ))}
+                {interim && (
+                  <p className="text-[0.9375rem] leading-[1.6] opacity-60 [&+p]:mt-2">
+                    <span className="text-ink-3">
+                      {interim.speaker === "agent" ? t("intake.vaaniBrowserAgent") : t("intake.vaaniBrowserYou")}:{" "}
+                    </span>
+                    <span className="text-ink-2">{interim.text}…</span>
+                  </p>
+                )}
+                {thinking && (
+                  <p className="text-[0.9375rem] leading-[1.6] text-ink-3/80">
+                    {t("intake.vaaniBrowserAgent")} ···
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -263,7 +309,7 @@ export function LiveVoiceCall({
       )}
 
       {picking && (
-        <div className="mt-4 rounded-ctl border border-rule-strong bg-surface px-4 py-4 text-start">
+        <div className="mt-4 rounded-ctl border border-rule-strong bg-raised px-4 py-4 text-start">
           <p className="text-[0.9375rem] font-semibold">{t("intake.vaaniLangQ")}</p>
           <p className="mt-1 text-xs leading-[1.55] text-ink-3">{t("intake.vaaniLangSub")}</p>
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">

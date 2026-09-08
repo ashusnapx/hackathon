@@ -1,4 +1,5 @@
 import type { EvidenceItem } from "./evidence";
+import type { MoneyEntry } from "./money";
 import type { RbiEligibilityAssessment, RbiEligibilityInput } from "@/lib/legal/rbi";
 
 export type TrackId =
@@ -112,6 +113,14 @@ export interface CaseFile {
   };
   bank: {
     name?: string;
+    /**
+     * Which bank, from the picker.
+     *
+     * Kept alongside the name rather than instead of it: the name is what the
+     * letters print, and a case has to still say which bank it was about if
+     * this list is ever re-keyed or the bank is merged away.
+     */
+    id?: string;
     /** The branch the dispute letter is addressed to. */
     branchAddress?: string;
     last4?: string;
@@ -143,6 +152,16 @@ export interface CaseFile {
   /** Evidence Vault — checklist per case, stored locally. Optional for backwards compat. */
   evidence?: EvidenceItem[];
   /**
+   * What the citizen has been told about their money, and by whom.
+   *
+   * Never derived. A completed track, an NCRP acknowledgement and a bank
+   * complaint are all actions taken, not rupees stopped — and the difference
+   * between those two things is the difference between hope and a fact. Each
+   * entry exists because somebody nameable said something, so the ledger can
+   * always answer "who told you that?".
+   */
+  money?: MoneyEntry[];
+  /**
    * Answers to blanks that only a draft knew about, keyed by the words it used.
    *
    * The letters are written by a model, which invents labels — a hold status,
@@ -167,5 +186,31 @@ export interface CaseFile {
     /** Set instead on the sample case, which reads the call committed to the repo. */
     demoCallId?: string;
     endedAt: string;
+    /**
+     * The call itself, copied into the case the first time it is read back.
+     *
+     * The capability above expires an hour after the call and is bound to the
+     * browser session that made it, so on its own it is a way to lose the
+     * record of the conversation a case was opened from — on the second day, or
+     * on the phone the person opened their emailed link on. What the provider
+     * returns is therefore kept here, with the rest of the case, and the Call
+     * tab reads it whether or not the capability still works.
+     *
+     * Only the words are kept. The recording stays with the provider and is
+     * proxied while the capability lasts: a second copy of a victim's voice is
+     * not something to create for the sake of a page that still renders.
+     */
+    transcript?: string;
+    outcome?: {
+      disposition?: string;
+      summary?: string;
+      extracted?: Record<string, unknown>;
+      /** The provider's own evaluation tag, kept as a draft like the rest. */
+      callEvalTag?: string;
+      /** Conversation-level evaluation metrics. Shape varies by agent config. */
+      conversationEval?: Record<string, unknown>;
+    };
+    /** When the record below was taken, so the tab can say how it was obtained. */
+    capturedAt?: string;
   };
 }

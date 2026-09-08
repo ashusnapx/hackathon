@@ -9,7 +9,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { CATEGORIES, findCategory } from "@/lib/case/categories";
 import { createDefaultEvidence } from "@/lib/case/evidence";
 import { OFFICERS } from "@/lib/case/officers";
-import { newCase, saveCase } from "@/lib/case/store";
+import { casePath, newCase, saveCase } from "@/lib/case/store";
 import type { Entities, Triage } from "@/lib/case/types";
 import type { DictKey } from "@/lib/i18n/dict/en";
 import { useI18n } from "@/lib/i18n/context";
@@ -613,7 +613,7 @@ export function GuidedIntake({ lockChannel, onReset }: {
 
   const openCase = useCallback(() => {
     const id = commitCase(draft);
-    if (id) router.push(`/case/${id}`);
+    if (id) router.push(casePath(id));
   }, [commitCase, draft, router]);
 
   /**
@@ -762,7 +762,7 @@ export function GuidedIntake({ lockChannel, onReset }: {
         event: "Opened from a voice call \u00b7 nothing confirmed yet",
       });
       if (!id) return review;
-      router.push(`/case/${id}`);
+      router.push(casePath(id));
       return { ok: true };
     } catch {
       // Includes the abort that fires when this panel unmounts mid-poll.

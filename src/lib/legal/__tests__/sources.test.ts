@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { RBI_2017_CIRCULAR } from "../rbi";
+import { RBI_2017_CIRCULAR, RBI_2026_AMENDMENT, rbiFrameworkFor } from "../rbi";
 import { RBI_OMBUDSMAN_2026 } from "../ombudsman";
 
 /**
@@ -46,10 +46,41 @@ describe("the sources we cite", () => {
     expect(RBI_2017_CIRCULAR.issuedOn).toBe("2017-07-06");
   });
 
-  it("says out loud that the framework is under revision", () => {
-    // RBI put amendments out for comment in March 2026. Asserting the old rules
-    // as settled, or the draft ones as law, would both be wrong.
+  it("says out loud that the framework is being replaced, and when", () => {
+    // The March 2026 drafts were finalised on 24 June 2026. Asserting the old
+    // rules as permanent, or the new ones as already in force, would both be
+    // wrong — and they differ on the deadline a victim has to meet.
     expect(RBI_2017_CIRCULAR.underRevision).toBe(true);
+    expect(RBI_2017_CIRCULAR.supersededFrom).toBe("2027-01-01");
+  });
+
+  it("names the replacing directions precisely enough to quote at a bank", () => {
+    expect(RBI_2026_AMENDMENT.id).toBe("RBI/2026-27/167");
+    expect(RBI_2026_AMENDMENT.number).toBe("DOR.MCS.REC.No.130/01-01-032/2026-27");
+    expect(RBI_2026_AMENDMENT.issuedOn).toBe("2026-06-24");
+    expect(RBI_2026_AMENDMENT.appliesFrom).toBe("2027-01-01");
+    expect(RBI_2026_AMENDMENT.url).toContain("rbi.org.in");
+  });
+
+  it("picks the framework by the transaction date, not by today", () => {
+    // A case opened in 2027 about a 2026 debit is still governed by the 2017
+    // circular. Reading this off the current date would quietly tell thousands
+    // of people the wrong deadline in the first weeks of January.
+    expect(rbiFrameworkFor("2026-12-31T23:59:00.000Z")).toBe("2017");
+    expect(rbiFrameworkFor("2027-01-01T00:00:00.000Z")).toBe("2026");
+    expect(rbiFrameworkFor("2027-06-01")).toBe("2026");
+    // No date, or an unusable one, must not silently promote a case into the
+    // newer regime and its different deadline.
+    expect(rbiFrameworkFor(undefined)).toBe("2017");
+    expect(rbiFrameworkFor("not-a-date")).toBe("2017");
+  });
+
+  it("keeps the new five-calendar-day window distinct from three working days", () => {
+    // The change reads like a relaxation and is not: across a long weekend the
+    // calendar count expires first.
+    expect(RBI_2026_AMENDMENT.reportWithinCalendarDays).toBe(5);
+    expect(RBI_2026_AMENDMENT.smallValue.maxLossRupees).toBe(50_000);
+    expect(RBI_2026_AMENDMENT.smallValue.capRupees).toBe(25_000);
   });
 
   it("cites the ombudsman scheme actually in force", () => {

@@ -30,6 +30,8 @@ export async function POST(req: Request) {
 
   // The deterministic pass runs either way. It is the part that must never be
   // wrong, and it is the whole answer when there is no key or the call fails.
+  // Rules win ties: a deterministic danger is never downgraded by the model,
+  // because the model can be talked out of a verdict and a regex cannot.
   const rules = checkText(text);
 
   const limit = aiConfigured ? claimAiProviderSlot(req) : { allowed: true, retryAfterSeconds: 0 };
@@ -41,15 +43,29 @@ export async function POST(req: Request) {
 ${text.slice(0, 4000)}
 --- END ---
 
-A deterministic pass already flagged these, which you may use but should not merely repeat:
+A deterministic pass already flagged these (risk ${rules.riskScore}/100, family ${rules.scamType}), which you may use but should not merely repeat:
 ${rules.signals.map((s) => `- ${s.id}: ${s.title}`).join("\n") || "- nothing"}`,
     schema: CHECK_SCHEMA,
     schemaName: "check",
   }) : null;
 
+  // Fuse the two opinions into one verdict the UI actually uses. Previously the
+  // page rendered only rules.verdict and ignored the model, so a message the
+  // model recognised as fraud still showed a green tick whenever the regexes
+  // missed it. Either side can now escalate, neither can clear the other.
+  let verdict: "danger" | "caution" | "nothing-found" = rules.verdict;
+  if (model?.isLikelyFraud) {
+    const conf = typeof model.confidence === "number" ? model.confidence : 0.5;
+    if (rules.verdict === "danger" || conf >= 0.8 || rules.signals.length > 0) verdict = "danger";
+    else if (conf >= 0.4) verdict = "caution";
+    else verdict = "caution";
+  }
+
   return NextResponse.json({
     rules,
     model,
+    verdict,
+    riskScore: rules.riskScore,
     source: model ? "openai" : "rules",
     ...(limit.allowed ? {} : { rateLimited: true, retryAfterSeconds: limit.retryAfterSeconds }),
   });

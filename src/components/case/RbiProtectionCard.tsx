@@ -1,4 +1,5 @@
 import type { CaseFile } from "@/lib/case/types";
+import { RBI_2026_AMENDMENT, rbiFrameworkFor } from "@/lib/legal/rbi";
 import { useT } from "@/lib/i18n/context";
 import type { DictKey } from "@/lib/i18n/dict/en";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,9 @@ export function RbiProtectionCard({ caseFile }: { caseFile: CaseFile }) {
   const record = caseFile.legal?.rbi;
   if (!record) return null;
   const { assessment } = record;
+  // Chosen by the date the money moved, never by today's date: a case opened in
+  // 2027 about a 2026 debit is still governed by the 2017 circular.
+  const framework = rbiFrameworkFor(caseFile.incidentAt ?? caseFile.triage?.incidentAt);
   const positive = assessment.protection === "zero_liability" || assessment.protection === "limited_liability";
 
   return (
@@ -42,6 +46,38 @@ export function RbiProtectionCard({ caseFile }: { caseFile: CaseFile }) {
           ))}
         </ul>
       </div>
+      {/* The framework this screen applies is being replaced. Saying so is not
+          a detail: the successor moves the reporting window from three working
+          days to five calendar days, which is the tighter deadline across a
+          long weekend, and adds a compensation route that is conditional on
+          having called 1930. Somebody reading their own case in late 2026 is
+          entitled to know which set of numbers will apply to them. */}
+      {framework === "2017" && (
+        <p className="border-t border-rule px-5 py-3 text-xs leading-[1.6] text-ink-3">
+          {t("rbi.changing")}{" "}
+          <a
+            href={RBI_2026_AMENDMENT.pressReleaseUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-4 hover:text-ink"
+          >
+            {RBI_2026_AMENDMENT.id}
+          </a>
+        </p>
+      )}
+      {framework === "2026" && (
+        <p className="border-t border-wait/30 bg-wait-soft px-5 py-3 text-xs leading-[1.6] text-ink-2">
+          {t("rbi.newRegime")}{" "}
+          <a
+            href={RBI_2026_AMENDMENT.url}
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-4 hover:text-ink"
+          >
+            {RBI_2026_AMENDMENT.id}
+          </a>
+        </p>
+      )}
       <div className="border-t border-rule bg-sunk px-5 py-3 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-3">
         <span>RBI/2017-18/15 · paragraphs {Array.from(new Set(assessment.provenance.flatMap((item) => item.sourceParagraphs))).join(", ")}</span>
         <a href={assessment.source.readableUrl} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-4 text-ink">

@@ -58,6 +58,22 @@ export interface TrackDef {
   whyKey: DictKey;
   howKey: DictKey;
   dueKey: DictKey;
+  /**
+   * What to actually do, one action per line, in order.
+   *
+   * This exists because the prose did not survive contact with the person it
+   * was written for. Every track carried three paragraphs — why it matters, how
+   * to do it, the legal basis — and somebody two hours into losing their savings
+   * does not read three paragraphs. They need the next tap.
+   *
+   * Rules for writing these: one action each, in the order they happen, in the
+   * imperative; name what the person has to decide rather than quoting a button
+   * label, because government portals change their wording and a step that
+   * quotes a button that has been renamed reads as broken; and say where Kavach
+   * has already done the work, since the whole point of the draft documents is
+   * that nobody has to compose anything at a counter.
+   */
+  stepKeys?: DictKey[];
   /** Where the citizen actually goes to do this. */
   action?: { href: string; labelKey: DictKey; tel?: boolean };
   /** Which generated document backs this track. */
@@ -142,6 +158,7 @@ export const TRACKS: TrackDef[] = [
     titleKey: "track.1930.t",
     whyKey: "track.1930.w",
     howKey: "track.1930.h",
+    stepKeys: ["track.1930.s1", "track.1930.s2", "track.1930.s3", "track.1930.s4", "track.1930.s5"],
     dueKey: "track.1930.d",
     action: { href: "tel:1930", labelKey: "sos.call", tel: true },
     doc: "script",
@@ -158,6 +175,7 @@ export const TRACKS: TrackDef[] = [
     titleKey: "track.ncrp.t",
     whyKey: "track.ncrp.w",
     howKey: "track.ncrp.h",
+    stepKeys: ["track.ncrp.s1", "track.ncrp.s2", "track.ncrp.s3", "track.ncrp.s4", "track.ncrp.s5", "track.ncrp.s6", "track.ncrp.s7"],
     dueKey: "track.ncrp.d",
     action: { href: "https://cybercrime.gov.in", labelKey: "track.open" },
     doc: "ncrp",
@@ -172,6 +190,7 @@ export const TRACKS: TrackDef[] = [
     titleKey: "track.bank.t",
     whyKey: "track.bank.w",
     howKey: "track.bank.h",
+    stepKeys: ["track.bank.s1", "track.bank.s2", "track.bank.s3", "track.bank.s4", "track.bank.s5"],
     dueKey: "track.bank.d",
     doc: "bank",
     financialOnly: true,
@@ -192,6 +211,7 @@ export const TRACKS: TrackDef[] = [
     titleKey: "track.fir.t",
     whyKey: "track.fir.w",
     howKey: "track.fir.h",
+    stepKeys: ["track.fir.s1", "track.fir.s2", "track.fir.s3", "track.fir.s4", "track.fir.s5", "track.fir.s6"],
     dueKey: "track.fir.d",
     doc: "fir",
     source: BNSS_COGNIZABLE_REPORTING,
@@ -203,6 +223,7 @@ export const TRACKS: TrackDef[] = [
     titleKey: "track.chakshu.t",
     whyKey: "track.chakshu.w",
     howKey: "track.chakshu.h",
+    stepKeys: ["track.chakshu.s1", "track.chakshu.s2", "track.chakshu.s3", "track.chakshu.s4", "track.chakshu.s5"],
     dueKey: "track.chakshu.d",
     action: { href: "https://sancharsaathi.gov.in/sfc/", labelKey: "track.open" },
     doc: "chakshu",
@@ -215,6 +236,7 @@ export const TRACKS: TrackDef[] = [
     titleKey: "track.credit.t",
     whyKey: "track.credit.w",
     howKey: "track.credit.h",
+    stepKeys: ["track.credit.s1", "track.credit.s2", "track.credit.s3", "track.credit.s4", "track.credit.s5"],
     dueKey: "track.credit.d",
     financialOnly: true,
     requiresRbiUnauthorisedTransaction: true,
@@ -236,6 +258,7 @@ export const TRACKS: TrackDef[] = [
     titleKey: "track.mrm.t",
     whyKey: "track.mrm.w",
     howKey: "track.mrm.h",
+    stepKeys: ["track.mrm.s1", "track.mrm.s2", "track.mrm.s3", "track.mrm.s4"],
     dueKey: "track.mrm.d",
     action: { href: "https://mrm-ncrp.mha.gov.in", labelKey: "track.open" },
     doc: "mrm",
@@ -253,6 +276,7 @@ export const TRACKS: TrackDef[] = [
     titleKey: "track.ombudsman.t",
     whyKey: "track.ombudsman.w",
     howKey: "track.ombudsman.h",
+    stepKeys: ["track.ombudsman.s1", "track.ombudsman.s2", "track.ombudsman.s3", "track.ombudsman.s4", "track.ombudsman.s5", "track.ombudsman.s6"],
     dueKey: "track.ombudsman.d",
     action: { href: "https://cms.rbi.org.in", labelKey: "track.open" },
     doc: "ombudsman",
@@ -268,6 +292,7 @@ export const TRACKS: TrackDef[] = [
     titleKey: "track.resolution.t",
     whyKey: "track.resolution.w",
     howKey: "track.resolution.h",
+    stepKeys: ["track.resolution.s1", "track.resolution.s2", "track.resolution.s3", "track.resolution.s4"],
     dueKey: "track.resolution.d",
     financialOnly: true,
     requiresRbiUnauthorisedTransaction: true,
@@ -288,6 +313,7 @@ export const TRACKS: TrackDef[] = [
     titleKey: "track.legal.t",
     whyKey: "track.legal.w",
     howKey: "track.legal.h",
+    stepKeys: ["track.legal.s1", "track.legal.s2", "track.legal.s3", "track.legal.s4", "track.legal.s5"],
     dueKey: "track.legal.d",
     action: { href: "tel:15100", labelKey: "track.legal.call", tel: true },
     source: NALSA_LEGAL_AID,

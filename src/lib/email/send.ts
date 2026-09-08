@@ -1,6 +1,8 @@
 import "server-only";
 
 import nodemailer from "nodemailer";
+
+import { emailAppPassword, emailConfigured, emailUser } from "./config";
 import {
   caseCreatedHtml,
   caseCreatedSubject,
@@ -21,13 +23,11 @@ import {
  * failing a case that was saved perfectly well.
  */
 
+export { emailAppPassword, emailConfigured, emailUser } from "./config";
+
 export type EmailResult =
   | { sent: true }
   | { sent: false; reason: "not-configured" | "send-failed" };
-
-export function emailConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
-  return Boolean(env.GMAIL_USER?.trim() && env.GMAIL_APP_PASSWORD?.trim());
-}
 
 function transport() {
   return nodemailer.createTransport({
@@ -35,8 +35,8 @@ function transport() {
     port: 587,
     secure: false,
     auth: {
-      user: process.env.GMAIL_USER!.trim(),
-      pass: process.env.GMAIL_APP_PASSWORD!.trim(),
+      user: emailUser()!,
+      pass: emailAppPassword()!,
     },
   });
 }
@@ -63,7 +63,7 @@ export async function verifyEmailTransport(): Promise<boolean> {
 export async function sendCaseCreatedEmail(to: string, input: CaseEmailInput): Promise<EmailResult> {
   if (!emailConfigured()) return { sent: false, reason: "not-configured" };
 
-  const user = process.env.GMAIL_USER!.trim();
+  const user = emailUser()!;
   const smtp = transport();
 
   try {

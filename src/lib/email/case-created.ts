@@ -35,6 +35,8 @@ const MUTED = "#5a5a52";
 const PAPER = "#fdfcf3";
 const DEEP = "#0f3d2e";
 const RULE = "#e6e3d3";
+const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+const MONO = "ui-monospace,SFMono-Regular,Menlo,Consolas,monospace";
 
 export function caseCreatedSubject(input: CaseEmailInput): string {
   return `Your Kavach case ${input.ref}`;
@@ -87,12 +89,12 @@ export function caseCreatedHtml(input: CaseEmailInput): string {
   const actions = nextActions(input)
     .map((action, index) => `
       <tr>
-        <td style="padding:0 0 14px 0;vertical-align:top;width:26px;">
-          <div style="width:22px;height:22px;border-radius:11px;background:${DEEP};color:${PAPER};font:600 12px/22px -apple-system,Segoe UI,Roboto,sans-serif;text-align:center;">${index + 1}</div>
+        <td class="k-num" style="padding:0 0 16px 0;vertical-align:top;width:30px;">
+          <div style="width:24px;height:24px;border-radius:12px;background:${DEEP};color:${PAPER};font:700 12px/24px ${FONT};text-align:center;">${index + 1}</div>
         </td>
-        <td style="padding:0 0 14px 0;">
-          <div style="font:600 15px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;color:${INK};">${escapeHtml(action.title)}</div>
-          <div style="font:400 14px/1.55 -apple-system,Segoe UI,Roboto,sans-serif;color:${MUTED};margin-top:3px;">${escapeHtml(action.body)}</div>
+        <td style="padding:0 0 16px 0;">
+          <div style="font:600 15px/1.4 ${FONT};color:${INK};">${escapeHtml(action.title)}</div>
+          <div style="font:400 14px/1.6 ${FONT};color:${MUTED};margin-top:4px;">${escapeHtml(action.body)}</div>
         </td>
       </tr>`)
     .join("");
@@ -100,50 +102,89 @@ export function caseCreatedHtml(input: CaseEmailInput): string {
   const facts = [
     input.category ? ["What happened", input.category] : null,
     typeof input.amountInr === "number" && input.amountInr > 0
-      ? ["Amount reported", `₹${input.amountInr.toLocaleString("en-IN")}`]
+      ? ["Amount reported", `\u20B9${input.amountInr.toLocaleString("en-IN")}`]
       : null,
   ].filter(Boolean) as [string, string][];
 
   return `<!doctype html>
-<html lang="en"><body style="margin:0;padding:0;background:${PAPER};">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAPER};padding:24px 12px;">
-<tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid ${RULE};border-radius:14px;overflow:hidden;">
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>${escapeHtml(caseCreatedSubject(input))}</title>
+<style>
+  /* Clients that support media queries get a phone layout. Everything below is
+     a progressive improvement on a table that already works without any of it —
+     Gmail strips much of this, and the message has to read correctly stripped. */
+  @media only screen and (max-width:600px) {
+    .k-pad { padding-left:18px !important; padding-right:18px !important; }
+    .k-ref { font-size:26px !important; letter-spacing:.5px !important; }
+    .k-cta { display:block !important; width:100% !important; text-align:center !important; box-sizing:border-box !important; }
+    .k-fact { display:block !important; width:100% !important; text-align:left !important; padding-bottom:0 !important; }
+    .k-fact-v { padding-top:2px !important; padding-bottom:11px !important; }
+    .k-card { border-radius:0 !important; border-left:0 !important; border-right:0 !important; }
+    .k-outer { padding:0 !important; }
+  }
+  /* Dark mode: only the surfaces move. The deep header and the ink button are
+     already dark, and inverting them would flatten the whole message. */
+  @media (prefers-color-scheme: dark) {
+    .k-body { background:#14140f !important; }
+    .k-card { background:#1c1c17 !important; border-color:#33332b !important; }
+    .k-ink { color:#f5f4e8 !important; }
+    .k-muted { color:#a8a89c !important; }
+    .k-soft { background:#22221b !important; }
+    .k-rule { border-color:#33332b !important; }
+    .k-cta { background:#f5f4e8 !important; color:#14140f !important; }
+  }
+  a { color:inherit; }
+</style>
+</head>
+<body class="k-body" style="margin:0;padding:0;background:${PAPER};-webkit-text-size-adjust:100%;">
+<!-- Preheader: the grey line a phone shows next to the subject. Without one,
+     clients pull the first visible words, which here would be the disclaimer. -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your case reference is ${escapeHtml(input.ref)}. Nothing has been filed yet \u2014 here is what to do next.</div>
 
-  <tr><td style="padding:22px 26px;background:${DEEP};">
-    <div style="font:600 18px/1 -apple-system,Segoe UI,Roboto,sans-serif;color:${PAPER};letter-spacing:.2px;">Kavach</div>
-    <div style="font:400 13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:rgba(253,252,243,.75);margin-top:4px;">Independent cybercrime support — not police, not government</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="k-body" style="background:${PAPER};">
+<tr><td class="k-outer" align="center" style="padding:24px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="k-card k-rule" style="max-width:560px;background:#ffffff;border:1px solid ${RULE};border-radius:14px;overflow:hidden;">
+
+  <tr><td class="k-pad" style="padding:22px 26px;background:${DEEP};">
+    <div style="font:700 18px/1 ${FONT};color:${PAPER};letter-spacing:.2px;">Kavach</div>
+    <div style="font:400 13px/1.5 ${FONT};color:rgba(253,252,243,.78);margin-top:5px;">Independent cybercrime support \u2014 not police, not government</div>
   </td></tr>
 
-  <tr><td style="padding:26px 26px 6px 26px;">
-    <div style="font:400 13px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;color:${MUTED};text-transform:uppercase;letter-spacing:.6px;">Your case reference</div>
-    <div style="font:600 30px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;color:${INK};margin-top:6px;letter-spacing:1px;">${escapeHtml(input.ref)}</div>
-    <div style="font:400 14px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:${MUTED};margin-top:10px;">Keep this. It is the handle for everything that follows.</div>
+  <tr><td class="k-pad" style="padding:26px 26px 6px 26px;">
+    <div class="k-muted" style="font:600 12px/1.4 ${FONT};color:${MUTED};text-transform:uppercase;letter-spacing:.7px;">Your case reference</div>
+    <div class="k-ref k-ink" style="font:700 30px/1.2 ${MONO};color:${INK};margin-top:8px;letter-spacing:1px;word-break:break-all;">${escapeHtml(input.ref)}</div>
+    <div class="k-muted" style="font:400 14px/1.6 ${FONT};color:${MUTED};margin-top:10px;">Keep this. It is the handle for everything that follows.</div>
   </td></tr>
 
-  ${facts.length ? `<tr><td style="padding:14px 26px 0 26px;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${RULE};border-radius:10px;">
+  ${facts.length ? `<tr><td class="k-pad" style="padding:16px 26px 0 26px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="k-rule" style="border:1px solid ${RULE};border-radius:10px;">
       ${facts.map(([label, value], index) => `<tr>
-        <td style="padding:11px 14px;${index ? `border-top:1px solid ${RULE};` : ""}font:400 13px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;color:${MUTED};">${escapeHtml(label)}</td>
-        <td style="padding:11px 14px;${index ? `border-top:1px solid ${RULE};` : ""}font:600 14px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;color:${INK};text-align:right;">${escapeHtml(value)}</td>
+        <td class="k-fact k-muted k-rule" style="padding:11px 14px;${index ? `border-top:1px solid ${RULE};` : ""}font:400 13px/1.4 ${FONT};color:${MUTED};">${escapeHtml(label)}</td>
+        <td class="k-fact k-fact-v k-ink k-rule" style="padding:11px 14px;${index ? `border-top:1px solid ${RULE};` : ""}font:600 14px/1.4 ${FONT};color:${INK};text-align:right;">${escapeHtml(value)}</td>
       </tr>`).join("")}
     </table>
   </td></tr>` : ""}
 
-  <tr><td style="padding:22px 26px 0 26px;">
-    <div style="font:600 15px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;color:${INK};margin-bottom:14px;">What to do next</div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${actions}</table>
+  <tr><td class="k-pad" style="padding:24px 26px 0 26px;">
+    <div class="k-ink" style="font:600 15px/1.4 ${FONT};color:${INK};margin-bottom:14px;">What to do next</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${actions}</table>
   </td></tr>
 
-  <tr><td style="padding:8px 26px 26px 26px;">
-    <a href="${caseUrl}" style="display:inline-block;background:${INK};color:${PAPER};text-decoration:none;font:600 15px/1 -apple-system,Segoe UI,Roboto,sans-serif;padding:14px 22px;border-radius:10px;">Open your case</a>
-    <div style="font:400 12px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:${MUTED};margin-top:10px;word-break:break-all;">${caseUrl}</div>
+  <tr><td class="k-pad" style="padding:8px 26px 26px 26px;">
+    <a href="${caseUrl}" class="k-cta" style="display:inline-block;background:${INK};color:${PAPER};text-decoration:none;font:600 15px/1 ${FONT};padding:15px 24px;border-radius:10px;">Open your case</a>
+    <div class="k-muted" style="font:400 12px/1.5 ${FONT};color:${MUTED};margin-top:12px;word-break:break-all;">${caseUrl}</div>
+    <div class="k-muted" style="font:400 12px/1.6 ${FONT};color:${MUTED};margin-top:10px;">That link is the only way back into your case, and anyone who has it can read it. Keep this email to yourself.</div>
   </td></tr>
 
-  <tr><td style="padding:18px 26px;border-top:1px solid ${RULE};background:#fbfaf2;">
-    <div style="font:600 13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:${INK};">Nothing has been filed yet.</div>
-    <div style="font:400 13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:${MUTED};margin-top:5px;">Kavach has prepared your case. No complaint, FIR or bank dispute exists until you submit it and receive an official acknowledgement.</div>
-    <div style="font:400 13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:${MUTED};margin-top:10px;">Never share an OTP, PIN, CVV, password or full card number — with anyone, including us.</div>
+  <tr><td class="k-pad k-soft k-rule" style="padding:18px 26px;border-top:1px solid ${RULE};background:#fbfaf2;">
+    <div class="k-ink" style="font:600 13px/1.5 ${FONT};color:${INK};">Nothing has been filed yet.</div>
+    <div class="k-muted" style="font:400 13px/1.6 ${FONT};color:${MUTED};margin-top:6px;">Kavach has prepared your case. No complaint, FIR or bank dispute exists until you submit it and receive an official acknowledgement.</div>
+    <div class="k-muted" style="font:400 13px/1.6 ${FONT};color:${MUTED};margin-top:10px;">Never share an OTP, PIN, CVV, password or full card number \u2014 with anyone, including us.</div>
   </td></tr>
 
 </table>

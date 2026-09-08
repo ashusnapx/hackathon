@@ -20,6 +20,10 @@ import { DEMO_CASE_PATH } from "@/lib/demo/id";
  *    is rendered for signed-out readers too.
  *  - The provider's own webhook, which is called by Vaani's servers and has no
  *    session to present. It carries its own signature check.
+ *  - The nightly advisory refresh, which Vercel's scheduler calls with no
+ *    session at all. Gating it here would mean the job never runs; it carries
+ *    its own shared-secret check instead, and refuses every request when no
+ *    secret is configured rather than defaulting open.
  *  - The confirmation-link handler, which is where somebody arrives *before*
  *    they have a session. Gating it would bounce them to sign-in holding an
  *    unredeemed code, which is the one place the gate would defeat itself.
@@ -35,6 +39,7 @@ const PUBLIC_PATHS = new Set<string>([
   DEMO_CASE_PATH,
   "/api/health",
   "/api/vaani/webhook",
+  "/api/cron/advisories",
 ]);
 
 /**
@@ -64,10 +69,22 @@ export function normalisePath(pathname: string): string {
   return collapsed.length > 1 ? collapsed.toLowerCase() : "/";
 }
 
+/**
+ * The sample case's own screens.
+ *
+ * The sample is the one thing somebody can open without an account, and its
+ * doors are now separate pages — `/case/demo-vaani-call/steps` and the rest —
+ * so allowlisting only its home would put every screen behind it back behind
+ * the sign-in wall. The trailing slash is what keeps this a prefix of the
+ * sample rather than of anything merely beginning with the same characters.
+ */
+const DEMO_CASE_PREFIX = `${normalisePath(DEMO_CASE_PATH)}/`;
+
 export function isPublicPath(pathname: string): boolean {
   const path = normalisePath(pathname);
   if (PUBLIC_PATHS.has(path)) return true;
   if (PUBLIC_FILES.has(path)) return true;
+  if (path.startsWith(DEMO_CASE_PREFIX)) return true;
   return PUBLIC_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 

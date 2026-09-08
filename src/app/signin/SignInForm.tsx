@@ -8,6 +8,7 @@ import { Field } from "@/components/ui/Field";
 import { authClient } from "@/lib/auth/browser";
 import { afterSignIn, afterSignUp, type SignUpNext } from "@/lib/auth/attempt";
 import { AUTH_CALLBACK_PATH, safeRedirect } from "@/lib/auth/routes";
+import { DEMO_PARAM, demoAccount } from "@/lib/demo/account";
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 
@@ -42,8 +43,13 @@ export function SignInForm({ configured }: { configured: boolean }) {
   const t = useT();
   const params = useSearchParams();
   const [mode, setMode] = useState<Mode>("in");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  // Arriving from the landing page's demo button, both fields are already
+  // filled. Filled rather than submitted for us: a form that signs somebody in
+  // the instant a page loads gives them nothing to understand and no way to
+  // stop, and on a failure it would just reload into the same silent attempt.
+  const demo = params.get(DEMO_PARAM) === "1" ? demoAccount() : null;
+  const [email, setEmail] = useState(demo?.email ?? "");
+  const [password, setPassword] = useState(demo?.password ?? "");
   const [busy, setBusy] = useState(false);
   // A confirmation link that did not work says so here rather than dumping
   // somebody on an ordinary sign-in page wondering what happened to the email
@@ -165,6 +171,15 @@ export function SignInForm({ configured }: { configured: boolean }) {
 
   return (
     <>
+      {demo && (
+        <div className="mb-5 rounded-card border border-info/35 bg-info-soft px-4 py-4">
+          <p className="label text-info">{t("demo.badge")}</p>
+          <p className="mt-2 text-[0.9375rem] font-semibold leading-snug">{t("demo.title")}</p>
+          <p className="mt-1.5 text-sm leading-[1.6] text-ink-2">{t("demo.body")}</p>
+          <p className="mt-2 text-xs leading-[1.6] text-ink-3">{t("demo.shared")}</p>
+        </div>
+      )}
+
       <div role="group" aria-label={t("auth.chooseMode")} className="grid grid-cols-2 gap-1 rounded-ctl border border-rule-strong bg-sunk p-1">
         {(["in", "up"] as const).map((option) => (
           <button

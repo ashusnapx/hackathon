@@ -772,6 +772,10 @@ export async function startVaaniBrowserCall(context: VaaniCallContext): Promise<
       // The agent is configured for one target language; the caller chose their
       // own. Sending it per call is what stops a Hindi voice reading English.
       primary_language: context.language,
+      // Fraud reports in India are routinely code-mixed — Hinglish, Tanglish.
+      // The fallback keeps the agent following when the caller switches
+      // mid-sentence instead of hearing the other language as noise.
+      secondary_language: context.language === "en" ? "hi" : "en",
       welcome_message: vaaniGreeting(context.language),
       welcome_interruptible: true,
       // The greeting has to be overridden per call, not per agent. A configured
@@ -828,6 +832,10 @@ export interface VaaniCallOutcome {
   extracted: Record<string, unknown>;
   summary?: string;
   transcriptAvailable: boolean;
+  /** The provider's own evaluation tag for the call, where one was assigned. */
+  callEvalTag?: string;
+  /** Conversation-level evaluation metrics. Shape varies by agent config. */
+  conversationEval?: Record<string, unknown>;
 }
 
 /**
@@ -851,6 +859,11 @@ export async function getVaaniCallOutcome(callId: string): Promise<VaaniCallOutc
 /**
  * The provider documents call details as an open dict, so read defensively and
  * report what is actually present rather than asserting a schema.
+ *
+ * Two shapes exist in the wild: the documented call-details body
+ * (`transcription`, `entity`, `conversation_eval`, `summary`, `call_eval_tag`)
+ * and the dispatch-style body (`extracted_information`, `dispositions`). Both
+ * are read, so the case page shows the extraction whichever one arrives.
  */
 export function normaliseVaaniCallOutcome(callId: string, raw: Record<string, unknown>): VaaniCallOutcome {
   const pick = (...keys: string[]): unknown => {
@@ -864,14 +877,17 @@ export function normaliseVaaniCallOutcome(callId: string, raw: Record<string, un
     value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 
   const extracted = {
-    ...asRecord(pick("extracted_information", "extracted_data", "entities", "data_points")),
+    ...asRecord(pick("entity", "extracted_information", "extracted_data", "entities", "data_points")),
   };
   const dispositions = asRecord(pick("dispositions", "evaluations"));
   const disposition = typeof dispositions.call_disposition === "string"
     ? dispositions.call_disposition
     : typeof extracted.call_outcome === "string" ? extracted.call_outcome : undefined;
   const summary = pick("summary");
-  const transcript = pick("transcript");
+  const transcript = pick("transcription", "transcript");
+  const callEvalTag = pick("call_eval_tag", "call_eval_tag_name");
+  const conversationEval = asRecord(pick("conversation_eval", "conversation_evaluation"));
+  const hasConversationEval = Object.keys(conversationEval).length > 0;
 
   return {
     callId,
@@ -879,6 +895,8 @@ export function normaliseVaaniCallOutcome(callId: string, raw: Record<string, un
     extracted,
     summary: typeof summary === "string" && summary.trim() ? summary : undefined,
     transcriptAvailable: typeof transcript === "string" ? transcript.trim().length > 0 : Array.isArray(transcript),
+    callEvalTag: typeof callEvalTag === "string" && callEvalTag.trim() ? callEvalTag.trim() : undefined,
+    conversationEval: hasConversationEval ? conversationEval : undefined,
   };
 }
 

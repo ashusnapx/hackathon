@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n/context";
 import { appendPhrase, readRecognition } from "@/lib/intake/recognition";
+import { VoiceRing, startVoiceMeter, type RingSize } from "@/components/start/VoiceRing";
 import { cn } from "@/lib/utils";
 
 /**
@@ -125,7 +126,6 @@ function getRecognition(): SpeechRecognitionLike | null {
 export function VoiceInput({ onResult, disabled, variant = "page", onModeChange, controller, onInterim }: Props) {
   const { lang, t } = useI18n();
   const [mode, setMode] = useState<Mode>("idle");
-  const [level, setLevel] = useState(0);
   const [interim, setInterim] = useState("");
   const disclosureId = useId();
 
@@ -133,8 +133,16 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
-  const rafRef = useRef<number | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  /**
+   * The dot ring behind the button.
+   *
+   * Written to directly by the meter loop through style.setProperty, never
+   * through React: the old meter called setState on every animation frame,
+   * which re-rendered this component ~3600 times per take.
+   */
+  const ringRef = useRef<HTMLSpanElement | null>(null);
+  const meterStopRef = useRef<(() => void) | null>(null);
   const activityRef = useRef(0);
   const transcriptionRequestRef = useRef<AbortController | null>(null);
   /**
@@ -182,13 +190,12 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
       transcriptionRequestRef.current?.abort();
       transcriptionRequestRef.current = null;
     }
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
+    meterStopRef.current?.();
+    meterStopRef.current = null;
     streamRef.current?.getTracks().forEach((tr) => tr.stop());
     streamRef.current = null;
     audioCtxRef.current?.close().catch(() => {});
     audioCtxRef.current = null;
-    setLevel(0);
   }, []);
 
   useEffect(() => () => cleanup(), [cleanup]);
@@ -212,31 +219,35 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
     return () => { ref.current = null; };
   }, [cleanup, controller]);
 
-  /** Drives the level meter, so the user can see they are being heard. */
-  const meter = useCallback((stream: MediaStream) => {
-    const ctx = new AudioContext();
-    audioCtxRef.current = ctx;
-    // iOS hands back a suspended context when it is built outside the gesture
-    // that opened the mic; without this the meter never moves and the user
-    // gets no sign they are being heard.
-    void ctx.resume().catch(() => {});
-    const src = ctx.createMediaStreamSource(stream);
-    const analyser = ctx.createAnalyser();
-    analyser.fftSize = 256;
-    src.connect(analyser);
-    const buf = new Uint8Array(analyser.frequencyBinCount);
+  const ringSize: RingSize = variant === "hero" ? "hero" : variant === "compact" ? "compact" : "page";
 
-    const tick = () => {
-      analyser.getByteFrequencyData(buf);
-      const avg = buf.reduce((s, v) => s + v, 0) / buf.length;
-      const next = Math.min(1, avg / 90);
-      if (next > peakRef.current) peakRef.current = next;
-      framesRef.current += 1;
-      setLevel(next);
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    tick();
-  }, []);
+  /**
+   * Opens the microphone's own view of itself.
+   *
+   * Everything about the picture, including the loop that drives it, lives in
+   * VoiceRing. What stays here is the only thing this component still needs
+   * from the audio: the two numbers that decide whether a take is uploaded.
+   */
+  const meter = useCallback((stream: MediaStream) => {
+    const handle = startVoiceMeter({
+      stream,
+      el: ringRef.current,
+      size: ringSize,
+      // Goes to refs, never to state. `rec.onstop` reads peakRef before
+      // deciding a take had no sound in it — which is exactly why the ring's
+      // own fallback, the breath it draws when the analyser never woke up, is
+      // kept out of this callback. A synthetic level here would make the
+      // silence guard believe it had heard something, and the guard is what
+      // stops a transcription model inventing a sentence for a police
+      // complaint out of an empty room.
+      onLevel: (v) => {
+        if (v > peakRef.current) peakRef.current = v;
+        framesRef.current += 1;
+      },
+    });
+    audioCtxRef.current = handle.ctx;
+    meterStopRef.current = handle.stop;
+  }, [ringSize]);
 
   const startRecording = useCallback(async (activity: number): Promise<boolean> => {
     if (recorderRef.current?.state === "recording") return true;
@@ -465,12 +476,8 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
             "relative grid place-items-center w-[46px] h-[46px] rounded-full text-white transition-colors",
             listening ? "bg-[#e5533d]" : "bg-[#00a884] disabled:opacity-50",
           )}
-          style={
-            listening
-              ? { boxShadow: `0 0 0 ${3 + level * 12}px color-mix(in srgb, #e5533d 18%, transparent)` }
-              : undefined
-          }
         >
+          <VoiceRing ringRef={ringRef} live={listening} size="compact" />
           {busy ? <Spinner /> : listening ? <SendIcon /> : <MicIcon />}
         </button>
       </span>
@@ -503,18 +510,18 @@ export function VoiceInput({ onResult, disabled, variant = "page", onModeChange,
               ? "bg-deep border-deep text-[#ffffeb] hover:opacity-90"
               : "bg-raised border-rule-strong text-ink hover:border-ink",
         )}
-        style={
-          listening
-            ? { boxShadow: `0 0 0 ${4 + level * 22}px color-mix(in srgb, var(--urgent) 12%, transparent)` }
-            : undefined
-        }
       >
+        <VoiceRing ringRef={ringRef} live={listening} size={ringSize} />
         <span className={cn(hero && "scale-[1.6]")}>
           {busy ? <Spinner /> : listening ? <StopIcon /> : <MicIcon />}
         </span>
       </button>
 
-      <p className={cn("text-center min-h-[1.25rem]", hero ? "text-[0.9375rem] text-ink-2" : "text-sm text-ink-3")}>
+      <p
+        role="status"
+        aria-live="polite"
+        className={cn("text-center min-h-[1.25rem]", hero ? "text-[0.9375rem] text-ink-2" : "text-sm text-ink-3")}
+      >
         {mode === "unsupported"
           ? t("start.voiceUnsupported")
           : mode === "nothing"

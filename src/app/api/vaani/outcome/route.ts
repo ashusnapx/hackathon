@@ -49,6 +49,8 @@ export async function POST(req: Request) {
       extracted: outcome.extracted,
       summary: outcome.summary,
       transcriptAvailable: outcome.transcriptAvailable,
+      callEvalTag: outcome.callEvalTag,
+      conversationEval: outcome.conversationEval,
       note: "Draft only. Nothing here is a confirmed case fact until you review it.",
     }, 200);
   } catch (error) {

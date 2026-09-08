@@ -26,15 +26,79 @@ export const RBI_2017_CIRCULAR = {
   /** RBI's own explanation of the same rules, written for a customer. */
   readableUrl: "https://www.rbi.org.in/commonperson/English/scripts/Limitedliability.aspx",
   /**
-   * RBI put amendments to this framework out for comment in March 2026 —
-   * widening it to more kinds of fraudulent transaction, shortening the bank's
-   * processing time, and adding compensation for small-value fraud. They were
-   * still drafts at the time of writing. The screening therefore states the
-   * rules in force and says that they are under revision, rather than quietly
-   * asserting either version.
+   * No longer a draft.
+   *
+   * The amendments RBI put out for comment in March 2026 were finalised on
+   * 24 June 2026 and apply to transactions from 1 January 2027 — see
+   * `RBI_2026_AMENDMENT` below. Until that date this circular is the framework
+   * in force, which is why it is still the one the screening runs; after it, a
+   * different set of numbers applies to the same question.
    */
   underRevision: true,
+  supersededFrom: "2027-01-01",
 } as const;
+
+/**
+ * The framework that replaces the one above, for transactions from 2027.
+ *
+ * Kept as data rather than prose because the dates matter more than the
+ * summary: somebody defrauded on 31 December 2026 and somebody defrauded on
+ * 1 January 2027 are owed different things by their bank, and a page that
+ * quoted only one of the two regimes would be wrong for half its readers for
+ * months.
+ *
+ * The reporting window moves from three *working* days to five *calendar* days,
+ * which is not the simplification it looks like: for a fraud discovered on a
+ * Friday before a long weekend the calendar version is the tighter deadline.
+ * That is exactly the kind of change a victim cannot be expected to track, and
+ * is the reason this is dated rather than swapped in.
+ *
+ * Verified against RBI's own press release and notification, not a summary of
+ * them. Figures below are from the Commercial Banks amendment; the parallel
+ * amendments for small finance, payments, local area, regional rural and
+ * co-operative banks were issued the same day.
+ */
+export const RBI_2026_AMENDMENT = {
+  id: "RBI/2026-27/167",
+  number: "DOR.MCS.REC.No.130/01-01-032/2026-27",
+  title: "Reserve Bank of India (Commercial Banks – Responsible Business Conduct) Third Amendment Directions, 2026",
+  issuedOn: "2026-06-24",
+  /** Applies to electronic banking transactions undertaken on or after this. */
+  appliesFrom: "2027-01-01",
+  url: "https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=13543&Mode=0",
+  pressReleaseUrl: "https://www.rbi.org.in/scripts/BS_PressReleaseDisplay.aspx?prid=63011",
+  /** Zero liability on a third-party breach if reported within this window. */
+  reportWithinCalendarDays: 5,
+  /** Shadow reversal, counted from the customer's notification. */
+  shadowReversalCalendarDays: 5,
+  resolutionCalendarDays: { domestic: 45, crossBorder: 60 },
+  /**
+   * New: a one-per-lifetime compensation route for small-value fraud, which is
+   * conditional on having reported to 1930/NCRP *and* the bank within five
+   * calendar days — a reason the helpline track matters even when the amount
+   * looks too small to chase.
+   */
+  smallValue: {
+    maxLossRupees: 50_000,
+    shareOfNetLoss: 0.85,
+    capRupees: 25_000,
+    oncePerLifetime: true,
+  },
+} as const;
+
+/**
+ * Which framework governs a transaction.
+ *
+ * Takes the date of the disputed transaction, not today's date: the regime is
+ * fixed by when the money moved, and a case opened in February 2027 about a
+ * December 2026 debit is still governed by the 2017 circular.
+ */
+export function rbiFrameworkFor(transactionAt: Date | string | undefined): "2017" | "2026" {
+  if (!transactionAt) return "2017";
+  const at = typeof transactionAt === "string" ? new Date(transactionAt) : transactionAt;
+  if (Number.isNaN(at.getTime())) return "2017";
+  return at.getTime() >= Date.parse(RBI_2026_AMENDMENT.appliesFrom) ? "2026" : "2017";
+}
 
 export type RbiInitiation = "victim" | "unknown" | "not-victim";
 export type RbiYesNoUnknown = "yes" | "no" | "unknown";

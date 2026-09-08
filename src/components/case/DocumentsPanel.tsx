@@ -19,12 +19,12 @@ import type { CaseDocs, CaseFile } from "@/lib/case/types";
 import { cn, writeToClipboard } from "@/lib/utils";
 import { useIsClient } from "@/lib/useIsClient";
 
-type DocKey = DocumentKey;
+export type DocKey = DocumentKey;
 
 /** A filename someone can find again, with nothing of ours in it. */
 const fileDate = () => new Date().toISOString().slice(0, 10);
 
-const DOCS: { key: DocKey; title: Parameters<ReturnType<typeof useI18n>["t"]>[0]; blurb: Parameters<ReturnType<typeof useI18n>["t"]>[0] }[] = [
+export const DOCS: { key: DocKey; title: Parameters<ReturnType<typeof useI18n>["t"]>[0]; blurb: Parameters<ReturnType<typeof useI18n>["t"]>[0] }[] = [
   { key: "ncrp", title: "doc.ncrp.t", blurb: "doc.ncrp.b" },
   { key: "script", title: "doc.script.t", blurb: "doc.script.b" },
   { key: "bank", title: "doc.bank.t", blurb: "doc.bank.b" },
@@ -202,6 +202,44 @@ export function DocumentsPanel({ caseFile, update }: Props) {
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * One document with its controls, wired to the case.
+ *
+ * Extracted so `DocModal` can show a single letter over the steps that ask for
+ * it, using this component rather than a second implementation of it. A copy
+ * would be the one that loses the clipboard fallback below, which exists
+ * because `navigator.clipboard` rejects outright inside the WhatsApp browser.
+ */
+export function OneDocument({ caseFile, doc, body, update }: {
+  caseFile: CaseFile;
+  doc: (typeof DOCS)[number];
+  body: string;
+  update: Props["update"];
+}) {
+  const { t, lang } = useI18n();
+  return (
+    <Document
+      docKey={doc.key}
+      title={t(doc.title)}
+      blurb={t(doc.blurb)}
+      body={body}
+      translated={caseFile.docs.translatedLanguage === lang.code
+        ? caseFile.docs.translated?.[doc.key]
+        : undefined}
+      targetLang={lang.code}
+      onTranslated={(text) =>
+        update((c) => ({
+          docs: {
+            ...c.docs,
+            translated: { ...(c.docs.translatedLanguage === lang.code ? c.docs.translated : {}), [doc.key]: text },
+            translatedLanguage: lang.code,
+          },
+        }))
+      }
+    />
   );
 }
 

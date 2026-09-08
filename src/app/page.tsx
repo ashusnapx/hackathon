@@ -1,9 +1,11 @@
 import { RevealScope } from "@/components/RevealScope";
 import { Nav } from "@/components/landing/Nav";
 import { Hero } from "@/components/landing/Hero";
+import { Journey } from "@/components/landing/Journey";
 import { Ticker } from "@/components/landing/Ticker";
 import { Problem } from "@/components/landing/Problem";
 import { Compare } from "@/components/landing/Compare";
+import { Features } from "@/components/landing/Features";
 import { Clocks } from "@/components/landing/Clocks";
 import { Demo } from "@/components/landing/Demo";
 import { VoiceDemo } from "@/components/landing/VoiceDemo";
@@ -20,9 +22,11 @@ export default function HomePage() {
       <Nav />
       <main id="main">
         <Hero />
+        <Journey />
         <Ticker />
         <Problem />
         <Compare />
+        <Features />
         <Demo />
         <VoiceDemo />
         <Clocks />

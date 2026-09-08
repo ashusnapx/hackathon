@@ -22,6 +22,7 @@ import {
   storeEvidenceFile,
   withEvidenceCaseLock,
 } from "@/lib/case/evidence-store";
+import { ReadEvidence } from "./ReadEvidence";
 import { useT } from "@/lib/i18n/context";
 import type { DictKey } from "@/lib/i18n/dict/en";
 import { cn } from "@/lib/utils";
@@ -344,6 +345,7 @@ export function EvidenceVault({ caseFile, update, persistUpdate }: Props) {
                         onDownload={handleDownload}
                         busy={busyId !== null}
                         attachmentAllowed={!attachmentBlockMessage}
+                        update={update}
                       />
                     ))}
                   </div>
@@ -366,6 +368,7 @@ function EvidenceRow({
   onDownload,
   busy,
   attachmentAllowed,
+  update,
 }: {
   item: EvidenceItem;
   tpl: (id: string, field: "title" | "description" | "why", fallback: string) => string;
@@ -375,6 +378,8 @@ function EvidenceRow({
   onDownload: (id: string) => Promise<void>;
   busy: boolean;
   attachmentAllowed: boolean;
+  /** Passed through so a read result can be folded into the case. */
+  update: (patch: (c: CaseFile) => Partial<CaseFile>) => void;
 }) {
   const t = useT();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -441,6 +446,11 @@ function EvidenceRow({
                   {t("ev.remove")}{busy ? "…" : ""}
                 </button>
               </div>
+              {/* Offered per file, never run on its own: sending a frame of
+                  somebody's evidence to a model is their decision to make. */}
+              {attachmentAllowed && (
+                <ReadEvidence attachment={item.attachment} update={update} />
+              )}
             </div>
           )}
 

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { VoiceInput } from "@/components/start/VoiceInput";
+import { HeardSoFar } from "@/components/start/HeardSoFar";
 import { useT } from "@/lib/i18n/context";
 import { appendPhrase } from "@/lib/intake/recognition";
 import { cn } from "@/lib/utils";
@@ -149,21 +150,13 @@ export function VoiceComposer({
         </div>
       </div>
 
-      {prompts && prompts.length > 0 && (
-        <div className="mt-3 border-t border-rule pt-3">
-          <p className="text-xs text-ink-3">{t("compose.promptsH")}</p>
-          <ul className="mt-2 flex flex-wrap gap-1.5">
-            {prompts.map((prompt) => (
-              <li
-                key={prompt}
-                className="rounded-full border border-rule bg-sunk px-2.5 py-1 text-xs text-ink-2"
-              >
-                {prompt}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {/*
+        What used to be six unchanging pills. They are still the same six
+        things worth saying — the list simply reads the statement back now, and
+        goes green on what it has genuinely found. See HeardSoFar for why the
+        two the interview must ask for itself are not in the ticking set.
+      */}
+      {prompts && prompts.length > 0 && <HeardSoFar text={value} listening={listening} />}
 
       <div className="mt-2 flex items-center gap-3 border-t border-rule pt-3">
         <p className="flex-1 min-w-0 text-xs leading-[1.4] text-ink-3">{t("compose.hint")}</p>

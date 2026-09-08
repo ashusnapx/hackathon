@@ -33,7 +33,8 @@ export const en = {
   "account.sectionAccount": "Your account",
   "account.sectionDevice": "This device",
   "account.signOutNote": "Signing out clears the session on this device. Your cases stay where they are, and their links keep working.",
-  "account.deviceNote": "Your cases are stored on this device and opened by their link, not by this account. Signing in on another phone will not list them.",
+  "account.deviceNote": "Your cases are stored on this device and opened by their link. When you sign in, they are also attached to your account, so the same login lists them on your other devices.",
+  "account.keyringNote": "The tradeoff, stated plainly: attaching a case stores its key with your account so a second device can open it — which means the server can open it too. Cases kept signed-out stay under the old model, with the key only in the browser that made them.",
   "field.showPassword": "Show password",
   "field.hidePassword": "Hide password",
   "auth.title": "Sign in to Kavach",
@@ -74,9 +75,44 @@ export const en = {
   "built.label": "Built by",
   "built.role": "AI engineer",
   "nav.sample": "A sample case file",
+  "nav.features": "What you get",
   "nav.cases": "Find my case",
   "nav.myCase": "My case",
   "nav.menu": "Menu",
+  "nav.closeMenu": "Close menu",
+  "nav.groupExplore": "Explore",
+  "nav.groupAct": "Take action",
+  "avatar.menu": "Account menu",
+  "avatar.signIn": "Sign in",
+
+  // ── The strip above every header ──────────────────────────────────────────
+  // Said here as well as in the footer and the FAQ, because a person who lands
+  // on a page about police complaints and bank deadlines should learn what this
+  // is before they learn what it can do.
+  "bwmi.badge": "Hackathon build",
+  "bwmi.text": "Kavach is an independent prototype built for Build What Moves India — not a government service.",
+  "bwmi.link": "buildwhatmovesindia.com",
+
+  // Reading controls, on the page rather than in a browser menu. GIGW 3.0 asks
+  // for this, and the people here are often on a borrowed phone whose settings
+  // they cannot reach.
+  "a11y.title": "Reading options",
+  "a11y.textSize": "Text size",
+  "a11y.sizeM": "Normal",
+  "a11y.sizeL": "Large",
+  "a11y.sizeXl": "Largest",
+  "a11y.contrast": "Higher contrast",
+  "a11y.contrastNote": "Darker text and stronger lines, for daylight or a low-quality screen.",
+  "a11y.motion": "Animation already follows your device's reduce-motion setting; there is nothing to turn off here.",
+
+  // The shared account the landing page's demo button signs judges in with.
+  // It says it is shared, because anything typed into it is visible to the
+  // next person who opens it.
+  "demo.badge": "Demo account",
+  "demo.title": "Signed in for you — just press the button",
+  "demo.body": "Both fields are already filled with a demo account, so you can use the whole of Kavach: start an interview by voice or text, run the scam checker, and watch a case file build itself.",
+  "demo.shared": "This account is shared with everyone trying the demo. Please do not put anything real into it — treat whatever you type as public.",
+  "demo.cta": "Try the live demo",
   "lang.label": "Language",
   "lang.noneTitle": "Not translated yet — this shows English",
   "lang.partialTitle": "Partly translated — anything missing shows English",
@@ -102,7 +138,167 @@ export const en = {
   "hero.point2": "One next action, with source-linked conditions",
   "hero.point3": "Works on a slow phone",
   "hero.sample": "Or read a real case file first, built from a recorded call →",
+  "hero.sampleCta": "View sample case — no login needed",
   "hero.notOfficial": "Independent tool. Not a government website.",
+
+  // ── The hero's poster deck ────────────────────────────────────────────────
+  // Seven posters, advancing on a visible countdown. Between them they cover
+  // everything this product actually does: voice intake in every scheduled
+  // language, extraction you confirm, ten dated clocks with their sources, the
+  // four drafts, the hand-off where the citizen files, the vault and case pack,
+  // and the message checker that runs before any money has moved.
+  //
+  // Three rules govern the words in here.
+  //
+  // Poster 02 writes no numbers at all. The amount, the payment method and the
+  // category are read out of `src/lib/demo/call.json` — the extraction of the
+  // real recorded call this repo ships, the same one the voice section plays
+  // back in full. Re-record the demo and the poster changes with it.
+  //
+  // Poster 05 is the citizen filing, not us. Kavach drafts and submits nothing;
+  // nothing is a filing until an official channel returns a real receipt.
+  //
+  // Poster 07 never says an identifier is safe, because the checker cannot know
+  // that. It says what is wrong with what was pasted, and its example message
+  // is tagged as one.
+  "hero.deck.title": "What Kavach actually does",
+  "hero.deck.step": "Poster",
+  "hero.deck.next": "Next poster in",
+  "hero.deck.seeCase": "See a finished case",
+
+  // 01
+  "hero.deck.p1.label": "You speak",
+  "hero.deck.p1.head": "Just talk.",
+  "hero.deck.p1.headEm": "That is the whole form.",
+  "hero.deck.p1.foot": "A voice interview in any of 23 languages, with live captions as it listens. No forms, no OTP, no captcha.",
+  "hero.deck.langs": "22 Indian languages + English",
+
+  // 02
+  "hero.deck.p2.label": "What it heard",
+  "hero.deck.p2.head": "Facts,",
+  "hero.deck.p2.headEm": "not guesses.",
+  "hero.deck.p2.foot": "Read out of one real recorded call, not written for this page. You confirm every fact, and what is not known is left unknown.",
+  "hero.deck.f.amount": "Amount lost",
+  "hero.deck.f.method": "Paid through",
+  "hero.deck.f.category": "Possible category",
+
+  // 03
+  "hero.deck.p3.label": "Ten tracks, ten clocks",
+  "hero.deck.p3.head": "Every deadline",
+  "hero.deck.p3.headEm": "carries its source.",
+  "hero.deck.p3.foot": "Ten action tracks, each with a real clock computed from your dates and the rule it came from — never a generic countdown.",
+  "hero.deck.k1": "Call 1930",
+  "hero.deck.k1v": "Now",
+  "hero.deck.k2": "Tell your bank",
+  "hero.deck.k2v": "Now",
+  "hero.deck.k3": "RBI limited liability",
+  "hero.deck.k3v": "Conditional",
+  "hero.deck.k4": "NCRP complaint",
+  "hero.deck.k4v": "Act promptly",
+
+  // 04
+  "hero.deck.p4.label": "Your paperwork",
+  "hero.deck.p4.head": "Letters that",
+  "hero.deck.p4.headEm": "write themselves.",
+  "hero.deck.p4.foot": "Drafted from your own facts, ready to copy across. Every draft says which rule or page it came from. Read them before you send them.",
+  "hero.deck.d1": "NCRP complaint description",
+  "hero.deck.d2": "Bank dispute letter",
+  "hero.deck.d3": "1930 call script",
+  "hero.deck.d4": "FIR application",
+  "hero.deck.d4s": "BNSS s. 173",
+  "hero.deck.ready": "Ready",
+
+  // 05
+  "hero.deck.p5.label": "The hand-off",
+  "hero.deck.p5.head": "You file it.",
+  "hero.deck.p5.headEm": "Never us.",
+  "hero.deck.p5.foot": "Kavach prepares and never submits. Nothing counts as filed until an official channel returns a real receipt.",
+  "hero.deck.c1": "cybercrime.gov.in",
+  "hero.deck.c1s": "NCRP complaint",
+  "hero.deck.c2": "1930",
+  "hero.deck.c2s": "Cybercrime helpline",
+  "hero.deck.c3": "Your bank",
+  "hero.deck.c3s": "Dispute and limited liability",
+
+  // 06
+  "hero.deck.p6.label": "Nothing gets lost",
+  "hero.deck.p6.head": "Everything you gather,",
+  "hero.deck.p6.headEm": "kept together.",
+  "hero.deck.p6.foot": "Screenshots, references and receipts in one scored checklist, a downloadable case pack, and the same case on every device you sign in on.",
+  "hero.deck.v1": "Screenshots and receipts",
+  "hero.deck.v1v": "In the vault",
+  "hero.deck.v2": "Full case pack",
+  "hero.deck.v2v": "PDF",
+  "hero.deck.v3": "Phone, then laptop",
+  "hero.deck.v3v": "Same case",
+
+  // 07
+  "hero.deck.p7.label": "Before any money moves",
+  "hero.deck.p7.head": "Not sure yet?",
+  "hero.deck.p7.headEm": "Check it first.",
+  "hero.deck.p7.foot": "Paste the SMS, link, UPI ID or number before you pay. Kavach cannot tell you something is safe — it tells you what is wrong with it, and where the official list is.",
+  "hero.deck.example": "Example",
+  "hero.deck.sms": "Your KYC expires today. Update now to avoid account block: kyc-verify.link/8821",
+  "hero.deck.verdict": "Serious",
+  "hero.deck.w1": "Shortened, lookalike domain",
+  "hero.deck.w2": "A deadline invented to rush you",
+  "hero.deck.w3": "No bank asks for KYC by link",
+
+  // ── The journey rail under the hero ───────────────────────────────────────
+  // The whole arc, from the moment the money leaves to a case still moving
+  // weeks later — including the two stages Kavach is not in. Stage 01 happens
+  // before anybody arrives here, and stage 05 is the citizen filing on an
+  // official channel, which this product prepares and never performs. A map
+  // that quietly omitted both would be claiming to be the journey rather than
+  // a part of it.
+  "journey.kicker": "End to end",
+  "journey.h2": "What actually happens, from the worst minute onward.",
+  "journey.sub": "Six stages. Kavach is in four of them, and says so about the other two.",
+  "journey.s1.t": "The money goes",
+  "journey.s1.b": "Call 1930 before anything else. Reporting fast is the only thing that raises the odds.",
+  "journey.s1.time": "Minute 0",
+  "journey.s1.who": "Before Kavach",
+
+  "journey.s2.t": "You tell it once",
+  "journey.s2.b": "Speak or type, in your language, in whatever order it comes out. No forms, no OTP, no captcha.",
+  "journey.s2.time": "About 10 minutes",
+  "journey.s2.who": "You and Kavach",
+
+  "journey.s3.t": "Facts get separated from guesses",
+  "journey.s3.b": "Amounts, identifiers and a timeline come out with their confidence shown. What is unknown stays unknown.",
+  "journey.s3.time": "Same sitting",
+  "journey.s3.who": "You and Kavach",
+
+  "journey.s4.t": "The paperwork gets drafted",
+  "journey.s4.b": "An NCRP description, a bank notice, a 1930 script, a police application — each one saying where it came from.",
+  "journey.s4.time": "Minutes, not days",
+  "journey.s4.who": "Kavach",
+
+  "journey.s5.t": "You file it on the official channel",
+  "journey.s5.b": "Kavach prepares and never submits. Nothing counts as filed until a real channel returns a real receipt.",
+  "journey.s5.time": "Your hands",
+  "journey.s5.who": "Not Kavach",
+
+  "journey.s6.t": "The case keeps moving",
+  "journey.s6.b": "Acknowledgements, bank replies, conditional deadlines and escalation stay tracked and auditable.",
+  "journey.s6.time": "Until it resolves",
+  "journey.s6.who": "You and Kavach",
+
+  "journey.note": "Timings are illustrative. No outcome — freeze, refund or recovery — is ever guaranteed by anyone, including us.",
+  // The row of five figures under the hero. The alt text describes what is
+  // actually drawn, including who is doing what — a screen reader user should
+  // get the same argument the picture makes, not the word "illustration".
+  "hero.anyAge": "Built for whoever is holding the phone — a teenager, a parent, a grandparent.",
+  "hero.anyAgeAlt": "Five people of different ages standing side by side, each using the same tool a different way: a girl typing, a young man on a call, a woman speaking into her phone, an older man in reading glasses holding his phone out at arm's length, and a grandmother with a walking stick listening to hers.",
+  // Generation tags on the five hero figures. Named as generations rather than
+  // ages because that is how people place themselves, and it makes the point
+  // the row exists to make: not "designed for the elderly", but "designed for
+  // whichever of these you are".
+  "age.alpha": "Gen Alpha",
+  "age.z": "Gen Z",
+  "age.millennial": "Millennial",
+  "age.x": "Gen X",
+  "age.boomer": "Boomer",
 
   /* The band under the hero. */
   "ticker.note": "Every one of these is a scheduled language of India. Pick yours in the bar above.",
@@ -166,6 +362,27 @@ export const en = {
   "langs.count": "23 languages",
   "langs.try": "Try one",
 
+  // ── Features: the whole offering ──────────────────────────────────────────
+  "feat.kicker": "What you get",
+  "feat.h2": "One conversation becomes the whole fight-back.",
+  "feat.lede": "Speak or type once. Everything below is built from that account — checked, dated, drafted and kept — with nothing filed behind your back.",
+  "feat.c1t": "Talk instead of typing",
+  "feat.c1b": "A voice interview in your language, with live captions as it listens. The transcript and the details it heard become your case.",
+  "feat.c2t": "Check a message first",
+  "feat.c2b": "Paste the SMS, email or link you are unsure about and get a verdict before you pay, click or share it.",
+  "feat.c3t": "Ten deadlines, dated for you",
+  "feat.c3b": "1930, NCRP, bank notice, FIR and more — each with its real clock, computed live from your dates, not a generic rule.",
+  "feat.c4t": "An evidence vault",
+  "feat.c4b": "Every screenshot, reference and receipt in one checklist, scored for readiness and kept on your device.",
+  "feat.c5t": "Letters that write themselves",
+  "feat.c5b": "NCRP text, bank dispute letter, FIR application and the 1930 call script — drafted from your facts, ready to copy across.",
+  "feat.c6t": "See a finished case first",
+  "feat.c6b": "A real case file built from a recorded call. Open it with no login and judge the work before you trust it.",
+  "feat.c7t": "One account, every device",
+  "feat.c7b": "Sign in once and the same cases follow you from phone to laptop. A call's transcript stays saved with its case, even after its recording expires.",
+  "feat.c8t": "Twenty-three languages",
+  "feat.c8b": "The whole tool — voice, interview, drafts and deadlines — in every scheduled language of India, plus English.",
+
   // ── Honesty ───────────────────────────────────────────────────────────────
   "honesty.kicker": "Honesty",
   "honesty.h2": "What is real here, and what is pretend.",
@@ -179,6 +396,7 @@ export const en = {
   "honesty.r5": "Generated NCRP text, bank dispute letter, FIR application and 1930 script",
   "honesty.r6": "Downloadable PDF case pack, and the case file surviving a closed browser",
   "honesty.r7": "Cases stored in Postgres and reopened on another device from their own link",
+  "honesty.r8": "Signed-in cases follow the same login across devices, and a call's transcript stays saved with its case after the recording expires",
   "honesty.m1": "Nothing is submitted to cybercrime.gov.in. You copy the text across yourself",
   "honesty.m2": "Complaint status and police-station routing are simulated, not fetched",
   "honesty.m3": "Kavach never asks for an OTP, password, bank login, Aadhaar or PAN. Do not enter them in your story or evidence notes.",
@@ -202,6 +420,8 @@ export const en = {
   "faq.a5": "The prototype case file and locally attached evidence stay in this browser. Text is sent to the configured model provider when you ask for analysis or drafting; provider handling depends on that deployment. Do not enter an Aadhaar number, PAN, password or OTP—Kavach does not need them.",
   "faq.q6": "I do not have any evidence. Is it pointless?",
   "faq.a6": "No. Report what you know, label unknowns, and preserve what is available. A bank statement entry, date, amount or transaction reference can still help; no single item guarantees a freeze or investigation.",
+  "faq.q7": "Do I need an account?",
+  "faq.a7": "No. The interview, the voice call, the drafts and the deadlines all work without one. An account only makes your cases follow you across devices — and the sample case needs nothing at all.",
 
   // ── Footer ────────────────────────────────────────────────────────────────
   "footer.cta": "Start your case file",
@@ -230,6 +450,7 @@ export const en = {
   "status.voice": "Voice",
   "status.email": "Email",
   "footer.built": "Built for the Build What Moves India hackathon. Not affiliated with, endorsed by, or connected to any government body. All reference numbers are mock.",
+  "footer.motifs": "Border motifs drawn for Kavach from folk originals — the Warli dance chain after Jivya Soma Mashe, Tamil kolam pulli, Mughal jaali, Bengali kantha, and the lotus. Inspired, not taken: no artist's work was copied.",
 
   // ── Triage / start ────────────────────────────────────────────────────────
   "start.h1": "Tell us what happened.",
@@ -284,11 +505,12 @@ export const en = {
   "case.ref": "Case reference",
   "case.copyRef": "Copy",
   "case.findTitle": "Find a case you started earlier",
-  "case.findSub": "Enter the reference you were given. This searches the cases started in this browser; to reach one from another device, use the link Kavach gave you for it.",
+  "case.findSub": "Enter the reference you were given. This searches the cases on this device — signed in, that includes the ones from your other devices. Otherwise, open a case from another device with the link Kavach gave you for it.",
   "case.findPlaceholder": "KVC-XXXX-XXXX",
   "case.findCta": "Open it",
   "case.findNone": "No case with that reference in this browser. Check the reference, or open it on the device where you started it.",
   "case.recent": "Recently opened",
+  "case.accountSync": "Signed in — cases from your other devices appear here on their own.",
   "case.mock": "Locally generated, not a government number",
   "case.opened": "Opened",
   "case.incident": "Incident",
@@ -357,6 +579,101 @@ export const en = {
   "track.status.done": "Done",
   "track.status.missed": "Deadline passed",
   "track.status.na": "Not needed for this case",
+
+  // The count that replaced "Do now". Working days are named as such, because
+  // the RBI windows are counted in them and a person planning around a weekend
+  // needs to know which kind of day they have been given.
+  "track.today": "Today",
+  "track.nLeft": "{n} days left",
+  "track.nWorkingLeft": "{n} working days left",
+  "track.nLate": "{n} days late",
+  "track.openLetter": "Open the letter",
+  "track.openDoc": "Open it",
+
+  // ── The bank desk ─────────────────────────────────────────────────────────
+  // "Write to your own bank" assumes the person knows where to write. Most do
+  // not. The branch will accept a letter but is not where an unauthorised
+  // transaction is decided, and the grievance address is three clicks into a
+  // site written for people who are not panicking.
+  "bank.deskTitle": "Your bank",
+  "bank.deskSub": "Pick your bank and we will point you at the right desk, not just the branch.",
+  "bank.pick": "Which bank was the money taken from?",
+  "bank.pickNone": "Choose your bank",
+  "bank.pickWhy": "Choosing it puts your bank's name into the letters we write, and shows you where that bank takes complaints.",
+  "bank.openGrievance": "Open your bank's complaints page",
+  "bank.openSite": "Open your bank's website",
+  "bank.siteNote": "We could not verify a direct link to this bank's complaints page, so this is their front page. Look for \u201cGrievance Redressal\u201d or \u201cComplaints\u201d, usually in the footer.",
+  "bank.linkNote": "This is the bank's own page. We link to it rather than storing an email address, because those change and a complaint sent to a dead address looks exactly like one that arrived.",
+
+  // Verified against RBI's customer-protection framework and the banks' own
+  // published grievance mechanisms. The acknowledgement is the load-bearing
+  // step: without it there is no proof of the date, and the date is what the
+  // liability window turns on.
+  "bank.branchTitle": "If you go to the branch",
+  "bank.branchSub": "Take this with you. A branch visit is worth making, but it is not the end of the process.",
+  "bank.br1": "Take the **printed letter** we wrote, your **ID**, and your **passbook or card**.",
+  "bank.br2": "Ask them to **register a dispute** for an **unauthorised transaction** — not a general complaint.",
+  "bank.br3": "Ask for the **complaint reference number** in writing before you leave.",
+  "bank.br4": "**Get the letter stamped and dated**, or emailed back to you. **This is your proof of the date.**",
+  "bank.br5": "Ask them to **block the card or freeze the account** if money can still move.",
+  "bank.br6": "Ask **who is handling it** and **when they will reply**. Write both down.",
+
+  "bank.ladderTitle": "If the branch does not fix it",
+  "bank.ladderSub": "The same four steps at every bank — the Reserve Bank set them, not your bank.",
+  "bank.l1t": "Your branch or the bank's complaints page",
+  "bank.l1b": "Where you start. **Keep the reference number** they give you.",
+  "bank.l2t": "The bank's Nodal Officer",
+  "bank.l2b": "If the branch does not answer or the answer is wrong. Expect a reply in about **10 days**.",
+  "bank.l3t": "The Principal Nodal Officer",
+  "bank.l3b": "The bank's most senior complaints officer, **before** the Ombudsman.",
+  "bank.l4t": "The RBI Ombudsman",
+  "bank.l4b": "Only after **30 days** with no reply, or a reply you reject. **It is free.**",
+  "bank.nodalList": "RBI's list of every bank's nodal officer",
+  "bank.cms": "RBI complaint portal",
+
+  // ── The hero call card ────────────────────────────────────────────────────
+  // Five frames walking one real recorded call through to a case: the call,
+  // what was heard, the drafts it produced, where they get filed, and the
+  // clocks that start. Written in the register of the rest of that card — it
+  // describes a real recording rather than advertising a feature, and it never
+  // claims anything was filed on the person's behalf.
+  "hero.call.chip": "A real call, start to finish",
+  "hero.call.walk": "How one call becomes a case",
+  "hero.call.step": "Step",
+  "hero.call.langs": "Runs in English and 22 scheduled languages",
+  "hero.call.ready": "Ready",
+  "hero.call.seeCase": "Open the case this made",
+
+  "hero.call.s1.step": "She talks. Nobody fills in a form.",
+  "hero.call.s1.foot": "Four minutes, in English and Hindi, whichever came first.",
+  "hero.call.s2.step": "It writes down what it heard",
+  "hero.call.s2.foot": "Marked draft until she confirms it. Nothing is assumed.",
+  "hero.call.s3.step": "The paperwork writes itself",
+  "hero.call.s3.foot": "Her words, in the form each office expects.",
+  "hero.call.s4.step": "She sends them. We do not.",
+  "hero.call.s4.foot": "Kavach files nothing on anyone\u2019s behalf, and says so.",
+  "hero.call.s5.step": "The clocks start",
+  "hero.call.s5.foot": "Ten tracks, each on its own date — not one bar moving together.",
+
+  "hero.call.d1": "Complaint for the cybercrime portal",
+  "hero.call.d2": "Letter to her bank",
+  "hero.call.d3": "Written complaint for the police station",
+  "hero.call.d4": "Report for the number that called her",
+  "hero.call.d4s": "Chakshu",
+
+  "hero.call.c1": "National Cyber Crime Reporting Portal",
+  "hero.call.c1s": "cybercrime.gov.in — she pastes and submits",
+  "hero.call.c2": "Her own bank",
+  "hero.call.c2s": "The grievance desk, not the branch counter",
+  "hero.call.c3": "Sanchar Saathi",
+  "hero.call.c3s": "Reports the number, separately from the money",
+
+  "hero.call.t1": "Call 1930",
+  "hero.call.t1s": "Done, 14 minutes in",
+  "hero.call.t2": "Write to the bank",
+  "hero.call.t2s": "3 working days left",
+  "hero.call.t3": "RBI Ombudsman",
+  "hero.call.t3s": "Opens after 30 days",
   "track.markDone": "Mark done",
   "track.undo": "Undo",
   "track.due": "Due",
@@ -434,6 +751,87 @@ export const en = {
   "track.ombudsman.d": "After a dissatisfied reply or the applicable wait; file within the 90-day window",
 
   "track.resolution.t": "Your bank's 90-day limit",
+
+  // ── The steps, one action per line ────────────────────────────────────────
+  //
+  // These replaced the paragraphs. Each track used to explain why it mattered,
+  // how to do it and what the legal basis was, and none of it got read: the
+  // person reading is two hours into losing money they could not afford. The
+  // prose still exists, folded, for anybody who wants it.
+  //
+  // Deliberately no quoted button labels. Government portals rename their
+  // buttons, and a step that says "click Report Financial Fraud" reads as
+  // broken the day that button becomes "Financial Fraud Complaint". What is
+  // named is the DECISION — which category, which counter, which form — which
+  // does not change. Where Kavach has already written something, the step says
+  // so, because that is the part that saves the person composing at a counter.
+
+  "track.1930.s1": "**Call 1930** from the phone number **the bank has for you**.",
+  "track.1930.s2": "Say your **account number**, **how much** left, and roughly **when** — we wrote you a script: [[doc]]",
+  "track.1930.s3": "Read out the **reference number** if you have one.",
+  "track.1930.s4": "**Write down the ticket number** they give you.",
+  "track.1930.s5": "Stay on the line until they **confirm the complaint is open**.",
+
+  "track.ncrp.s1": "Open cybercrime.gov.in and start a new complaint.",
+  "track.ncrp.s2": "Choose the **financial fraud** category, **not** the general one.",
+  "track.ncrp.s3": "Sign in with your **mobile number** and the **OTP** it sends.",
+  "track.ncrp.s4": "**Paste the description we wrote**: [[doc]]",
+  "track.ncrp.s5": "**Upload your screenshots** when it asks for evidence.",
+  "track.ncrp.s6": "Add the **suspect's number or UPI ID** if you have one.",
+  "track.ncrp.s7": "Submit, then **save the acknowledgement number** it shows.",
+
+  "track.bank.s1": "Copy **the letter we wrote** for your bank: [[doc]]",
+  "track.bank.s2": "Send it to your bank's **grievance email**, **not the branch**.",
+  "track.bank.s3": "**Attach the same screenshots** you uploaded to the portal.",
+  "track.bank.s4": "Keep the email — **the date you sent it** is what counts.",
+  "track.bank.s5": "Note the **complaint number** they reply with.",
+
+  "track.fir.s1": "Go to your nearest **police station**, or the **cyber cell**.",
+  "track.fir.s2": "Take **the printed complaint we wrote** and your **ID**: [[doc]]",
+  "track.fir.s3": "Ask for an **FIR** — **not** a written complaint slip.",
+  "track.fir.s4": "Give them your **NCRP acknowledgement number**.",
+  "track.fir.s5": "Ask for a **free copy of the FIR** before you leave.",
+  "track.fir.s6": "**If they refuse**, the letter to the senior officer is ready here.",
+
+  "track.chakshu.s1": "Open sancharsaathi.gov.in and find the **Chakshu** form.",
+  "track.chakshu.s2": "Choose how they contacted you — **call, SMS or WhatsApp**.",
+  "track.chakshu.s3": "Enter **the number that contacted you**, and paste the report we wrote: [[doc]]",
+  "track.chakshu.s4": "Attach a **screenshot** of the message or the call log.",
+  "track.chakshu.s5": "Submit. This is about **the number**, **not your money**.",
+
+  "track.credit.s1": "Wait for your bank's **reply** to the letter you sent.",
+  "track.credit.s2": "If money left **without your OTP or password**, say so plainly.",
+  "track.credit.s3": "Ask them **in writing** for the **shadow credit** while they investigate.",
+  "track.credit.s4": "**Keep every reply** — you need the dates if this escalates.",
+  "track.credit.s5": "**Record what they tell you** in the money section here.",
+
+  "track.mrm.s1": "Ask your bank whether any of the money was **frozen**.",
+  "track.mrm.s2": "If it was, ask **which bank is holding it** and under **what reference**.",
+  "track.mrm.s3": "Take that reference and the request we wrote to the **court that handles your FIR**: [[doc]]",
+  "track.mrm.s4": "**Money on hold is not money back.** Record it as held here.",
+
+  "track.ombudsman.s1": "Only **after 30 days** with no reply, or a reply you reject.",
+  "track.ombudsman.s2": "Open cms.rbi.org.in and start a complaint.",
+  "track.ombudsman.s3": "Sign in with your **mobile number** and the **OTP**.",
+  "track.ombudsman.s4": "**Paste the complaint we wrote** — it names the dates for you: [[doc]]",
+  "track.ombudsman.s5": "Attach your bank's **reply**, or **proof you got none**.",
+  "track.ombudsman.s6": "**It is free.** Nobody should charge you to file this.",
+
+  "track.resolution.s1": "Count **90 days** from the day you wrote to your bank.",
+  "track.resolution.s2": "Ask for their **final written answer** before that day.",
+  "track.resolution.s3": "If they miss it, **that silence is itself grounds to escalate**.",
+  "track.resolution.s4": "The **Ombudsman** step above is what comes next.",
+
+  "track.legal.s1": "Legal aid is **free** if you qualify — **most fraud victims do**.",
+  "track.legal.s2": "Find your **district legal services authority** on nalsa.gov.in",
+  "track.legal.s3": "Walk in, or call. **No lawyer needed** to ask.",
+  "track.legal.s4": "Take your **FIR copy** and the papers from this case.",
+  "track.legal.s5": "Ask them to check whether you qualify. **Do not pay anyone to ask.**",
+
+  // Headings around the steps.
+  "track.stepsH": "What to do",
+  "track.detailH": "Why this matters",
+  "track.stepCopy": "Copy what to paste",
   "track.resolution.w": "For a case covered by RBI/2017-18/15, paragraph 10 requires the bank to resolve the complaint and determine customer liability within no more than 90 days. If it cannot, the compensation prescribed by paragraphs 6 to 9 is payable; this is not a general refund promise for every fraud complaint.",
   "track.resolution.h": "Track this date only if the unauthorised-electronic-transaction circular applies. Preserve every acknowledgement, and calculate any Ombudsman filing window separately under the 2026 scheme.",
   "track.resolution.d": "If RBI's unauthorised-transaction framework applies: 90 days after notice",
@@ -509,12 +907,123 @@ export const en = {
   "call.draftNote": "These are the agent's notes on what it heard, not confirmed facts. Correct anything that is wrong before you use it.",
   "call.disposition": "Call outcome",
   "call.summary": "Summary",
+  "call.evalTag": "Call evaluation",
+  "call.conversationEval": "Conversation evaluation",
   "call.error": "The call record could not be loaded. Your case is unaffected.",
   "call.audioFailed": "The recording could not be played. Your case and the transcript below are unaffected.",
   "call.audioNotReady": "The provider is still processing this call. Wait a minute after hanging up, then try again.",
   "call.audioExpired": "This playback link has expired. Start a new call from the intake page for a fresh recording.",
   "call.audioRetry": "Try playing again",
+  // Said when the capability that fetches a call from the provider has expired
+  // or belongs to another browser, and the copy kept with the case is what is
+  // on screen. The old wording told people to start a new call, which read as
+  // though the call they had already made had been lost.
+  "call.saved": "This is the copy of the call saved with your case. The transcript and the agent's notes are here in full. The recording itself stays with the voice provider and can only be played back for a short time after the call, so it is no longer available to play here.",
+  "call.recordingGone": "The playback window for this recording has closed. Kavach never kept a copy of your voice, so there is nothing here to play — the transcript below is the full record of what was said.",
   "call.tab": "Call",
+
+  // The money ledger. Written so that "held" never reads as good news: money
+  // under a lien in somebody else's account has been stopped, not returned.
+  "money.title": "Where your money is",
+  "money.sub": "Only what somebody has actually told you. Filing a complaint does not move a rupee, so nothing here changes until a bank, an officer or a portal says something.",
+  // The headline answer, in the largest type on the money screen.
+  "money.noneKnown": "Nobody has told you where this is yet.",
+  "money.ofWhich": "of your money, and here is what has been said about it.",
+  "money.of": "of",
+  "money.unknown": "Nobody has said",
+  "money.held": "Frozen, not returned",
+  "money.returned": "Back with you",
+  "money.unrecoverable": "Said to be gone",
+  "money.heldFor": "Frozen for {days} days. There is no nationwide deadline for releasing held funds — getting it back usually needs the investigating officer's report, and may need a magistrate's order. Ask your bank and the cyber cell for the current status in writing.",
+  "money.overAllocated": "The amounts recorded here add up to more than the amount in this case. Check for an extra zero, or correct the case total under Overview.",
+  "money.empty": "Nothing recorded yet. When your bank or the cyber cell tells you an amount has been frozen, returned, or lost, add it here — with who told you.",
+  "money.add": "Record what you were told",
+  "money.addTitle": "What were you told?",
+  "money.addNote": "Only add what somebody actually said. An acknowledgement number is not a freeze, and a complaint is not a refund.",
+  "money.amount": "Amount (₹)",
+  "money.when": "When you were told",
+  "money.whoSaid": "Who told you",
+  "money.by.bank": "My bank",
+  "money.by.police": "Police / cyber cell",
+  "money.by.portal": "NCRP or MRM portal",
+  "money.by.court": "Court",
+  "money.by.other": "Someone else",
+  "money.ref": "Their reference number, if any",
+  "money.releases": "Does this settle a freeze already recorded?",
+  "money.releasesNone": "No — this is separate money",
+  "money.save": "Record it",
+  "money.remove": "Remove",
+  // The case history, drawn as milestones along a road rather than as a
+  // percentage: nobody knows how long one of these cases is.
+  "timeline.title": "What has happened so far",
+  "timeline.sub": "Your case's own history, newest first. This is the half an officer or a bank asks for.",
+  "timeline.entries": "entries",
+  "timeline.more": "Show everything",
+  "timeline.less": "Show less",
+
+  // Reading a screenshot the citizen already holds. Every string here is
+  // written to keep the result a draft: these numbers reach police complaints.
+  "read.cta": "Read this for me",
+  "read.consent": "This sends a copy of this one image to the AI provider to read the numbers off it. Nothing is stored there, and nothing else in your case is sent. Your other files stay in this browser.",
+  "read.reading": "Reading",
+  "read.foundTitle": "What it could read",
+  "read.checkDigits": "Check every digit against the image before you use these. A screenshot read by a model can turn a 5 into an S, and this is what goes on your complaint.",
+  "read.apply": "Add these to my case",
+  "read.applied": "Added. Nothing you had already entered was changed — check each one under Overview.",
+  "read.nothing": "Nothing legible could be read from this image. Enter the details by hand instead.",
+  "read.error": "The image could not be read.",
+  "read.retry": "Try again",
+  "read.reference": "Reference / UTR",
+  "read.amount": "Amount",
+  "read.when": "Date",
+  "read.bank": "Bank",
+  "read.last4": "Account ends in",
+  "read.upi": "UPI ID",
+  "read.phone": "Phone number",
+
+  // What being late actually costs. Only where a cited instrument says so —
+  // an urgent action with no nationwide cutoff gets nothing here.
+  "delay.label": "If this date passes",
+  "delay.labelGood": "If they miss this date",
+
+  // The liability ladder, as rungs rather than a paragraph. Each line is one
+  // window and what it costs; the window is bolded because that is the half
+  // somebody is trying to locate themselves against. Paragraph references are
+  // gone from the face of it — the citation underneath already carries them,
+  // and "(paragraph 6(ii))" mid-sentence is where a reader gives up.
+  "delay.b17.r1": "**Within 3 working days** of your bank telling you — you owe **nothing**.",
+  "delay.b17.r2": "**4 to 7 working days** — capped, **not zero**: the transaction value or the RBI table amount, whichever is lower.",
+  "delay.b17.r3": "**After 7 working days** — **your bank\u2019s own policy decides**. It guarantees you nothing.",
+  "delay.b26.r1": "**Within 5 calendar days** of your bank telling you — you owe **nothing**.",
+  "delay.b26.r2": "**After 5 days** — your bank\u2019s board-approved policy decides what you owe.",
+  "delay.b26.r3": "Compensation for a wrong hold is **once in a lifetime**, up to **\u20b950,000**.",
+  "delay.fault": "**If the bank was at fault**, you owe **nothing** — at any time, however late you reported.",
+  "delay.bankNotice2017": "How much of this you end up owing depends on how fast you told your bank.",
+  "delay.bankNotice2026": "How much of this you end up owing depends on how fast you told your bank.",
+  "delay.ombudsman": "Miss this and the Ombudsman **will not hear you at all** — not a weaker case, **no case**. Only a court is left.",
+  "delay.bankCredit": "No credit by this date is **itself a complaint** you can take to the Ombudsman. **Note the date.**",
+  "delay.bankResolution": "No decision by this date and **the delay is now their problem, not yours** — it is grounds to escalate.",
+
+  // The guided route through the sample case. Five steps, in the order that
+  // makes the argument: it came from a phone call, the facts are the caller's,
+  // the deadlines are conditional and sourced, the drafts are unfiled, and the
+  // evidence never leaves the device.
+  "tour.title": "How to read this case",
+  "tour.next": "Next",
+  "tour.back": "Back",
+  "tour.skip": "Skip",
+  "tour.done": "Finish",
+  "tour.reopen": "Show me around this case again",
+  "tour.s1t": "It started as a phone call",
+  "tour.s1b": "Play the recording. A real four-minute call, in English and Hindi, with the transcript and the 35 fields the agent believed it heard — all marked draft until a person confirms them. Nothing on this page was typed into a form.",
+  "tour.s2t": "The facts are the caller's, not the model's",
+  "tour.s2b": "The account here quotes only what the caller said — never the agent's questions. Where the agent could not fill a field it is empty rather than guessed, which is why there is no suspect email even though the call mentions one.",
+  "tour.s3t": "Ten tracks, and only some of them are clocks",
+  "tour.s3b": "Each deadline names the rule it comes from and the condition it depends on. Actions with no nationwide cutoff are not given invented ones, and the working-day estimates say out loud that they skip Sundays and alternate Saturdays but cannot know your bank's holidays.",
+  "tour.s4t": "Drafts you can hand over, marked unfiled",
+  "tour.s4b": "A 1930 script, an NCRP complaint, a bank dispute letter and an FIR application, written from this case. Every one says it has not been filed — Kavach cannot submit anything on anybody's behalf, and the reference number is ours, not a government one.",
+  "tour.s5t": "The evidence never leaves the device",
+  "tour.s5b": "Files added here are stored in this browser, fingerprinted with SHA-256 and exportable as a manifest. The fingerprint proves the file has not changed since you added it — it does not certify that the file is authentic or admissible, and the page says so.",
   "access.title": "Opening this case somewhere else",
   "access.body": "Your case is saved so you can come back to it on another device — a phone, a friend's laptop, or this browser after it has been cleared. There is no password to remember: this link is the way in, and it is the only way in.",
   "access.warning": "Anyone who has the link can read this case, including the amount, the account details and what you said. Send it to yourself, and to nobody you would not show the case to.",
@@ -825,11 +1334,66 @@ export const en = {
   "check.ex1": "Dear customer, your SBI account will be blocked within 24 hours. Update your KYC immediately at http://sbi-kyc-verify.xyz or call 9812345670.",
   "check.ex2": "This is Inspector Sharma, CBI Mumbai. A parcel in your name containing narcotics has been seized. You are under digital arrest. Stay on this video call and do not disconnect or inform anyone.",
   "check.ex3": "Congratulations! Your Amazon refund of Rs 12,499 is approved. To receive it, pay a refundable processing fee of Rs 499 to refund.amazon@okpay",
+  "check.ex4": "Part-time job from home: like videos and earn Rs 3,000 daily. Join our Telegram channel and pay a Rs 500 registration fee to unlock tasks.",
   "check.verdictLabel": "What we found",
   "check.v.danger": "Do not pay. This has the shape of a known fraud.",
   "check.v.caution": "Be careful. Some of this does not add up.",
-  "check.v.none": "We did not recognise a fraud in this.",
-  "check.noneBody": "That means only that none of the patterns we check for appeared — not that it is safe. If money is being asked for, verify it on a number you looked up yourself, never one from the message.",
+  "check.v.none": "No known fraud pattern recognised — not a clean chit.",
+  "check.noneBody": "That means only that none of the patterns we check for appeared — not that it is safe. New fraud wordings appear daily. If money, OTPs, or app installs are involved, stop and verify on a number or site you looked up yourself, never one from the message. Then check the identifier in the official repository below.",
+  "check.riskLabel": "Risk score",
+  "check.riskOf": "of 100",
+  "check.riskHow": "One decisive tell alone reaches danger. Weaker tells add up to caution.",
+  "check.tellsTitle": "Why the AI flagged it",
+  "check.disagree": "Our two checks disagreed here, so we show the more cautious one. Treat this as suspicious until verified elsewhere.",
+  "check.checkedTitle": "What was checked",
+  "check.checkedBody": "Digital-arrest scripts, family-emergency voices, KYC and utility-block threats, parcel and customs demands, job and task fraud, investment lures and fake endorsements, lottery and prize fees, reward-points bait, UPI and QR-to-receive tricks, marketplace and booking advances, recovery and complaint fees, APK and screen-share takeover, fake customer-care numbers, sextortion, mule recruitment, lookalike and typosquat links, free-hosting pages, spoofed emails, and pressure or secrecy language.",
+  "check.copyId": "Copy",
+  "check.ex5": "SBI Card: your reward points worth Rs 4,999 expire tonight. Redeem now at http://sbirewards-claim.top or call 9812345670.",
+  "check.ex6": "Mumma, I met with an accident, in hospital, phone broken. Urgently send Rs 50,000 to 9876543210@ybl. Don't call, message only.",
+  "check.ex7": "SEBI-registered VIP trading group: guaranteed 300% returns on IPO allotment. Download our app from the link and deposit Rs 50,000 to start.",
+  "check.boardRadar": "Fraud radar",
+  "check.boardRadarSub": "Patterns hurting Indians right now — illustrative, from reported cases. Tap one to test it.",
+  "check.boardTry": "Test this",
+
+  // The advisory board: the half of the Check page that changes. Refreshed
+  // nightly from I4C, Sanchar Saathi, CERT-In and RBI, and labelled with its
+  // own age, because a stale warning that looks current is worse than none.
+  "check.advTitle": "Circulating now",
+  "check.advSubLive": "Refreshed nightly from I4C, Sanchar Saathi, CERT-In and RBI. Tap one to read what it looks like.",
+  "check.advSubBaseline": "The set this page ships with. The live feed could not be reached, so these may be behind what is circulating today.",
+  "check.advToday": "Today",
+  "check.advDaysAgo": "d old",
+  "check.advStale": "This board has not been confirmed against its sources for over a week. Treat it as background, not as today's picture.",
+  // Prefilling the government portal. Its search page is an ASP.NET form with a
+  // captcha, so there is no URL to hand it values in — this is the honest
+  // alternative, and it says exactly what it does before anybody installs it.
+  "check.fillTitle": "Fill the portal search for me",
+  "check.fillBody": "The National Cybercrime Portal's suspect search cannot be filled from a link. Drag this button to your bookmarks bar; on the portal page, click it and Kavach picks the right search type and fills in the identifier you copied. The captcha stays yours to solve.",
+  "check.fillButton": "Fill Suspect Search",
+  "check.fillHow": "Drag to your bookmarks bar",
+  "check.fillSafety": "It runs only when you click it, only on the page you are looking at, and sends nothing anywhere.",
+  "check.boardScan": "This scan",
+  "check.boardScanEmpty": "Paste a message and hit Check — every row below lights up from your text.",
+  "check.boardFlag": "Flagged",
+  "check.boardWatch": "Watch",
+  "check.boardClear": "No tell",
+  "check.boardClearNote": "No tell found in this group — not proof of safety.",
+  "check.boardNevers": "Three nevers",
+  "check.boardNever1": "Never share OTP, PIN, CVV or passwords. No bank or officer asks.",
+  "check.boardNever2": "Never enter a PIN or scan a QR to RECEIVE money. PIN means pay.",
+  "check.boardNever3": "Never install APK files or screen-share apps for a caller.",
+  "check.radar1t": "AI-cloned family voice",
+  "check.radar1s": "“Mumma, accident…” from an unknown number, then a UPI ID. Cut, call back the saved number, ask your code word.",
+  "check.radar2t": "Digital arrest on video",
+  "check.radar2s": "AI faces of police or CBI, 90,000+ complaints. No arrest happens over a call. Hang up.",
+  "check.radar3t": "Fake trading apps & VIP groups",
+  "check.radar3s": "76% of India's cyber-fraud losses. Fake SEBI numbers, @valid-less UPI. Verify on SEBI Check.",
+  "check.radar4t": "Task & part-time-job fraud",
+  "check.radar4s": "Like videos, earn daily, then a deposit unlocks “VIP tasks”. Real jobs never charge you.",
+  "check.radar5t": "Reward-points expiry",
+  "check.radar5s": "Banks redeem points inside their own app only. Forwarded links and APKs steal cards.",
+  "check.radar6t": "KYC / account-block SMS",
+  "check.radar6s": "24-hour unblock threats with a link or personal number. Verify in your bank app.",
   "check.signals": "What gives it away",
   "check.high": "Serious",
   "check.medium": "Watch out",
@@ -838,6 +1402,13 @@ export const en = {
   "check.officialBody": "I4C keeps a repository of identifiers reported by other victims — mobile numbers, UPI IDs, bank accounts, emails and websites. That list is the government's and lives on the cybercrime portal; we do not hold a copy, because a stale copy of it would be worse than none. Paste the identifiers below into it.",
   "check.openRepo": "Open the Suspect Repository",
   "check.reportChakshu": "Report the number on Chakshu",
+  "check.repoCopyAll": "Copy all for the portal",
+  "check.repoPortalGo": "Check on portal",
+  "check.repoGoHint1": "Copied",
+  "check.repoGoHint2": "— on the portal, paste (Ctrl+V), choose",
+  "check.repoGoHint3": "then solve the captcha",
+  "check.repoWebNote": "Links and websites live on a separate official page.",
+  "check.repoWebOpen": "Open website checker",
   "check.alreadyPaid": "If money has already gone, call your bank and 1930 immediately. Fast reporting may help stop onward movement, but it does not guarantee a freeze or refund.",
   "check.startCase": "Start a case file",
   "check.honesty": "Kavach is not a government service and cannot tell you an identifier is safe. It tells you what is wrong with what you pasted, and where the official list is.",
@@ -919,7 +1490,62 @@ export const en = {
   // ── Generic ───────────────────────────────────────────────────────────────
   "g.loading": "Loading",
   "g.retry": "Try again",
+  "g.ago": "ago",
   "g.close": "Close",
+  "g.open": "Open",
+
+  // The case page's doors. It used to carry six tabs, eight accordions and a
+  // set of folds nested inside those; this is all of it as one list. Labels are
+  // plain-language on purpose — "Papers to send" rather than "Documents",
+  // "Where your money is" rather than "Ledger" — because they are read by
+  // people who have never used software like this and often are not reading in
+  // their first language.
+  "door.back": "Back",
+  "door.trail": "Where you are",
+  "door.all": "Everything in this case",
+  "case.thenN": "Then: {n} more things in this case",
+  "door.steps": "The steps to take",
+  "door.stepsN": "{n} of {total} done",
+  "door.stDone": "All done",
+  "door.stTodo": "To do",
+  "door.stWaiting": "Waiting",
+  "door.stNone": "Not yet",
+  "door.stStrength": "{n}% ready",
+  "door.money": "Where your money is",
+  "door.evidence": "What you are holding",
+  "door.evidenceN": "{n} of {total} gathered",
+  "door.papers": "Papers to send",
+  "door.papersSub": "Complaints and letters, written for you to check and send",
+  "door.recording": "Your recording",
+  "door.recordingSub": "The call you made, and what we heard in it",
+  "door.timeline": "What has happened so far",
+  "door.ask": "Ask a question",
+  "door.askSub": "About your case, in your own words",
+  "door.rights": "What you are owed",
+  "door.rightsSub": "What the rules say the bank must do",
+  "door.escalate": "If nobody responds",
+  "door.escalateSub": "Where to go when a complaint has stalled",
+  "door.care": "Looking after yourself",
+  "door.careSub": "This was done to you. It was not your fault.",
+  "door.manage": "Share, save or delete",
+  "door.manageSub": "This case belongs to you",
+
+  // Spoken aloud, for somebody who cannot read the screen at all.
+  "aloud.play": "Read this out",
+  "aloud.stop": "Stop reading",
+  "case.notFiledAloud": "Nothing has been filed for you. You have to send it yourself.",
+  // The case-page index that replaced sixteen stacked panels. Each row states
+  // what is inside it before it is opened, so "where is my money" is answered
+  // without opening anything.
+  "idx.title": "The rest of your case",
+  "idx.evidence": "What you are holding",
+  "idx.evidenceN": "{n} of {total} gathered",
+  "idx.money": "Where your money is",
+  "idx.moneyNone": "Nothing recorded yet",
+  "idx.timeline": "What has happened so far",
+  "idx.timelineN": "{n} entries",
+  "idx.strength": "How strong this case is",
+  "idx.strengthN": "{n}% complete",
   "g.cancel": "Cancel",
   "g.confirm": "Confirm",
   "g.back": "Back",
@@ -1017,6 +1643,24 @@ export const en = {
   "compose.placeholder": "Tap the microphone, or type here.",
   "compose.promptsH": "Say as much of this as you can remember — it saves us asking:",
   "compose.hint": "Say it in as many goes as you like. You can fix anything here.",
+
+  // The live read-back under the composer. Six things the statement is checked
+  // for as it grows; the two the interview has to ask for itself are named
+  // separately, because there is no extractor for either and a permanently
+  // grey row reads as a test being failed.
+  "heard.title": "What we have heard so far",
+  "heard.stillH": "Still worth saying",
+  "heard.story": "What happened, in your words",
+  "heard.when": "When it happened",
+  "heard.amount": "How much money",
+  "heard.contact": "A number or ID you mentioned",
+  "heard.reference": "A long number from your bank",
+  "heard.where": "Where they contacted you",
+  "heard.later": "We will ask you for your name and your bank ourselves, next.",
+  "heard.gotIt": "heard",
+  "heard.toSay": "not yet",
+  "heard.check": "Check anything we have read back — tap the text above to fix it.",
+  "heard.progress": "{n} of {total} heard",
   // Three ways in, named by what the person does rather than by our plumbing.
   "choose.h": "How would you like to tell us?",
   "choose.sub": "All three build the same case. Pick whichever is easiest.",
@@ -1496,6 +2140,8 @@ export const en = {
   "rbi.undetermined": "More facts are needed before applying the circular",
   "rbi.notDecision": "Not a bank decision",
   "rbi.circular": "Official circular ↗",
+  "rbi.changing": "These rules are being replaced. For transactions made on or after 1 January 2027, RBI's 2026 amendment directions apply instead: the reporting window becomes five calendar days rather than three working days, banks must resolve a domestic dispute within 45 days, and a once-per-lifetime compensation route opens for losses up to ₹50,000 — but only if the fraud was reported to 1930 and to the bank within five days.",
+  "rbi.newRegime": "This transaction falls under RBI's 2026 framework, not the 2017 circular: report within five calendar days for the zero-liability route on a third-party breach, and keep the 1930 acknowledgement — the small-value compensation route depends on it.",
 
   // ── Document generation errors ──────────────────────────────────────────
   "doc.err.stale": "Your case changed while these drafts were being prepared. Nothing stale was saved—generate them again from the current facts.",
@@ -1531,6 +2177,13 @@ export const en = {
   "fill.branch.h": "The branch you will hand the letter to.",
   "fill.account": "Last four digits of the account",
   "fill.account.h": "Four digits only. Never write a full account number in a letter.",
+  // Labels for the read-back sketch panel (added to unbreak the build; the
+  // owning session should review the wording and translate as usual).
+  "sketch.amount": "Amount",
+  "sketch.when": "When",
+  "sketch.contact": "Contact",
+  "sketch.reference": "Reference",
+  "sketch.where": "Where",
   "fill.bankAck": "Bank complaint reference",
   "fill.bankAck.h": "The number the bank gave you when you reported it.",
   "fill.bankDate": "Date you told the bank",

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Wordmark } from "@/components/Wordmark";
 import { Builders } from "@/components/landing/Builders";
 import { SystemStatus } from "@/components/landing/SystemStatus";
+import { WarliStrip, LotusMark } from "@/components/Motifs";
 import { Headline } from "@/components/ui/Split";
 import { useT } from "@/lib/i18n/context";
 
@@ -33,6 +34,9 @@ export function Footer() {
 
   return (
     <footer className="on-dark panel-full overflow-hidden">
+      {/* Kantha: a single running stitch, the way worn saris are quilted back
+          into something usable. The last thing on a page about wreckage. */}
+      <div className="kantha" aria-hidden />
       <div className="mx-auto max-w-6xl px-5 sm:px-8 py-20 sm:py-28">
         {/* The last ask on the left, the people who built it on the right. */}
         <div className="grid lg:grid-cols-[minmax(0,1fr)_auto] gap-x-16 gap-y-14 items-start">
@@ -97,6 +101,15 @@ export function Footer() {
         </div>
 
         <SystemStatus />
+
+        {/* The tarpa dance closes the page: on mud walls Warli figures are
+            painted in white, so on ink they finally sit on their own ground.
+            Below it, the borrowing named — folk originals, and the masters. */}
+        <WarliStrip className="mt-16 h-12 w-full text-ink opacity-50 print:hidden" />
+        <p className="mt-5 flex items-start gap-2.5 text-xs leading-relaxed text-ink-3 max-w-3xl">
+          <LotusMark className="mt-0.5 shrink-0" />
+          <span>{t("footer.motifs")}</span>
+        </p>
       </div>
     </footer>
   );

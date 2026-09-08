@@ -138,6 +138,7 @@ export function AccountView() {
 
             <Section title={t("account.sectionDevice")}>
               <p className="text-sm leading-[1.6] text-ink-2">{t("account.deviceNote")}</p>
+              <p className="mt-2 text-sm leading-[1.6] text-ink-3">{t("account.keyringNote")}</p>
               <dl className="mt-3 divide-y divide-rule">
                 <Row label={t("account.casesHere")}><span className="num">{cases.length}</span></Row>
                 <Row label={t("account.language")}>{lang.endonym}</Row>

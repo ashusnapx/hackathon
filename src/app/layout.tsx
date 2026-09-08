@@ -17,8 +17,19 @@ import {
   Noto_Sans_Oriya,
   Noto_Sans_Tamil,
   Noto_Sans_Telugu,
+  Noto_Serif_Bengali,
+  Noto_Serif_Devanagari,
+  Noto_Serif_Gujarati,
+  Noto_Serif_Gurmukhi,
+  Noto_Serif_Kannada,
+  Noto_Serif_Malayalam,
+  Noto_Serif_Oriya,
+  Noto_Serif_Tamil,
+  Noto_Serif_Telugu,
+  Noto_Naskh_Arabic,
 } from "next/font/google";
 import "./globals.css";
+import { HackathonBar } from "@/components/HackathonBar";
 import { I18nProvider } from "@/lib/i18n/context";
 import { LANG_COOKIE, SCRIPT_CLASS, getLanguage } from "@/lib/i18n/languages";
 import { SITE_URL, pageMetadata } from "@/lib/seo";
@@ -65,9 +76,29 @@ const arabic = Noto_Sans_Arabic({ variable: "--font-arabic", subsets: ["arabic"]
 const meetei = Noto_Sans_Meetei_Mayek({ variable: "--font-meetei", subsets: ["meetei-mayek"], weight: ["400", "600"], display: "swap", preload: false });
 const olchiki = Noto_Sans_Ol_Chiki({ variable: "--font-olchiki", subsets: ["ol-chiki"], weight: ["400", "600"], display: "swap", preload: false });
 
+/**
+ * Serif display faces for the scripts that have them. Headlines in Tamil or
+ * Hindi were falling back to a 600-weight sans while English got a 400-weight
+ * Garamond — same size, twice the ink, none of the grace. Nine of our scripts
+ * have a Noto serif; Meetei Mayek and Ol Chiki do not, and stay on the sans.
+ * Same on-demand rule as above: fetched only when rendered text matches.
+ */
+const dserifDevanagari = Noto_Serif_Devanagari({ variable: "--font-dserif-devanagari", subsets: ["devanagari"], weight: ["400", "500"], display: "swap", preload: false });
+const dserifBengali = Noto_Serif_Bengali({ variable: "--font-dserif-bengali", subsets: ["bengali"], weight: ["400", "500"], display: "swap", preload: false });
+const dserifGujarati = Noto_Serif_Gujarati({ variable: "--font-dserif-gujarati", subsets: ["gujarati"], weight: ["400", "500"], display: "swap", preload: false });
+const dserifGurmukhi = Noto_Serif_Gurmukhi({ variable: "--font-dserif-gurmukhi", subsets: ["gurmukhi"], weight: ["400", "500"], display: "swap", preload: false });
+const dserifKannada = Noto_Serif_Kannada({ variable: "--font-dserif-kannada", subsets: ["kannada"], weight: ["400", "500"], display: "swap", preload: false });
+const dserifMalayalam = Noto_Serif_Malayalam({ variable: "--font-dserif-malayalam", subsets: ["malayalam"], weight: ["400", "500"], display: "swap", preload: false });
+const dserifOdia = Noto_Serif_Oriya({ variable: "--font-dserif-odia", subsets: ["oriya"], weight: ["400", "500"], display: "swap", preload: false });
+const dserifTamil = Noto_Serif_Tamil({ variable: "--font-dserif-tamil", subsets: ["tamil"], weight: ["400", "500"], display: "swap", preload: false });
+const dserifTelugu = Noto_Serif_Telugu({ variable: "--font-dserif-telugu", subsets: ["telugu"], weight: ["400", "500"], display: "swap", preload: false });
+const naskh = Noto_Naskh_Arabic({ variable: "--font-naskh", subsets: ["arabic"], weight: ["400", "500"], display: "swap", preload: false });
+
 const FONT_VARS = [
   ui, serif, mono, hand, devanagari, bengali, gujarati, gurmukhi, kannada,
   malayalam, odia, tamil, telugu, arabic, meetei, olchiki,
+  dserifDevanagari, dserifBengali, dserifGujarati, dserifGurmukhi, dserifKannada,
+  dserifMalayalam, dserifOdia, dserifTamil, dserifTelugu, naskh,
 ]
   .map((f) => f.variable)
   .join(" ");
@@ -131,7 +162,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         >
           Skip to content
         </a>
-        <I18nProvider initial={lang.code}>{children}</I18nProvider>
+        <I18nProvider initial={lang.code}>
+          <HackathonBar />
+          {children}
+        </I18nProvider>
       </body>
     </html>
   );
