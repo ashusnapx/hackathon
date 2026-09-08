@@ -73,11 +73,36 @@ export function safetyFromAnalysis(analysis: IntakeAnalysis): SafetyAnswer {
   return coercive ? "danger" : "safe";
 }
 
-/** Whether a child is in the frame, so the 1098 route is offered. */
+/**
+ * Whether a child is in the frame, so the 1098 route is offered.
+ *
+ * ── Why a guess here does not get to close the question ─────────────────────
+ *
+ * This used to answer "adult-or-no-child" for anything it did not recognise,
+ * and that answer is not inert: `nextIntakeStep` treats a set `childContext` as
+ * the age question being answered, so the interview stopped asking. A
+ * misclassification therefore did not merely mislabel the case — it silently
+ * removed the only question that surfaces the 1098 helpline.
+ *
+ * The evaluation in `src/lib/ai/eval` is what surfaced this. Scored against the
+ * golden set, the rules fallback — which is what runs whenever the model is
+ * unavailable, and the model is unavailable exactly when things are going
+ * badly — got **none** of the women-and-children cases right, including a
+ * fourteen-year-old being groomed on a game. Every one of them would have had
+ * the age question skipped on their behalf.
+ *
+ * So the only answer that closes the question now is one that comes from the
+ * model with real confidence behind it. A rules match, or a hesitant model,
+ * returns "unknown" and the interview asks the person, which is both the safe
+ * failure and the honest one: we did not know, so we asked.
+ */
 export function childFromAnalysis(analysis: IntakeAnalysis): ChildContext {
-  const { categoryId, subcategoryId } = analysis.triage;
+  const { categoryId, subcategoryId, confidence } = analysis.triage;
   if (subcategoryId && CHILD_SUB.has(subcategoryId)) return "child-other";
   if (categoryId === "women-child") return "unknown";
+  // Keyword matching is not grounds for deciding no child is involved.
+  if (analysis.source === "rules") return "unknown";
+  if (typeof confidence === "number" && confidence < 0.7) return "unknown";
   return "adult-or-no-child";
 }
 

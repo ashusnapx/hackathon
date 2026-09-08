@@ -65,10 +65,10 @@ export const CATEGORIES: Category[] = [
     portalTrack: "women-child",
     tracks: NON_FINANCIAL_TRACKS,
     subcategories: [
-      { id: "sextortion", label: "Sextortion or nude video blackmail", hints: ["sextortion", "nude", "video call", "recording", "blackmail", "obscene", "leak", "screen recording"] },
-      { id: "csam", label: "Child sexual abuse material", hints: ["child", "minor", "csam", "underage"] },
+      { id: "sextortion", label: "Sextortion or nude video blackmail", hints: ["sextortion", "nude", "video call", "recording", "blackmail", "obscene", "leak", "screen recording", "unknown woman", "threatening to send", "send it to my contacts", "viral kar dunga", "badnaam"] },
+      { id: "csam", label: "Child sexual abuse material", hints: ["child", "minor", "csam", "underage", "my daughter", "my son", "14 year", "15 year", "16 year", "school", "asking for pictures", "grooming", "beti", "beta"] },
       { id: "harassment", label: "Online harassment or stalking of a woman", hints: ["stalking", "harass", "obscene message", "following", "abusive"] },
-      { id: "morphed", label: "Morphed or non-consensual images", hints: ["morph", "photoshop", "fake photo", "deepfake", "edited photo"] },
+      { id: "morphed", label: "Morphed or non-consensual images", hints: ["morph", "photoshop", "fake photo", "deepfake", "edited photo", "obscene pictures", "my face", "taken my photos", "posted them"] },
     ],
   },
   {
@@ -107,7 +107,7 @@ export const CATEGORIES: Category[] = [
     portalTrack: "other",
     tracks: NON_FINANCIAL_TRACKS,
     subcategories: [
-      { id: "email-hack", label: "Email or device compromised", hints: ["email hacked", "device", "malware", "virus", "remote access", "anydesk", "teamviewer"] },
+      { id: "email-hack", label: "Email or device compromised", hints: ["email hacked", "device", "malware", "virus", "remote access", "anydesk", "teamviewer", "account taken over", "logged into", "logged in from", "cannot get back in", "recovery number", "changed my password", "whatsapp got taken", "account hacked", "id hack"] },
       { id: "ransomware", label: "Ransomware", hints: ["ransom", "encrypted", "files locked", "bitcoin demand"] },
       { id: "data-breach", label: "Data breach", hints: ["data leak", "breach", "database", "records exposed"] },
       { id: "website", label: "Website defaced or attacked", hints: ["defaced", "website hacked", "server", "ddos"] },

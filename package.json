@@ -13,7 +13,8 @@
     "seed:demo": "node scripts/seed-demo.mjs",
     "check:demo": "node scripts/seed-demo.mjs --check",
     "email:test": "tsx scripts/send-test-email.mjs",
-    "check:banks": "node scripts/check-bank-links.mjs"
+    "check:banks": "node scripts/check-bank-links.mjs",
+    "eval:triage": "node scripts/eval-triage.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",
