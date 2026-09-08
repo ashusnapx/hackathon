@@ -131,6 +131,29 @@ export function isPublicPath(pathname: string): boolean {
 }
 
 /**
+ * Where the header's start button goes.
+ *
+ * `/start` is deliberately public and stays that way — the whole intake journey
+ * is, so that somebody whose money left an hour ago is never made to create an
+ * account before describing what happened. This decides only where one button
+ * points, which is a different question from what the gate allows.
+ *
+ * The unknown case — session read not yet finished — points at sign-in rather
+ * than at `/start`. For those few milliseconds "signed out" and "not asked yet"
+ * look identical, and guessing `/start` would let a fast tap straight through;
+ * guessing sign-in cannot go wrong in the other direction, because the sign-in
+ * page sends anybody who already has a session on to `next` without stopping.
+ * So the pessimistic guess is right either way and costs at worst one hop.
+ *
+ * With no Supabase project configured there is no sign-in to send anybody to,
+ * and the button behaves as it always did.
+ */
+export function startHref(email: string | null, configured: boolean): string {
+  if (!configured || email) return "/start";
+  return `${SIGN_IN_PATH}?next=${encodeURIComponent("/start")}`;
+}
+
+/**
  * Where to send somebody after they sign in.
  *
  * Only a path on this site, and never the sign-in page itself — an open

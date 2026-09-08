@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { authClient } from "@/lib/auth/browser";
 import { authConfigured } from "@/lib/auth/config";
+import { useAccountEmail } from "@/lib/auth/session";
 import { useMenuBehaviour, moveMenuFocus } from "@/components/useMenu";
 import { useT } from "@/lib/i18n/context";
 import { casePath, useActiveCaseId } from "@/lib/case/store";
@@ -27,31 +28,17 @@ import { cn } from "@/lib/utils";
 export function AccountAvatar() {
   const t = useT();
   const caseId = useActiveCaseId();
-  const [email, setEmail] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  // One reader for the signed-in address, shared with the start button and the
+  // case-email sender. This used to keep its own copy of the same effect.
+  const { email, loaded } = useAccountEmail();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (!authConfigured()) return;
-    const supabase = authClient();
-    let live = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!live) return;
-      setEmail(data.session?.user.email ?? null);
-      setLoaded(true);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!live) return;
-      setEmail(session?.user.email ?? null);
-      setLoaded(true);
-      // Somebody else's login on a shared phone must never inherit this menu.
-      if (!session) setOpen(false);
-    });
-    return () => { live = false; sub.subscription.unsubscribe(); };
-  }, []);
+  // Nothing closes the menu on sign-out because nothing has to: the whole
+  // component returns null without an address, so somebody else's login on a
+  // shared phone takes this menu with it rather than inheriting it.
 
   const close = () => setOpen(false);
   useMenuBehaviour({

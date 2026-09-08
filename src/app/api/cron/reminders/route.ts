@@ -4,6 +4,7 @@ import { liveTracks } from "@/lib/case/tracks";
 import type { CaseFile } from "@/lib/case/types";
 import { readCaseRow } from "@/lib/db/cases";
 import { everyOwnedCase } from "@/lib/db/case-owners";
+import { claimEmailSend, releaseEmailSend, reminderKind } from "@/lib/db/email-sends";
 import { emailConfigured, sendReminderEmail } from "@/lib/email/send";
 import { en } from "@/lib/i18n/dict/en";
 import { json } from "@/lib/integrations/vaani-http";
@@ -28,7 +29,9 @@ export const maxDuration = 60;
  * Three rules, all of them about not becoming a nuisance:
  *
  *  · One email per step per case. A step that is due today and still due
- *    tomorrow does not send twice; the row is stamped when it goes out.
+ *    tomorrow does not send twice: the right to send it is claimed in
+ *    `public.email_sends` before the message leaves, and a claim is only given
+ *    back when delivery fails.
  *  · Nothing is sent for a step already marked done, or one that does not
  *    apply to this case.
  *  · A step with no date never triggers anything. Most of the ten are urgent
@@ -71,10 +74,27 @@ export async function GET(req: Request) {
       });
       if (!due) { skipped += 1; continue; }
 
-      // One per step, ever. `remindedAt` lives on the case so the record
-      // travels with it and survives this job being re-run.
-      const already = caseFile.remindedAt?.[due.def.id];
-      if (already) { skipped += 1; continue; }
+      /*
+       * One per step, ever.
+       *
+       * This used to be a `remindedAt` stamp written back into the case
+       * document, which could not work: the browser is the author of that
+       * document and has never heard of the field, so the next edit somebody
+       * made pushed a copy without it and erased the record — and this job,
+       * finding no stamp the following night, sent the same reminder again.
+       *
+       * The claim now lives in a table nothing else writes. It is taken before
+       * the send and given back if the send fails, so a refused SMTP
+       * connection costs a night rather than the message.
+       *
+       * The old stamp is still read, and only read. It suppresses a single
+       * duplicate for any case that was stamped before this change; nothing
+       * writes it now, and it can go once those cases have run their course.
+       */
+      if (caseFile.remindedAt?.[due.def.id]) { skipped += 1; continue; }
+
+      const kind = reminderKind(due.def.id);
+      if (!(await claimEmailSend(row.caseId, kind, row.email))) { skipped += 1; continue; }
 
       const result = await sendReminderEmail(row.email, {
         ref: caseFile.ref,
@@ -86,10 +106,8 @@ export async function GET(req: Request) {
         closing: due.def.id === "ombudsman" || due.def.id === "bank-notice",
       });
 
-      if (result.sent) {
-        sent += 1;
-        await stampReminded(row.caseId, row.caseKey, caseFile, due.def.id);
-      }
+      if (result.sent) sent += 1;
+      else await releaseEmailSend(row.caseId, kind);
     } catch {
       // One unreadable case must not stop the rest of the run.
       skipped += 1;
@@ -97,25 +115,4 @@ export async function GET(req: Request) {
   }
 
   return json({ sent, skipped, considered: owned.length }, 200);
-}
-
-/**
- * Record that this step has been chased.
- *
- * Written back through the same row the case came from, so a second run on the
- * same day finds the stamp and stays quiet.
- */
-async function stampReminded(
-  caseId: string,
-  caseKey: string,
-  caseFile: CaseFile,
-  trackId: string,
-): Promise<void> {
-  const { writeCaseRow } = await import("@/lib/db/cases");
-  await writeCaseRow({
-    id: caseId,
-    keyHash: await caseKeyHash(caseKey),
-    ref: caseFile.ref,
-    data: { ...caseFile, remindedAt: { ...caseFile.remindedAt, [trackId]: new Date().toISOString() } },
-  });
 }

@@ -1,3 +1,4 @@
+import { forgetEmailSends } from "./email-sends";
 import { database } from "./supabase";
 
 /**
@@ -75,5 +76,12 @@ export async function deleteCaseRow(id: string, keyHash: string): Promise<boolea
     .select("id");
 
   if (error) throw new Error(`case-delete-failed: ${error.message}`);
-  return (data?.length ?? 0) > 0;
+  const deleted = (data?.length ?? 0) > 0;
+
+  // `case_owners` goes on its own, by cascade. The record of what we emailed
+  // about this case does not — it has no foreign key, for the reason set out in
+  // migration 0006 — and it holds an address, so it is swept here. Only after a
+  // real deletion: a wrong key must not be a way to erase anything.
+  if (deleted) await forgetEmailSends(id);
+  return deleted;
 }

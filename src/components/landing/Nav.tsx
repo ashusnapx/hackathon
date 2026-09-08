@@ -7,7 +7,7 @@ import { LotusMark } from "@/components/Motifs";
 import { AccessibilityControls } from "@/components/AccessibilityControls";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { AccountAvatar } from "@/components/auth/AccountAvatar";
-import { Button } from "@/components/ui/Button";
+import { StartButton } from "@/components/auth/StartButton";
 import { useMenuBehaviour, useScrollLock } from "@/components/useMenu";
 import { useT } from "@/lib/i18n/context";
 import { casePath, useActiveCaseId } from "@/lib/case/store";
@@ -196,7 +196,7 @@ export function Nav() {
           <LanguageSwitcher compact />
           <AccessibilityControls />
           <AccountAvatar />
-          <Button href="/start" size="sm" className="shrink-0">{t("nav.start")}</Button>
+          <StartButton className="shrink-0" />
 
           <div className="relative shrink-0">
             <button

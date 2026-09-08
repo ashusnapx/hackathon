@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { AUTH_CALLBACK_PATH, isPublicPath, normalisePath, safeRedirect, SIGN_IN_PATH } from "../routes";
+import { AUTH_CALLBACK_PATH, isPublicPath, normalisePath, safeRedirect, SIGN_IN_PATH, startHref } from "../routes";
 
 describe("what a signed-out stranger may reach", () => {
   it("lets them read the landing page, sign in, and see the sample case", () => {
@@ -133,5 +133,30 @@ describe("the sample case's own screens", () => {
     expect(isPublicPath("/case/9f0b1e2c-1111-2222-3333-444455556666/steps")).toBe(false);
     // A path that merely begins with the same characters is not the sample.
     expect(isPublicPath("/case/demo-vaani-call-other/steps")).toBe(false);
+  });
+});
+
+describe("where the header's start button goes", () => {
+  it("goes straight to the intake for somebody signed in", () => {
+    expect(startHref("a@b.com", true)).toBe("/start");
+  });
+
+  it("goes to sign-in, and back, for somebody signed out", () => {
+    expect(startHref(null, true)).toBe("/signin?next=%2Fstart");
+    // The round trip has to land where the button promised.
+    expect(safeRedirect("/start")).toBe("/start");
+  });
+
+  it("guesses sign-in while the session is still unknown", () => {
+    // Signed out and not-asked-yet are the same value for a few milliseconds.
+    // Guessing sign-in is safe in both directions: the sign-in page forwards
+    // anybody who turns out to have a session. Guessing /start is not.
+    expect(startHref(null, true)).toBe("/signin?next=%2Fstart");
+  });
+
+  it("does not send anybody to a sign-in page that cannot exist", () => {
+    // No Supabase project configured: there is no account to have.
+    expect(startHref(null, false)).toBe("/start");
+    expect(startHref("a@b.com", false)).toBe("/start");
   });
 });

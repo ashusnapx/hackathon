@@ -1,12 +1,15 @@
 import { currentUser } from "@/lib/auth/server";
 import { CASE_KEY_PATTERN } from "@/lib/case/key";
+import { claimEmailSend, releaseEmailSend } from "@/lib/db/email-sends";
 import { emailConfigured, sendCaseCreatedEmail } from "@/lib/email/send";
-import { readSmallJson, requestHasSameOrigin } from "@/lib/integrations/vaani";
+import { readSmallJson, requestHasSameOrigin } from "@/lib/http/request";
 import { json } from "@/lib/integrations/vaani-http";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 20;
+
+const CASE_CREATED_KIND = "case-created";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const REF_PATTERN = /^KVC-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
@@ -67,6 +70,18 @@ export async function POST(req: Request) {
     return json({ sent: false, reason: "not-configured" }, 200);
   }
 
+  /*
+   * One of these per case, ever, and the database is what decides it.
+   *
+   * The sender is mounted on every case screen — it has to be, because it is
+   * the only place that reliably has both a case and an address — so this route
+   * is asked again on every navigation between a case and its steps, from every
+   * device, and from both tabs when somebody has two open. Claiming here rather
+   * than trusting the caller is what turns all of that into a single email.
+   */
+  const claimed = await claimEmailSend(body.caseId, CASE_CREATED_KIND, to);
+  if (!claimed) return json({ sent: false, reason: "already-sent" }, 200);
+
   const result = await sendCaseCreatedEmail(to, {
     ref: body.ref,
     caseId: body.caseId,
@@ -77,6 +92,10 @@ export async function POST(req: Request) {
       : undefined,
     financial: body.financial === true,
   });
+
+  // A claim that did not turn into a message has to go back, or one refused
+  // SMTP connection would silence this case's reference for good.
+  if (!result.sent) await releaseEmailSend(body.caseId, CASE_CREATED_KIND);
 
   return json(result.sent ? { sent: true } : { sent: false, reason: result.reason }, 200);
 }
